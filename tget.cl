@@ -390,11 +390,26 @@
 
 (defvar *usage*
     "~
-Usage: tget [--cron] [--learn] [--reset]
+Usage: tget [--cron]
+            [--reset] [--db database]
+            [--learn] [--feed-interval ndays]
 
---cron :: quiet mode
---learn :: don't download anything
---reset :: reset database before beginning operation
+--cron                :: quiet mode
+--reset               :: reset database before beginning operation
+--db database         :: path to database
+--learn               :: don't download anything--useful in conjunction
+                         with reset to wipe the database and start over
+--feed-interval ndays :: set the feed interval to `ndays'.  Only useful
+                         when a user-defined function of one argument is
+                         given to defgroup's :rss-url option.
+
+Examples:
+# Toss current database and catch up on shows released in the last 180 days
+# marking them all as `downloaded'
+$ tget --reset --learn --feed-interval 180
+
+# Usage from Cron:
+$ tget --cron
 ")
 
 (defvar *verbose*
@@ -413,6 +428,7 @@ Usage: tget [--cron] [--learn] [--reset]
 	      ("cron" :long cron-mode)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
+	      ("feed-interval" :long feed-interval :required-companion)
 	      ("db" :long database :required-companion))
 	     (extra-args :usage *usage*)
 	   (when help
@@ -422,6 +438,10 @@ Usage: tget [--cron] [--learn] [--reset]
 	   (setq *verbose* (not cron-mode))
 	   (setq *learn* learn-mode)
 	   (when database (setq *database-name* database))
+	   (when feed-interval
+	     (when (not (match-re "^\\d+$" feed-interval))
+	       (error "Bad --feed-interval: ~s." feed-interval))
+	     (setq *feed-interval* (parse-integer feed-interval)))
 	   (open-tget-database :if-exists (if* reset-database
 					    then :supersede
 					    else :open))
@@ -834,8 +854,10 @@ Usage: tget [--cron] [--learn] [--reset]
 (defun download-episodes (episodes print-func)
   (dolist (episode episodes)
     (funcall print-func episode)
+    (setf (episode-transient episode) nil)
+    (when (not *learn*)
 ;;;;TODO: actually download episodes -- use *learn*, too
-    (setf (episode-transient episode) nil))
+      ))
   (commit))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
