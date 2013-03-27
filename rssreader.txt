@@ -1,0 +1,317 @@
+rss reader
+
+package: net.rss
+
+
+
+
+
+(net.rss:read-feed "url")
+
+    Reads the feed at the given url, parses the data in feed
+and returns a lisp data structure holding the data.
+
+The current supported feed types are:
+    rss version 0.91
+    rss version 1.0
+    rss version 2.0
+
+rss version 2.0 is a follow on to version 0.91  
+rss version 1.0 is very different
+
+We return the same data structure regardless of the type
+of the rss feed.   We do return the entire contents of the feed 
+so there is certain data returned for one type of feed that's
+not returned for another.
+
+The format of the returned data is lisp list in what we
+call lxml format.   In lxml format the car of the list is
+either a symbol or a list beginning with a symbol.  The cdr
+of the list are lists in pxml format.
+
+The form returned has this format:
+
+(net.rss:rss 
+        ...
+        (net.rss:version "version value") 
+        ....
+        (net.rss:channel ....)
+        (net.rss:channel ....)
+        ...)
+
+the way to read the description above is that the returned value
+is a list which begins with the symbol net.rss:rss
+
+In the cdr of the list you'll find a version value and one or
+more channel values.  The locations of the version and channel
+values are not specified so you must search for them in the cdr
+of the returned value.
+
+The version value is always supplied and will be "0.91" "1.0 or "2.0".
+As we extend this rss reader to handle other feed type you will
+find other version values.
+
+The interesting information in the feed is stored in the channel
+value.  The format of the channel value list is
+
+(net.rss:channel
+   ...
+   (net.rss:link "url")
+   (net.rss:description "text") 
+   (net.rss:pubDate "date")
+   (net.rss:all-items  
+        (net.rss:item ...)
+        (net.rss:item ...)
+        (net.rss:item ...)
+        (net.rss:item ...)
+        (net.rss:item ...)
+        ...
+))
+
+
+There are other values as well depending on the rss version.
+The url is the url to read the data on this channel.  This is
+likely the url you passed to read-feed already.
+
+The data for the feed is stored in the net.rss:item values which
+are all stored in the net.rss:all-items value.
+
+Each net.rss:item value looks like
+
+(net.rss:item
+    (net.rss:title "text")
+    (net.rss:link  "url")
+    (net.rss:description "text")
+    (net.rss:pubDate "date")
+    ..)
+
+The net.rss:title is a brief description of the news item.
+The net.rss:description is a more detailed description
+of the item and the net.rss:link points to the complete item.
+
+
+
+
+  
+
+
+
+
+
+(feed-rss-p feed &optional version)
+    Given a feed (i.e the result of read-feed) return the version
+number (a string) of the feed if it is indeed a valid feed.
+If version is given then compare the given version number
+against the actual version number of the feed and if they
+don't match return nil.
+
+
+
+
+
+(feed-slot-value feed slot-name)
+    Given a feed (the return value of read-feed) return the value
+    assocated with the given slot-name.  The value is the cdr
+    of the list beginning with either the slot-name or a list beginning 
+    with slot-name. This function is useful for pulling values
+     out of the feeds.
+
+ e.g:
+
+   (feed-slot-value '(net.rss:rss (net.rss:version "1.0")) 'net.rss:version)
+   ->
+    ("1.0")
+
+
+    or
+
+    (feed-slot-value '(net.rss:rss ((foo) "bar")) 'foo)
+    ->
+    ("bar")
+
+
+
+Here are examples of reading rss version 0.91, 1.0 and 2.0 feeds.
+All feeds are based on the same information but you'll see that
+the return values from the feeds have different amount of information
+since each version of rss permits different amounts of information
+to be presented.
+    
+
+
+========= 0.91 ==========
+
+
+cl-user(3): (pprint (net.rss::read-feed "http://www.franz.com/rss091_main.xml"))
+
+(net.rss:rss (net.rss:version "0.91")
+ (net.rss:channel (net.rss:title "Franz Inc. :: General")
+  (net.rss:link "http://www.franz.com")
+  (net.rss:description "General news from Franz Inc.")
+  (net.rss::language "en-US")
+  (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT")
+  (net.rss::lastBuildDate "Wed, 12 Jan 2005 12:47:00 PDT")
+  (net.rss::webMaster "webmaster@franz.com")
+  (net.rss:all-items
+   (net.rss:item
+    (net.rss:title "Web Services Seminar on January 28th at 10AM PDT")
+    (net.rss:link
+     "http://www.franz.com/services/conferences_seminars/power_programming.lhtml")
+    (net.rss:description
+     "Join us on January 28th at 10AM PDT (California) to learn more about
+Lisp and SOA Web Services for Today's Complex Problems.
+Space is limited so contact us to reserve your spot."))
+   (net.rss:item (net.rss:title "SFOBUG Seminar on February 1st, 2005")
+    (net.rss:link "http://sfobug.org/")
+    (net.rss:description
+     "Join us on February 1st at the San Francisco OpenBSD Users Group for
+a discussion on using Lisp for complex problems."))
+   (net.rss:item (net.rss:title "Japan Seminar on February 3rd, 2005")
+    (net.rss:link "http://jp.franz.com/")
+    (net.rss:description
+     "Join us on February 3rd, 2005 at 10AM JST (Tokyo, Japan) to learn
+about the power of the MOP (Metaobject Protocol) in CLOS."))
+   (net.rss:item
+    (net.rss:title
+     "Allegro CL Certification Program: Basic and Intermediate courses available")
+    (net.rss:link "http://www.franz.com/services/classes/")
+    (net.rss:description "Next 3-day session: February 9, 16 and 23."))
+   (net.rss:item
+    (net.rss:title
+     "Lisp Programmer position available at The Windermere Group")
+    (net.rss:link
+     "http://www.franz.com/careers/jobs/outside/windermere05.01.06.lhtml")
+    (net.rss:description
+     "The Windermere Group is looking for a Lisp Programmer.")))))
+
+
+
+
+
+========== 1.0 ===========
+
+
+cl-user(4): (pprint (net.rss::read-feed "http://www.franz.com/rss10_main.xml"))
+
+(net.rss:rss (net.rss:version "1.0")
+ (net.rss:channel (net.rss:title "Franz Inc. :: General")
+  (net.rss:link "http://www.franz.com")
+  (net.rss:description "General news from Franz Inc.")
+  (net.rss::language "en-US")
+  (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT")
+  (net.rss::lastBuildDate "Wed, 12 Jan 2005 12:47:00 PDT")
+  (net.rss::webMaster "webmaster@franz.com")
+  (net.rss::items "
+"
+   (net.rss.rdf:Seq "
+"
+    ((net.rss.rdf::li net.rss.rdf::resource
+      "http://www.franz.com/services/conferences_seminars/power_programming.lhtml"))
+    "
+" ((net.rss.rdf::li net.rss.rdf::resource "http://sfobug.org/")) "
+" ((net.rss.rdf::li net.rss.rdf::resource "http://jp.franz.com/")) "
+"
+    ((net.rss.rdf::li net.rss.rdf::resource
+      "http://www.franz.com/services/classes/"))
+    "
+"
+    ((net.rss.rdf::li net.rss.rdf::resource
+      "http://www.franz.com/careers/jobs/outside/windermere05.01.06.lhtml"))
+    "
+")
+   "
+")
+  (net.rss:all-items
+   (net.rss:item
+    (net.rss:title "Web Services Seminar on January 28th at 10AM PDT")
+    (net.rss:link
+     "http://www.franz.com/services/conferences_seminars/power_programming.lhtml")
+    (net.rss:description
+     "Join us on January 28th at 10AM PDT (California) to learn more about
+Lisp and SOA Web Services for Today's Complex Problems.
+Space is limited so contact us to reserve your spot.")
+    (net.rss.dc:date "2005-01-12T12:47Z"))
+   (net.rss:item (net.rss:title "SFOBUG Seminar on February 1st, 2005")
+    (net.rss:link "http://sfobug.org/")
+    (net.rss:description
+     "Join us on February 1st at the San Francisco OpenBSD Users Group for
+a discussion on using Lisp for complex problems.")
+    (net.rss.dc:date "2005-01-12T12:47Z"))
+   (net.rss:item (net.rss:title "Japan Seminar on February 3rd, 2005")
+    (net.rss:link "http://jp.franz.com/")
+    (net.rss:description
+     "Join us on February 3rd, 2005 at 10AM JST (Tokyo, Japan) to learn
+about the power of the MOP (Metaobject Protocol) in CLOS.")
+    (net.rss.dc:date "2005-01-12T12:47Z"))
+   (net.rss:item
+    (net.rss:title
+     "Allegro CL Certification Program: Basic and Intermediate courses available")
+    (net.rss:link "http://www.franz.com/services/classes/")
+    (net.rss:description "Next 3-day session: February 9, 16 and 23.")
+    (net.rss.dc:date "2005-01-12T12:47Z"))
+   (net.rss:item
+    (net.rss:title
+     "Lisp Programmer position available at The Windermere Group")
+    (net.rss:link
+     "http://www.franz.com/careers/jobs/outside/windermere05.01.06.lhtml")
+    (net.rss:description
+     "The Windermere Group is looking for a Lisp Programmer.")
+    (net.rss.dc:date "2005-01-12T12:47Z")))))
+
+
+
+
+
+
+========= 2.0 ==========
+
+
+cl-user(5): (pprint (net.rss::read-feed "http://www.franz.com/rss20_main.xml"))
+
+(net.rss:rss (net.rss:version "2.0")
+ (net.rss:channel (net.rss:title "Franz Inc. :: General")
+  (net.rss:link "http://www.franz.com")
+  (net.rss:description "General news from Franz Inc.")
+  (net.rss::language "en-US")
+  (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT")
+  (net.rss::lastBuildDate "Wed, 12 Jan 2005 12:47:00 PDT")
+  (net.rss::docs "http://blogs.law.harvard.edu/tech/rss")
+  (net.rss::generator "A Lisp Program, of course!")
+  (net.rss::webMaster "webmaster@franz.com")
+  (net.rss:all-items
+   (net.rss:item
+    (net.rss:title "Web Services Seminar on January 28th at 10AM PDT")
+    (net.rss:link
+     "http://www.franz.com/services/conferences_seminars/power_programming.lhtml")
+    (net.rss:description
+     "Join us on January 28th at 10AM PDT (California) to learn more about
+Lisp and SOA Web Services for Today's Complex Problems.
+Space is limited so contact us to reserve your spot.")
+    (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT"))
+   (net.rss:item (net.rss:title "SFOBUG Seminar on February 1st, 2005")
+    (net.rss:link "http://sfobug.org/")
+    (net.rss:description
+     "Join us on February 1st at the San Francisco OpenBSD Users Group for
+a discussion on using Lisp for complex problems.")
+    (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT"))
+   (net.rss:item (net.rss:title "Japan Seminar on February 3rd, 2005")
+    (net.rss:link "http://jp.franz.com/")
+    (net.rss:description
+     "Join us on February 3rd, 2005 at 10AM JST (Tokyo, Japan) to learn
+about the power of the MOP (Metaobject Protocol) in CLOS.")
+    (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT"))
+   (net.rss:item
+    (net.rss:title
+     "Allegro CL Certification Program: Basic and Intermediate courses available")
+    (net.rss:link "http://www.franz.com/services/classes/")
+    (net.rss:description "Next 3-day session: February 9, 16 and 23.")
+    (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT"))
+   (net.rss:item
+    (net.rss:title
+     "Lisp Programmer position available at The Windermere Group")
+    (net.rss:link
+     "http://www.franz.com/careers/jobs/outside/windermere05.01.06.lhtml")
+    (net.rss:description
+     "The Windermere Group is looking for a Lisp Programmer.")
+    (net.rss:pubDate "Wed, 12 Jan 2005 12:47:00 PDT")))))
+cl-user(6): 

@@ -1,0 +1,7 @@
+*.fasl
+*.xml
+*.lxml
+*.out
+*.in
+/tget/
+/test.db/
