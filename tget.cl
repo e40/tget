@@ -20,7 +20,8 @@
   (require :rssreader)
   (require :datetime)
   (require :shell)
-  (require :acache "acache-2.1.22.fasl"))
+  (require :acache "acache-2.1.22.fasl")
+  (require :autozoom))
 
 (defpackage :user
   (:use #:excl #:util.date-time #:excl.shell #:db.allegrocache)
@@ -452,25 +453,31 @@
 
 (defvar *usage*
     "~
-Usage: tget [--cron]
-            [--reset] [--db database]
-            [--learn] [--feed-interval ndays]
-            [--auto-backup { program-update | schema-update | both } ]
+Usage:
+$ tget [--help] [--debug] [--cron] [--db database]
+       [--auto-backup { reset | program-update | schema-update }]
+       [--root data-directory] [--reset] [--learn] [--feed-interval ndays]
 
+--help                :: print this help text
+--debug               :: debug mode (recommended for developers)
 --cron                :: quiet mode
---reset               :: reset database before beginning operation
 --db database         :: path to database
+--auto-backup { reset | program-update | schema-update | never }
+                      :: automatically do a backup of the database:
+                         'reset' when the database is being reset,
+                         'program-update' when the program is version is
+                         different than the last time the database was
+                         updated, 'schema-update' the database schema is
+                         changes, and 'never' to never make a backup.
+                         The default is to make backups under all
+                         conditions above.
+--root data-directory :: change the data directory; defaults to ~/.tget.d/
+--reset               :: reset database before beginning operation
 --learn               :: don't download anything--useful in conjunction
                          with reset to wipe the database and start over
 --feed-interval ndays :: set the feed interval to `ndays'.  Only useful
                          when a user-defined function of one argument is
                          given to defgroup's :rss-url option.
---auto-backup { program-update | schema-update | t }
-                      :: automatically do a backup of the database when
-                           1) the program is updated,
-                           2) the database schema is updated, or
-                           3) either of the above is true.
-                         The default is \"schema-update\".
 
 Examples:
 # Toss current database and catch up on shows released in the last 180 days
@@ -478,7 +485,7 @@ Examples:
 $ tget --reset --learn --feed-interval 180
 
 # Usage from Cron:
-$ tget --cron --auto-backup t
+$ tget --cron
 ")
 
 (defvar *verbose*
@@ -557,7 +564,8 @@ $ tget --cron --auto-backup t
 	   
 	   (when auto-backup
 	     (setq *auto-backup*
-	       (cond ((string= "t" auto-backup) t)
+	       (cond ((string= "never" auto-backup) nil)
+		     ((string= "reset" auto-backup) :reset)
 		     ((string= "program-update" auto-backup) :program-update)
 		     ((string= "schema-update" auto-backup) :schema-update)
 		     (t
@@ -572,13 +580,11 @@ $ tget --cron --auto-backup t
 	   (process-groups)
 	   
 	   (exit 0 :quiet t))))
-    (if* *debug*
+    (if* *debug* ;; --debug doesn't effect this test!
        then (format t ";;;NOTE: debugging mode is on~%")
 	    (doit)
-       else (handler-case (doit)
-	      (error (c)
-		(format t "An error occurred: ~a~%" c)
-		(exit 1 :quiet t))))))
+       else (top-level.debug:with-auto-zoom-and-exit (*standard-output*)
+	      (doit)))))
 
 (defun open-log-files (&key truncate)
   (when (and *log-file* (not *log-stream*))
@@ -662,7 +668,8 @@ $ tget --cron --auto-backup t
     
 	(when (probe-file *database-name*)
 	  ;; Check for the need to backup
-	  (when (and schema-update
+	  (when (and (not backed-up)
+		     schema-update
 		     (or (eq 't *auto-backup*)
 			 (eq :schema-update *auto-backup*)))
 	    (backup-database "for schema update")
@@ -671,7 +678,14 @@ $ tget --cron --auto-backup t
 		     program-update
 		     (or (eq 't *auto-backup*)
 			 (eq :program-update *auto-backup*)))
-	    (backup-database "for program update")))
+	    (backup-database "for program update")
+	    (setq backed-up t))
+	  (when (and (not backed-up)
+		     (eq if-exists :supersede)
+		     (or (eq 't *auto-backup*)
+			 (eq :reset *auto-backup*)))
+	    (backup-database "for database reset")
+	    (setq backed-up t)))
     
 	(open-file-database *database-name*
 			    :use :memory
@@ -1051,6 +1065,9 @@ $ tget --cron --auto-backup t
   ;; Return T iff the quality of EPISODE is >= than that given by QUALITY.
   (when (keywordp quality)
     (error "didn't expect a keyword here: ~s" quality))
+  (when (eq 't quality)
+    (@log "episode-quality>=: quality=t, returning")
+    (return-from episode-quality>= t))
   (when (symbolp quality)
     (setq quality (quality (funcall quality episode))))
   (@log "episode-quality>=:")
