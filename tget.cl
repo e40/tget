@@ -2,6 +2,18 @@
 ;; License, v. 2.0. If a copy of the MPL was not distributed with this
 ;; file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;TODO:
+;; PHASE 1: test mode
+;; - test date parser to make sure timezone is correct
+;; - way to dump out flexget series and learn from them??
+;; - handle errors from read-feed (skip to next group)
+;; - a test suite, especially for upgrades
+;;
+;; PHASE 2: production mode
+;; - transmission interface via "transmission-remote"??
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (eval-when (compile eval load)
   (require :ssl)
   (require :ef-e-crcrlf)
@@ -19,26 +31,35 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.0")
-(defvar *database-name* "~/.tget.d/db")
-(defvar *config-file*
-    ;; First one wins:
-    '("sys:config.cl" "~/.tget.cl"))
-(defvar *feed-interval* 14)
+(defvar *tget-version* "1.1")
+(defvar *schema-version*
+    ;; 1 == initial version
+    ;; 2 == added `delay' slot
+    ;; 3 == added schema versioning
+    3)
 
+(defvar *tget-data-directory* "~/.tget.d/")
+(defvar *auto-backup*
+    ;; There is a command line option to change this:
+    t)
+(defvar *database-name* nil)
+(defvar *version-file* nil)
+(defvar *config-file* nil)
 (defvar *debug* nil)
 
+(defvar *log-rss-stream* nil)
+(defvar *log-stream* nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;TODO:
-;; PHASE 1: test mode
-;; - test date parser to make sure timezone is correct
-;; - method of `learning' that something is downloaded already
-;; - `learn' mode for the entire rss feed (catch up)
-;; - way to dump out flexget series and learn from them??
-;; - handle errors from read-feed (skip to next group)
-;;
-;; PHASE 2: production mode
-;; - transmission interface via "transmission-remote"??
+;; User-settable variables (in config file)
+
+(defvar *feed-interval* 14)
+(defvar *log-rss*
+    ;; If non-nil, a pathanme to log rss feed info
+    nil)
+(defvar *log-file*
+    ;; If non-nil, a pathanme to log episode info
+    nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; acache hackery
@@ -117,14 +138,22 @@
   resolution)
 
 (defmethod print-object ((obj quality) stream)
-  (print-object-persistent-clos-object
-   obj stream
-   (lambda (obj)
-     (format nil "~a, source=~s, codec=~s, res=~s"
-	     (quality-name obj)
-	     (when (slot-boundp obj 'source) (quality-source obj))
-	     (when (slot-boundp obj 'codec) (quality-codec obj))
-	     (when (slot-boundp obj 'resolution) (quality-resolution obj))))))
+  (cond
+   (*print-escape*
+    (print-object-persistent-clos-object
+     obj stream
+     (lambda (obj)
+       (format nil "~a, source=~s, codec=~s, res=~s"
+	       (quality-name obj)
+	       (when (slot-boundp obj 'source) (quality-source obj))
+	       (when (slot-boundp obj 'codec) (quality-codec obj))
+	       (when (slot-boundp obj 'resolution) (quality-resolution obj))))))
+   (t ;; print it for humans
+    (format stream "#<quality ~s [~s,~s,~s]>"
+	    (quality-name obj)
+	    (quality-source obj)
+	    (quality-codec obj)
+	    (quality-resolution obj)))))
 
 (defmethod describe-object ((object quality) stream)
   (describe-persistent-clos-object object stream))
@@ -163,9 +192,13 @@
   download-path)
 
 (defmethod print-object ((obj group) stream)
-  (print-object-persistent-clos-object
-   obj stream
-   (lambda (obj) (if (slot-boundp obj 'name) (group-name obj)))))
+  (cond
+   (*print-escape*
+    (print-object-persistent-clos-object
+     obj stream
+     (lambda (obj) (if (slot-boundp obj 'name) (group-name obj)))))
+   (t ;; print it for humans
+    (format stream "#<group ~s>" (group-name obj)))))
 
 (defmethod describe-object ((object group) stream)
   (describe-persistent-clos-object object stream))
@@ -190,9 +223,13 @@
   quality)
 
 (defmethod print-object ((obj series) stream)
-  (print-object-persistent-clos-object
-   obj stream
-   (lambda (obj) (if (slot-boundp obj 'name) (series-name obj)))))
+  (cond
+   (*print-escape*
+    (print-object-persistent-clos-object
+     obj stream
+     (lambda (obj) (if (slot-boundp obj 'name) (series-name obj)))))
+   (t ;; print it for humans
+    (format stream "#<series ~a>" (series-name obj)))))
 
 (defmethod describe-object ((object series) stream)
   (describe-persistent-clos-object object stream))
@@ -249,7 +286,7 @@
 	   then (episode-transient obj)
 	   else "-unbound-")))))
    (t ;; print it for humans
-    (format stream "~a - ~@[S~2,'0d~]~@[E~2,'0d~] [~a,~a,~a]"
+    (format stream "#<~s, ~@[S~2,'0d~]~@[E~2,'0d~] [~a,~a,~a]>"
 	    (episode-series-name obj)
 	    (episode-season obj)
 	    (episode-episode obj)
@@ -272,6 +309,10 @@
   description
   type
   length)
+
+(defstruct schema
+  version
+  tget-version)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UI Macros
@@ -314,30 +355,12 @@
 
 (defun make-group (&key name rss-url delay client ratio quality download-path)
   (let ((old (retrieve-from-index 'group 'name name)))
-    (and rss-url
-	 (or (symbolp rss-url)
-	     (and (stringp rss-url)
-		  (match-re "^http" rss-url))
-	     (error "Bad rss-url: ~s." rss-url)))
-;;;;TODO: check client
-    (and delay
-	 (or (numberp delay)
-	     (error "Bad delay, must be a number: ~s." delay)))
-    (and ratio
-	 (or (and (stringp ratio)
-		  (match-re "^-?[0-9.]+$" ratio))
-	     (error "Bad ratio: ~s." ratio)))
-    (and quality
-	 (or (and (symbolp quality)
-		  (or (retrieve-from-index 'group 'name quality)
-		      (eq 't quality)
-		      (symbol-function quality)
-		      (error "Quality ~s does not exist." quality)))
-	     (error "Bad quality: ~s." quality)))
-    #+not-yet ;; might be on a different machine?!
-    (or (probe-file download-path)
-	(error "download path does not exist: ~a." download-path))
-    (setq download-path (namestring download-path))
+    (check-rss-url rss-url)
+    (check-delay delay)
+    (check-client client)
+    (check-ratio ratio)
+    (check-quality quality)
+    (setq download-path (check-download-path download-path))
     (if* old
        then (setf (group-rss-url old) rss-url)
 	    (setf (group-delay old) delay)
@@ -365,16 +388,11 @@
 
 (defun make-series (&key name group delay quality)
   (let ((old (retrieve-from-index 'series 'name name)))
+    (check-delay delay)
+    (check-quality quality)
 ;;;;TODO: check group
     (or (keywordp group)
 	(error "Bad group: ~s." group))
-    (and delay
-	 (or (numberp delay)
-	     (error "`delay' should be a number: ~s." delay)))
-    (and quality
-	 (or (symbolp quality)
-;;;;TODO: check for existence of quality in db
-	     (error "Bad quality: ~s." quality)))
     (or (stringp name)
 	(error "Series name must be a string: ~s." name))
     (if* old
@@ -388,6 +406,47 @@
 	      :delay delay
 	      :quality quality))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun check-rss-url (rss-url)
+  (and rss-url
+       (or (symbolp rss-url)
+	   (and (stringp rss-url)
+		(match-re "^http" rss-url))
+	   (error "Bad rss-url: ~s." rss-url))))
+
+(defun check-delay (delay)
+  (and delay
+       (or (numberp delay)
+	   (error "Bad delay, must be a number: ~s." delay))))
+
+(defun check-ratio (ratio)
+  (and ratio
+       (or (and (stringp ratio)
+		(match-re "^-?[0-9.]+$" ratio))
+	   (error "Bad ratio: ~s." ratio))))
+
+(defun check-quality (quality)
+  (and quality
+       (or (and (symbolp quality)
+		(or (retrieve-from-index 'group 'name quality)
+		    (keywordp quality)
+		    (eq 't quality)
+		    (symbol-function quality)
+		    (error "Quality ~s does not exist." quality)))
+	   (error "Bad quality: ~s." quality))))
+
+(defun check-client (client)
+;;;;TODO: check client
+  client
+  )
+
+(defun check-download-path (download-path)
+  #+not-yet ;; might be on a different machine?!
+  (or (probe-file download-path)
+      (error "download path does not exist: ~a." download-path))
+  (namestring download-path))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main
 
@@ -396,6 +455,7 @@
 Usage: tget [--cron]
             [--reset] [--db database]
             [--learn] [--feed-interval ndays]
+            [--auto-backup { program-update | schema-update | both } ]
 
 --cron                :: quiet mode
 --reset               :: reset database before beginning operation
@@ -405,6 +465,12 @@ Usage: tget [--cron]
 --feed-interval ndays :: set the feed interval to `ndays'.  Only useful
                          when a user-defined function of one argument is
                          given to defgroup's :rss-url option.
+--auto-backup { program-update | schema-update | t }
+                      :: automatically do a backup of the database when
+                           1) the program is updated,
+                           2) the database schema is updated, or
+                           3) either of the above is true.
+                         The default is \"schema-update\".
 
 Examples:
 # Toss current database and catch up on shows released in the last 180 days
@@ -412,7 +478,7 @@ Examples:
 $ tget --reset --learn --feed-interval 180
 
 # Usage from Cron:
-$ tget --cron
+$ tget --cron --auto-backup t
 ")
 
 (defvar *verbose*
@@ -428,40 +494,83 @@ $ tget --cron
       ((doit ()
 	 (system:with-command-line-arguments
 	     (("help" :long help)
+	      ("debug" :long debug-mode)
+	      ("config" :long config-file :required-companion)
 	      ("cron" :long cron-mode)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
 	      ("feed-interval" :long feed-interval :required-companion)
-	      ("db" :long database :required-companion))
+	      ("root" :long root :required-companion)
+	      ("db" :long database :required-companion)
+	      ("auto-backup" :long auto-backup :required-companion))
 	     (extra-args :usage *usage*)
 	   (when help
 	     (format t "~a~&" *usage*)
 	     (exit 0 :quiet t))
 	   (when extra-args (error "extra arguments:~{ ~a~}." extra-args))
+
+	   (when root
+	     (or (probe-file root)
+		 (error "-root directory does not exist: ~a." root))
+	     (setq *tget-data-directory* (pathname-as-directory root)))
+	   
+	   (setq *database-name*
+	     ;; This should *not* end in a slash:
+	     (merge-pathnames "db" *tget-data-directory*))
+	   (setq *version-file*
+	     ;; Set in main, if *database-name* changed
+	     (merge-pathnames "db/version.cl" *tget-data-directory*))
+	   (setq *config-file*
+	     ;; First one wins:
+	     (list "sys:config.cl"
+		   "~/.tget.cl"
+		   (merge-pathnames "config.cl" *tget-data-directory*)))
+	   
+	   (when debug-mode (setq *debug* t))
 	   (setq *verbose* (not cron-mode))
 	   (setq *learn* learn-mode)
-	   (when database (setq *database-name* database))
+	   
+	   (if* config-file
+	      then (or (probe-file config-file)
+		       (error "--config file does not exist: ~a." config-file))
+	    elseif (consp *config-file*)
+	      then (when (dolist (config *config-file* t)
+			   (when (probe-file config)
+			     (setq config-file config)
+			     (return nil)))
+		     (error "None of these config files exists:~{ ~a~}."
+			    *config-file*))
+	      else (error "Internal error: bad *config-file* value: ~s."
+			  *config-file*))
+	   
+	   (when database
+	     ;; Remove trailing slash, if there is one
+	     (when (=~ "(.*)/$" database) (setq database $1))
+	     (setq *database-name* (pathname database))
+	     (setq *version-file*
+	       (pathname (format nil "~a/version.cl" database))))
+	   
 	   (when feed-interval
 	     (when (not (match-re "^\\d+$" feed-interval))
 	       (error "Bad --feed-interval: ~s." feed-interval))
 	     (setq *feed-interval* (parse-integer feed-interval)))
-	   (open-tget-database :if-exists (if* reset-database
-					    then :supersede
-					    else :open))
 	   
-	   (if* (consp *config-file*)
-	      then (when (dolist (config *config-file* t)
-			   (when (probe-file config)
-			     (load config :verbose *verbose* :print nil)
-			     (return nil)))
-		     (error "None of these config files exists:~{ ~a~}."
-			    *config-file*))
-	    elseif (probe-file *config-file*)
-	      then (load *config-file* :verbose *verbose* :print nil)
-	      else (error "Config file ~a does not exist."
-			  *config-file*))
+	   (when auto-backup
+	     (setq *auto-backup*
+	       (cond ((string= "t" auto-backup) t)
+		     ((string= "program-update" auto-backup) :program-update)
+		     ((string= "schema-update" auto-backup) :schema-update)
+		     (t
+		      (error "Bad value for --auto-backup: ~a."
+			     auto-backup)))))
 
+	   (open-tget-database :if-exists (if* reset-database
+					     then :supersede
+					     else :open))
+	   (load config-file)
+	   (open-log-files)
 	   (process-groups)
+	   
 	   (exit 0 :quiet t))))
     (if* *debug*
        then (format t ";;;NOTE: debugging mode is on~%")
@@ -471,22 +580,172 @@ $ tget --cron
 		(format t "An error occurred: ~a~%" c)
 		(exit 1 :quiet t))))))
 
+(defun open-log-files (&key truncate)
+  (when (and *log-file* (not *log-stream*))
+    (and *verbose* (format t ";; Opening ~a log file...~%" *log-file*))
+    (setq *log-stream*
+      (open *log-file* :direction :output
+	    :if-exists (if truncate :supersede :append)
+	    :if-does-not-exist :create)))
+	   
+  (when (and *log-rss* (not *log-rss-stream*))
+    (and *verbose* (format t ";; Opening ~a rss log file...~%" *log-rss*))
+    (setq *log-rss-stream*
+      (open *log-rss* :direction :output
+	    :if-exists (if truncate :supersede :append)
+	    :if-does-not-exist :create))))
+
+(defun close-log-files ()
+  (when *log-stream*
+    (close *log-stream*)
+    (setq *log-stream* nil))
+  (when *log-rss-stream*
+    (close *log-rss-stream*)
+    (setq *log-rss-stream* nil)))
+
+(push '(close-log-files) sys:*exit-cleanup-forms*)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; database routines
 
+(defvar *lock-file* nil)
+
+(defun acquire-database-lock-file ()
+  (when (null *lock-file*)
+    (setq *lock-file* (pathname (format nil "~a.lock" *database-name*))))
+  (handler-case
+      (with-open-file (s *lock-file* :direction :output
+		       :if-exists :error
+		       :if-does-not-exist :create)
+	(format s "Lock created on ~a~%"
+		(ut-to-date-time (get-universal-time))))
+    (error (c)
+      (declare (ignore c))
+      (error "Could not obtain the lock file (~a)." *lock-file*))))
+
+(defun release-database-lock-file ()
+  (when (null *lock-file*)
+    (error "Tried to release lock file before it was created."))
+  (ignore-errors (delete-file *lock-file*)))
+
 (defun open-tget-database (&key (if-does-not-exist :create)
-			       (if-exists :open))
-;;;;TODO: need locking to make sure only one instance can open the database
-  (when db.allegrocache::*allegrocache* (close-database))
+				(if-exists :open)
+			   &aux ok)
+  (when db.allegrocache::*allegrocache*
+    (close-tget-database))
+
   (ensure-directories-exist *database-name*)
-  (open-file-database *database-name*
-		      :if-does-not-exist if-does-not-exist
-		      :read-only nil
-		      :if-exists if-exists))
+  
+  (acquire-database-lock-file)
+
+  (unwind-protect
+      ;; Do we need to upgrade this database?
+      (let* ((stuff (if* (eq if-exists :supersede)
+		       then (list :version *schema-version*
+				  :tget-version *tget-version*)
+		     elseif (probe-file *version-file*)
+		       then (or (ignore-errors
+				 (read-from-string
+				  (file-contents *version-file*)))
+				(error "Schema version file ~a is corrupt."
+				       *version-file*))
+		       else ;; The version prior to having versioning --
+			    ;; rebuilds were necessary from version 1 to 2,
+			    ;; but after that it's automatic.
+			    '(:version 2 :tget-version "0.00")))
+	     (schema (or (ignore-errors (apply #'make-schema stuff))
+			 (error "Schema version data is corrupt: ~s." stuff)))
+	     (schema-update (< (schema-version schema) *schema-version*))
+	     (program-update (string/= (schema-tget-version schema)
+				       *tget-version*))
+	     backed-up)
+    
+	(when (probe-file *database-name*)
+	  ;; Check for the need to backup
+	  (when (and schema-update
+		     (or (eq 't *auto-backup*)
+			 (eq :schema-update *auto-backup*)))
+	    (backup-database "for schema update")
+	    (setq backed-up t))
+	  (when (and (not backed-up)
+		     program-update
+		     (or (eq 't *auto-backup*)
+			 (eq :program-update *auto-backup*)))
+	    (backup-database "for program update")))
+    
+	(open-file-database *database-name*
+			    :use :memory
+			    :if-does-not-exist if-does-not-exist
+			    :read-only nil
+			    :if-exists if-exists)
+	(when (not (probe-file *version-file*))
+	  ;; New database, write it
+	  (setf (file-contents *version-file*)
+	    (format nil "~s~%" stuff)))
+    
+	(when (< (schema-version schema) *schema-version*)
+	  ;; the database schema version is older than the program's
+	  ;; schema version, upgrade necessary
+	  (do* ((v (schema-version schema) (1+ v)))
+	      ((= v *schema-version*))
+	    ;; Upgrade each step
+	    (handler-case (db-upgrade v)
+	      (error (c)
+		(error "Database upgrade to version ~d failed: ~a." v c)))
+	    ;; Update *version-file* to new version
+	    (setf (file-contents *version-file*)
+	      (format nil "(:version ~d :tget-version ~s)~%"
+		      (1+ v)
+		      *tget-version*))))
+	(setq ok t))
+    ;; In the event of an error, make sure we release the lock:
+    (when (not ok)
+      (if* db.allegrocache::*allegrocache*
+	 then (close-tget-database)
+	 else ;; error before the database was opened, but the lock file
+	      ;; was created, so remove it
+	      (release-database-lock-file)))))
+
+(defun backup-directory (dbname)
+  ;; Find the first name that "matches" DBNAME by appending ``.N'' to the
+  ;; name.  A match is a name that does not exist.
+  (do* ((n 1 (1+ n))
+	(backup #1=(format nil "~a.~d" dbname n) #1#))
+      ((not (probe-file backup))
+       backup)))
+
+(defun backup-database (reason)
+  ;; Backup the database given by *database-name*.  We haven't opened it
+  ;; yet, so we're safe to copy the files.
+  (format t ";; Backing up database ~a.~%" reason)
+  (let* ((backup-directory
+	  ;; Like *database-name*, no trailing slash
+	  (backup-directory *database-name*))
+	 (from (pathname-as-directory *database-name*))
+	 (to (pathname-as-directory backup-directory)))
+    (ensure-directories-exist to)
+    (dolist (file (directory from))
+      (sys:copy-file
+       file
+       (merge-pathnames (enough-pathname file from) to)
+       :preserve-time t))
+    (format t ";;  Copy is in ~a.~%" to)))
+
+(defmethod db-upgrade ((version (eql 2)))
+  ;; The change from 2 to 3: added the tget-admin class.  Just need to add
+  ;; an instance to the database for that.
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version)))
 
 ;;;;TODO: add this as an exit hook?
 (defun close-tget-database ()
-  (close-database))
+  (when *verbose* (format t ";; closing database...~%"))
+  (when db.allegrocache::*allegrocache*
+    (close-database)
+    (setq db.allegrocache::*allegrocache* nil)
+    (release-database-lock-file)))
+
+(push '(close-tget-database) sys:*exit-cleanup-forms*)
 
 (defun query-series-name-to-series (name)
   (retrieve-from-index 'series 'name name))
@@ -666,7 +925,8 @@ $ tget --cron
     ;; query against it.  When I removed non-interesting instances I got
     ;; errors due to accessing slots of deleted objects.  :(
     ;;
-    (mapcar 'rss-to-episode (fetch-feed (group-rss-url group)))
+    (mapcar 'rss-to-episode
+	    (maybe-log-rss (fetch-feed (group-rss-url group))))
     (commit)
     
     ;; Now, the newly added objects in the database have their transient
@@ -741,6 +1001,7 @@ $ tget --cron
   ;; QUALITY is the minimum acceptable quality we allow.  In the case of a
   ;; symbol naming a user-defined function, 
   ;;
+  (@log "matching for ~a and ~a"  group series)
   (do* ((quality
 	 ;; If it's a keyword, convert to quality instance
 	 (quality quality))
@@ -748,11 +1009,13 @@ $ tget --cron
 	(ep (car eps) (car eps))
 	(res '()))
       ((null eps) res)
+    (@log "matching: ~a" ep)
     (when (and
 	   ;; Ignore whole seasons
 	   (not (eq :all (episode-episode ep)))
 	   ;; Ignore episode 0's
 	   (not (eql 0 (episode-episode ep)))
+	   (@log "  not a full season or ep 0")
 	   
 	   ;; Make sure we don't already have it
 	   (not
@@ -760,13 +1023,17 @@ $ tget --cron
 			   :season (episode-season ep)
 			   :ep-number (episode-episode ep)
 			   :transient nil))
+	   (@log "  we don't have it already")
 	     
 	   ;; acceptable quality:
 	   (episode-quality>= ep quality)
+	   (@log "  acceptable quality: ~a" quality)
 	   
 	   ;; Check that we don't have a delay for this series or group.
 	   (let ((delay (or (series-delay series)
 			    (group-delay group))))
+	     (@log "  delay is ~a" delay)
+	     (@log "  hours available ~a" (hours-available ep))
 	     (or (null delay)		;No
 		 (= 0 delay)		; ...delay
 		 
@@ -776,6 +1043,7 @@ $ tget --cron
       ;; A good time to make sure the `series' slot in the episode
       ;; has a meaningful value.  (This change is not important enough to
       ;; warrant a commit.)
+      (@log "  => matching episode")
       (setf (episode-series ep) series)
       (push ep res))))
 
@@ -785,6 +1053,9 @@ $ tget --cron
     (error "didn't expect a keyword here: ~s" quality))
   (when (symbolp quality)
     (setq quality (quality (funcall quality episode))))
+  (@log "episode-quality>=:")
+  (@log "  episode=~a" episode)
+  (@log "  quality=~a" quality)
   (let ((source (episode-source episode))
 	(codec (episode-codec episode))
 	(resolution (episode-resolution episode)))
@@ -856,6 +1127,7 @@ $ tget --cron
 
 (defun download-episodes (episodes print-func)
   (dolist (episode episodes)
+    (@log "download: ~a" episode)
     (funcall print-func episode)
     (setf (episode-transient episode) nil)
     (when (not *learn*)
@@ -871,7 +1143,7 @@ $ tget --cron
     nil)
 
 (defun fetch-feed (thing &aux temp url)
-  ;; Retrieve the rss feed from URL.
+  ;; Retrieve the rss feed from URL and return a list of net.rss:item's
   ;;
   ;; Cache the feed results.  We don't want to hit the feed 5-10 times in a
   ;; few seconds, since it's unlikely to change in that time.
@@ -885,13 +1157,16 @@ $ tget --cron
   
   (if* (and *cached-feeds*
 	    (setq temp (assoc url *cached-feeds* :test #'string=)))
-     then (cdr temp)
+     then (@log "using cached feed for ~a" url)
+	  (cdr temp)
      else (let ((res
 		 (if* *debug*
-		    then 
-;;;;TODO: while debugging, use a static version of the feed.
+		    then ;; while debugging, use a static version of the
+			 ;; feed, so we don't hammer the server.
+			 (@log "using static feed for ~a" url)
 			 (feed-to-rss-objects :file "tvt.xml")
-		    else (feed-to-rss-objects :url url))))
+		    else (@log "read feed for ~a" url)
+			 (feed-to-rss-objects :url url))))
 	    (push (cons url res) *cached-feeds*)
 	    res)))
 
@@ -967,7 +1242,17 @@ $ tget --cron
 	    (push length constructor))))))
     res))
 
+(defun maybe-log-rss (items)
+  (when *log-rss-stream*
+    (format *log-rss-stream*
+	    "~%;; ~a~%" (ut-to-date-time (get-universal-time)))
+    (dolist (rss items)
+      (pprint rss *log-rss-stream*))
+    (terpri *log-rss-stream*))
+  items)
+
 (defun rss-to-episode (rss)
+  ;; Turn the RSS defstruct instance into a persisten episode object.
   (convert-rss-to-episode (rss-item-source rss) rss))
 
 (defun extract-episode-info-from-filename (filename)
@@ -1300,3 +1585,18 @@ Episode:\\s*(\\d+)?"
     (#\O 10)  ;oct
     (#\S 9) ; sept
     ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; misc
+
+(defvar *log-prefix* nil)
+
+(defun @log (format-string &rest args)
+  (when (and *verbose* *log-stream*)
+    (when (null *log-prefix*)
+      (setq *log-prefix* (format nil "~a: " (excl.osi:getpid))))
+    (princ *log-prefix* *log-stream*)
+    (apply #'format *log-stream* format-string args)
+    (fresh-line *log-stream*))
+  ;; Return t so this function can be used in logic chains.
+  t)

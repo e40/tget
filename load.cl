@@ -1,27 +1,16 @@
 
-(setq *debug* t)
-(setq *verbose* t)
-(setq *learn* t)
-
+(setq *tget-data-directory* *default-pathname-defaults*)
+(setq *database-name* (merge-pathnames "test.db" *load-pathname*))
+(setq *version-file* (pathname (format nil "~a/version.cl" *database-name*)))
+(setq *log-file* (merge-pathnames "ep.log" *load-pathname*))
 (setq *config-file* (merge-pathnames "config.cl" *load-pathname*))
+(setq *debug* t)
+(setq *feed-interval* 180)
+(setq *learn* t)
+(setq *verbose* t)
 
 (dolist (file '("rssreader.cl" "tget.cl"))
   (load (compile-file file)))
-
-(format t "*load-pathname* = ~s~%" *load-pathname*)
-
-(defvar *old-database-name*)
-(setq *old-database-name* *database-name*)
-(setq *database-name* (merge-pathnames "test.db" *load-pathname*))
-
-(defun copydb ()
-  (let ((old-dir (pathname-as-directory *old-database-name*))
-	(new-dir (pathname-as-directory *database-name*)))
-    (when (probe-file new-dir)
-      (delete-directory-and-files new-dir :quiet nil))
-    (copy-directory old-dir new-dir :quiet nil))
-  
-  (opendb))
 
 (defun opendb (&key reset)
   (open-tget-database :if-exists (if* reset
@@ -29,8 +18,24 @@
 				    else :open))
   (load *config-file* :verbose nil :print nil))
 
+(dolist (v '(*tget-version*
+	     *schema-version*
+	     *tget-data-directory*
+	     *auto-backup*
+	     *database-name*
+	     *version-file*
+	     *config-file*
+	     *debug*
+	     *feed-interval*
+	     *log-rss*
+	     *log-file*))
+  (format t ";; ~a => ~s~%"
+	  v (symbol-value v)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debugging
+
+(open-log-files :truncate t)
 
 (pprint
  `(progn
@@ -49,16 +54,6 @@
 (pprint
  `(progn
     (opendb :reset t)
-    (setq *feed-interval* 180)
-    (load "config.cl")
-    (process-groups)
-    ))
-
-
-(pprint
- `(progn
-    (copydb)
-    ;;(opendb :reset nil)
     (load *config-file*)
-    (process-groups)
-    ))
+    (process-groups)))
+

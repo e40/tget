@@ -4,6 +4,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Feed and other options
 
+(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+(setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
+
 ;; Wait 6 hours before downloading (most) episodes, to wait for repacks and
 ;; propers.
 (defvar *tvt-delay* 6)

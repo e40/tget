@@ -78,7 +78,8 @@ endif
 
 clean: FORCE
 	rm -fr tget BUILD RPMS SRPMS BUILDROOT SPECS
-	rm -f *.fasl */*.fasl *.out build.in *.debug build.tmp
+	rm -fr test.db*
+	rm -f *.fasl */*.fasl *.out *.log build.in *.debug build.tmp
 
 tarball: FORCE
 	mkdir $(tardir)
