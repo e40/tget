@@ -97,7 +97,7 @@
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
-(defseries "phineas and furb" :adrian)
+(defseries "Phineas and Furb" :adrian)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -108,8 +108,8 @@
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
-(defseries "downton abbey" :anh)
-(defseries "midsomer murders" :anh)
+(defseries "Downton Abbey" :anh)
+(defseries "Midsomer Murders" :anh)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -120,44 +120,44 @@
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
-(defseries "8 out of 10 cats" :kevin)
-(defseries "boardwalk empire" :kevin)
-(defseries "breaking bad" :kevin :delay 0) ;; immediate download
-(defseries "childrens hospital (us)" :kevin)
-(defseries "come fly with me (2010)" :kevin)
-(defseries "dexter" :kevin)
-(defseries "dragons den" :kevin)
-(defseries "elementary" :kevin)
-(defseries "falling skies" :kevin)
-(defseries "frontline" :kevin)
-(defseries "game of thrones" :kevin :delay 0) ;; immediate download
-(defseries "homeland" :kevin)
-(defseries "justified" :kevin :delay 0) ;; immediate download
-(defseries "longmire" :kevin)
-(defseries "louis theroux documentaries" :kevin)
-(defseries "louis" :kevin)
-(defseries "luther" :kevin)
-(defseries "mad men" :kevin)
-(defseries "misfits" :kevin)
-(defseries "motive" :kevin)
-(defseries "orphan black" :kevin)
-(defseries "person of interest" :kevin)
-(defseries "shameless (us)" :kevin)
-(defseries "sherlock" :kevin)
-(defseries "southland" :kevin)
-(defseries "strike back" :kevin)
-(defseries "the americans (2013)" :kevin)
-(defseries "the colbert report" :kevin)
-(defseries "the daily show with jon stewart" :kevin)
-(defseries "the graham norton show" :kevin)
-(defseries "the it crowd" :kevin)
-(defseries "the jeselnik offensive" :kevin)
-(defseries "the newsroom (2012)" :kevin)
-(defseries "the ultimate fighter" :kevin)
-(defseries "the walking dead" :kevin :delay 0) ;; immediate download
-(defseries "tosh.0" :kevin)
-(defseries "vikings" :kevin)
-(defseries "witness (2012)" :kevin)
+(defseries "8 Out of 10 Cats" :kevin)
+(defseries "Boardwalk Empire" :kevin)
+(defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
+(defseries "Childrens Hospital (US)" :kevin)
+(defseries "Come Fly with Me (2010)" :kevin)
+(defseries "Dexter" :kevin)
+(defseries "Dragons Den" :kevin)
+(defseries "Elementary" :kevin)
+(defseries "Falling Skies" :kevin)
+(defseries "Frontline" :kevin)
+(defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
+(defseries "Homeland" :kevin)
+(defseries "Justified" :kevin :delay 0) ;; immediate download
+(defseries "Longmire" :kevin)
+(defseries "Louis Theroux Documentaries" :kevin)
+(defseries "Louis" :kevin)
+(defseries "Luther" :kevin)
+(defseries "Mad men" :kevin)
+(defseries "Misfits" :kevin)
+(defseries "Motive" :kevin)
+(defseries "Orphan Black" :kevin)
+(defseries "Person of Interest" :kevin)
+(defseries "Shameless (us)" :kevin)
+(defseries "Sherlock" :kevin)
+(defseries "Southland" :kevin)
+(defseries "Strike Back" :kevin)
+(defseries "The Americans (2013)" :kevin)
+(defseries "The Colbert Report" :kevin)
+(defseries "The Daily Show with Jon Stewart" :kevin)
+(defseries "The Graham Norton Show" :kevin)
+(defseries "The IT crowd" :kevin)
+(defseries "The Jeselnik Offensive" :kevin)
+(defseries "The Newsroom (2012)" :kevin)
+(defseries "The Ultimate Fighter" :kevin)
+(defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
+(defseries "Tosh.0" :kevin)
+(defseries "Vikings" :kevin)
+(defseries "Witness (2012)" :kevin)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -168,23 +168,24 @@
     :quality 'my-quality
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
-(defseries "an idiot abroad" :adrian+kevin)
-(defseries "community" :adrian+kevin)
-(defseries "eagleheart" :adrian+kevin)
-(defseries "futurama" :adrian+kevin)
-(defseries "modern family" :adrian+kevin)
-(defseries "mythbusters" :adrian+kevin)
-(defseries "nathan for you" :adrian+kevin)
-(defseries "ncis" :adrian+kevin)
-(defseries "nova" :adrian+kevin)
-(defseries "parks and recreation" :adrian+kevin)
-(defseries "ridiculousness" :adrian+kevin)
-(defseries "shark tank" :adrian+kevin)
-(defseries "the mentalist" :adrian+kevin)
-(defseries "the neighbors (2012)" :adrian+kevin)
-(defseries "the simpsons" :adrian+kevin)
-(defseries "top gear" :adrian+kevin :quality :high)
-(defseries "top gear (us)" :adrian+kevin :quality :high)
+(defseries "An Idiot Abroad" :adrian+kevin)
+(defseries "Community" :adrian+kevin)
+(defseries "Eagleheart" :adrian+kevin)
+(defseries "Futurama" :adrian+kevin)
+(defseries "James May's Man Lab" :adrian+kevin)
+(defseries "Modern Family" :adrian+kevin)
+(defseries "Mythbusters" :adrian+kevin)
+(defseries "Nathan for You" :adrian+kevin)
+(defseries "NCIS" :adrian+kevin)
+(defseries "Nova" :adrian+kevin)
+(defseries "Parks and Recreation" :adrian+kevin)
+(defseries "Ridiculousness" :adrian+kevin)
+(defseries "Shark Tank" :adrian+kevin)
+(defseries "The Mentalist" :adrian+kevin)
+(defseries "The Neighbors (2012)" :adrian+kevin)
+(defseries "The Simpsons" :adrian+kevin)
+(defseries "Top Gear" :adrian+kevin :quality :high)
+(defseries "Top Gear (US)" :adrian+kevin :quality :high)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -204,7 +205,7 @@
     :quality t ;; built into the feed
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
-(defseries "spongebob squarepants" :btn-spongebob)
+(defseries "Spongebob Squarepants" :btn-spongebob)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -215,11 +216,11 @@
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
-(defseries "bates motel" :anh+kevin)
-(defseries "curb your enthusiasm" :anh+kevin)
-(defseries "doc martin" :anh+kevin)
-(defseries "the following" :anh+kevin)
-(defseries "the good wife" :anh+kevin)
-(defseries "the killing" :anh+kevin)
-(defseries "wallander" :anh+kevin)
-(defseries "white collar" :anh+kevin)
+(defseries "Bates Motel" :anh+kevin)
+(defseries "Curb your Enthusiasm" :anh+kevin)
+(defseries "Doc Martin" :anh+kevin)
+(defseries "The Following" :anh+kevin)
+(defseries "The Good Wife" :anh+kevin)
+(defseries "The Killing" :anh+kevin)
+(defseries "Wallander" :anh+kevin)
+(defseries "White Collar" :anh+kevin)

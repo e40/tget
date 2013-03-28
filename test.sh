@@ -28,4 +28,4 @@ test2()
 }
 
 clean && test1
-#clean && test2
+clean && test2

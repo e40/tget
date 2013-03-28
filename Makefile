@@ -47,7 +47,9 @@ ifeq ($(FI_APPS_COMMON),t)
 ALL_EXTRA = repo_check
 endif
 
-all:	clean
+all:	clean build test
+
+build: FORCE
 	rm -fr tget build.tmp
 	cat deliver.cl >> build.tmp
 	$(runlisp)
@@ -56,12 +58,22 @@ ifdef INSTALL_CONFIG_FILE
 	cp -p $(INSTALL_CONFIG_FILE) tget/config.cl
 endif
 
+test: FORCE
+	sh test.sh
+
 ifeq ($(FI_APPS_COMMON),t)
 repo_check: FORCE
 	@if test ! -d fi-apps-common; then \
 	    echo fi-apps-common does not exist.; \
 	    exit 1; \
 	fi
+endif
+
+install_config: FORCE
+ifdef INSTALL_CONFIG_FILE
+	cp -p $(INSTALL_CONFIG_FILE) $(DESTDIR)/lib/tget/config.cl
+else
+	@echo INSTALL_CONFIG_FILE not defined; exit 1
 endif
 
 install: FORCE

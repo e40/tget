@@ -32,7 +32,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.1")
+(defvar *tget-version* "1.2")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -207,7 +207,9 @@
 (defclass* series (:conc-name t :print nil :init nil)
   ;;e.g. :kevin
   (group :index :any)
-  ;;Downcased version of the series name.  e.g. "vikings"
+  ;; Only used for presentation to the user
+  pretty-name
+  ;;canonicalized version of the series name
   ;; ***must match episode class naming***
   (name :index :any-unique)
 ;;;;TODO: need to implement this:
@@ -230,7 +232,7 @@
      obj stream
      (lambda (obj) (if (slot-boundp obj 'name) (series-name obj)))))
    (t ;; print it for humans
-    (format stream "#<series ~a>" (series-name obj)))))
+    (format stream "#<series ~a>" (series-pretty-name obj)))))
 
 (defmethod describe-object ((object series) stream)
   (describe-persistent-clos-object object stream))
@@ -388,7 +390,9 @@
     ,@(when quality `(:quality ,quality))))
 
 (defun make-series (&key name group delay quality)
-  (let ((old (retrieve-from-index 'series 'name name)))
+  (let* ((original-name name)
+	 (name (canonicalize-series-name name))
+	 (old (retrieve-from-index 'series 'name name)))
     (check-delay delay)
     (check-quality quality)
 ;;;;TODO: check group
@@ -402,7 +406,8 @@
 	    (setf (series-quality old) quality)
 	    old
        else (make-instance 'series
-	      :name (string-downcase name)
+	      :pretty-name original-name
+	      :name name
 	      :group group
 	      :delay delay
 	      :quality quality))))
@@ -575,7 +580,7 @@ $ tget --cron
 	   (open-tget-database :if-exists (if* reset-database
 					     then :supersede
 					     else :open))
-	   (load config-file)
+	   (load config-file :verbose *verbose*)
 	   (open-log-files)
 	   (process-groups)
 	   
@@ -1307,8 +1312,10 @@ $ tget --cron
 	 then :1080p
 	 else :<720p))
 
-    (multiple-value-setq (match whole series-name season episode uncut)
-      (match-re "^(.*)S([0-9]{2,3})E([0-9]{2,3}).*(\\.UNCUT\\.)" filename))
+    (multiple-value-setq (match whole series-name season episode)
+      (match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
+		:case-fold t))
+    (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
     (when match
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
@@ -1332,6 +1339,9 @@ $ tget --cron
 	 elseif uncut
 	   then (setq series-name
 		  (concatenate 'simple-string series-name " (uncut)")))))
+
+    (when series-name
+      (setq series-name (canonicalize-series-name series-name)))
     
     (when (not season)
       ;; Now try The Daily Show style episodes:
@@ -1375,7 +1385,7 @@ $ tget --cron
       ;; ".UNCUT." is in the "Filename" but not the "Show Name", but
       ;; "(Uncut)" is in the "Show Title"!  We need to put it into the
       ;; series-name...
-      (setq uncut (match-re "\\(Uncut\\)" title))
+      (setq uncut (match-re "uncut" title :case-fold t))
       
       (when (not match) (error "couldn't parse rss description: ~s." des))
       
@@ -1398,9 +1408,10 @@ $ tget --cron
 
       (multiple-value-setq (series-name season episode source codec resolution)
 	(extract-episode-info-from-filename filename))
-      
-      ;; Canonicalize the series name, so "Tosh.0" becomes "Tosh 0".
-      (setq des-series-name (replace-re des-series-name "\\." " "))
+
+      (setq des-series-name (canonicalize-series-name des-series-name))
+
+      ;; "(uncut)" is added if it was in the title
       (when uncut
 	(setq des-series-name
 	  (concatenate 'simple-string des-series-name " (uncut)")))
@@ -1417,8 +1428,12 @@ $ tget --cron
 		     (not (eq des-episode episode))))
 	(error "Description and filename episode do not agree: ~s, ~s."
 	       des-episode episode))
+      
+      ;; sanity check
       (when (and des-series-name series-name
-		 (not (equalp des-series-name series-name)))
+		 (not (equalp des-series-name series-name))
+		 (not (equalp (strip-trailing-year des-series-name)
+			      (strip-trailing-year series-name))))
 	(warn "Description and filename series name do not agree (using ~
 the second one): ~s, ~s."
 	      des-series-name series-name))
@@ -1448,6 +1463,24 @@ the second one): ~s, ~s."
 		   (error "can't parse codec: ~s" rss))
 	;; for TVT it's always in the filename, but others it's in the title
 	:resolution resolution))))
+
+(defun strip-trailing-year (name)
+  ;; Input:  "the americans (2013)"
+  ;; Output: "the americans"
+  (multiple-value-bind (match whole name-sans-year)
+      (match-re "^(.*) \\(\\d\\d\\d\\d\\)$" name)
+    (declare (ignore whole))
+    (if match name-sans-year name)))
+
+(defun canonicalize-series-name (name)
+  ;; Canonicalize the series name
+  ;;
+  ;; downcase:
+  (setq name (string-downcase name))
+  ;; ...so "Tosh.0" becomes "Tosh 0"
+  (setq name (replace-re name "\\." " "))
+  ;; ...so "James May's Man Lab" becomes "James Mays Man Lab"
+  (replace-re name "[']" ""))
 
 (defmethod convert-rss-to-episode ((type (eql :broadcasthe.net)) rss)
   (let ((des (rss-item-description rss))
