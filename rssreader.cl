@@ -44,6 +44,8 @@
 		     #:rss
 		     #:title
 		     #:version
+		     
+		     #:feed-error
 		     ))
 
 
@@ -72,8 +74,9 @@
   
 
 
-
-
+(define-condition feed-error (error)
+  ((http-code :initarg :http-code :reader feed-error-httpcode
+	      :initform nil)))
 
 (defun read-feed (url)
   ;;
@@ -87,7 +90,10 @@
     (declare (ignore headers))
     
     (if* (not (eq 200 code))
-       then (error "Accessing url ~s gave http response code ~s" url code))
+       then (error 'feed-error
+		   :http-code code
+		   :format-control "Accessing url ~s gave http response code ~s"
+		   :format-arguments (list url code)))
     
     (parse-feed content)))
 

@@ -32,7 +32,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.4")
+(defvar *tget-version* "1.5")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -230,7 +230,8 @@
    (*print-escape*
     (print-object-persistent-clos-object
      obj stream
-     (lambda (obj) (if (slot-boundp obj 'name) (series-name obj)))))
+     (lambda (obj)
+       (if (slot-boundp obj 'pretty-name) (series-pretty-name obj)))))
    (t ;; print it for humans
     (format stream "#<series ~a>" (series-pretty-name obj)))))
 
@@ -516,7 +517,12 @@ $ tget --cron
 	      ("feed-interval" :long feed-interval :required-companion)
 	      ("root" :long root :required-companion)
 	      ("db" :long database :required-companion)
-	      ("auto-backup" :long auto-backup :required-companion))
+	      ("auto-backup" :long auto-backup :required-companion)
+	      
+	      ("dump-series" :long dump-series :required-companion)
+	      ("dump-episodes" :long dump-episodes :required-companion)
+	      ("delete-episodes" :long delete-episodes :required-companion)
+	      )
 	     (extra-args :usage *usage*)
 	   (when help
 	     (format t "~a~&" *usage*)
@@ -584,7 +590,26 @@ $ tget --cron
 					     else :open))
 	   (load config-file :verbose *verbose*)
 	   (open-log-files)
-	   (process-groups)
+	   
+	   (if* dump-series
+	      then (let* ((series-name (canonicalize-series-name dump-series))
+			  (series (query-series-name-to-series series-name)))
+		     (if* series
+			then (describe series)
+			else (format t "No series named ~s.~%" dump-series)))
+	    elseif dump-episodes
+	      then (dolist (ep (query-episode
+				:series-name
+				(canonicalize-series-name dump-episodes)))
+		     (describe ep))
+	    elseif delete-episodes
+	      then (dolist (ep (query-episode
+				:series-name
+				(canonicalize-series-name delete-episodes)))
+		     (format t "removing ~a~%" ep)
+		     (delete-instance ep))
+		   (commit)
+	      else (process-groups))
 	   
 	   (exit 0 :quiet t))))
     (if* *debug* ;; --debug doesn't effect this test!
@@ -599,7 +624,8 @@ $ tget --cron
     (setq *log-stream*
       (open *log-file* :direction :output
 	    :if-exists (if truncate :supersede :append)
-	    :if-does-not-exist :create)))
+	    :if-does-not-exist :create))
+    (format *log-stream* "~%;; ~a~%~%" (ut-to-date-time (get-universal-time))))
 	   
   (when (and *log-rss* (not *log-rss-stream*))
     (and *verbose* (format t ";; Opening ~a rss log file...~%" *log-rss*))
@@ -929,83 +955,89 @@ $ tget --cron
 (defun process-groups (&aux ep-printer)
   (commit)
   (doclass (group (find-class 'group))
-
-    ;; Setup the printer for this group.  The idea is to have no output
-    ;; unless there are matches.
-    (setf ep-printer
-      (let ((first t))
-	(lambda (ep)
-	  (when first
-	    (format t "~&;; Processing group ~s~%" (group-name group))
-	    (setq first nil))
-	  (format t "~&~a~%" ep))))
+    (tagbody
+      ;; Setup the printer for this group.  The idea is to have no output
+      ;; unless there are matches.
+      (setf ep-printer
+	(let ((first t))
+	  (lambda (ep)
+	    (when first
+	      (format t "~&;; Processing group ~s~%" (group-name group))
+	      (setq first nil))
+	    (format t "~&~a~%" ep))))
     
-    ;; Convert the rss objects to episodes and process them.
+      ;; Convert the rss objects to episodes and process them.
 
-    ;; Get all the episodes from the feed into the database, so we can
-    ;; query against it.  When I removed non-interesting instances I got
-    ;; errors due to accessing slots of deleted objects.  :(
-    ;;
-    (mapcar 'rss-to-episode
-	    (maybe-log-rss (fetch-feed (group-rss-url group))))
-    (commit)
+      ;; Get all the episodes from the feed into the database, so we can
+      ;; query against it.  When I removed non-interesting instances I got
+      ;; errors due to accessing slots of deleted objects.  :(
+      ;;
+      (handler-case
+	  (mapcar 'rss-to-episode
+		  (maybe-log-rss (fetch-feed (group-rss-url group))))
+	(net.rss:feed-error (c)
+	  (format t "~a~%" c)
+	  (go next-feed)))
+      (commit)
     
-    ;; Now, the newly added objects in the database have their transient
-    ;; slot set to `t'.  We can query against them, to see if we
-    ;; need to download any of them, and and easily find them to remove
-    ;; them when we're done.
+      ;; Now, the newly added objects in the database have their transient
+      ;; slot set to `t'.  We can query against them, to see if we
+      ;; need to download any of them, and and easily find them to remove
+      ;; them when we're done.
 
-    ;; Now, we comb through the series for this group and look for matches
-    ;; to download
-    (dolist (series (query-group-to-series group))
-      ;; Find any transient episodes that match the series name
-      ;;
-      ;; series-defined quality trumps group-defined quality.
-      ;;
-      ;; series-defined quality can be a keyword naming a defined quality
-      ;; type.
-      ;;
-      ;; group-defined quality can be:
-      ;;   t :: any quality is fine
-      ;;   a keyword :: defined by the keyword naming the quality
-      ;;   a function :: defined by calling the function on the episode,
-      ;;                 such functions need to take care to use the
-      ;;                 `transient' slot to narrow their searches, if
-      ;;                 they do them -- the function should return `t'
-      ;;                 if the quality is acceptable, `nil' otherwise.
-      ;;
-      ;; So, let's say we have 3 episodes available, with qualities ranging
-      ;; from undefined to :normal to :high (and the latter two qualities
-      ;; were defined by the user in their config file).  We don't want the
-      ;; order of processing these 3 episodes to change the outcome of
-      ;; which episode is selected.
-      ;;
-      ;; For any episodes that we select for downloading, we need to turn
-      ;; off the `transient' flag.
-      ;;      
-      (let* ((new-series-episodes
-	      ;; The episodes we are considering downloading
-	      (query-episode :series-name (series-name series)
-			     :transient t))
-	     matching-episodes)
-	(when (setq matching-episodes
-		(matching-episodes group
-				   series
-				   new-series-episodes
-				   (or (series-quality series)
-				       (group-quality group))))
-	  (download-episodes
-	   (if* (null (cdr matching-episodes))
-	      then ;; easy, only one
-		   matching-episodes
-	      else (lowest-quality matching-episodes))
-	   ep-printer))))
-    (commit)
+      ;; Now, we comb through the series for this group and look for matches
+      ;; to download
+      (dolist (series (query-group-to-series group))
+	;; Find any transient episodes that match the series name
+	;;
+	;; series-defined quality trumps group-defined quality.
+	;;
+	;; series-defined quality can be a keyword naming a defined quality
+	;; type.
+	;;
+	;; group-defined quality can be:
+	;;   t :: any quality is fine
+	;;   a keyword :: defined by the keyword naming the quality
+	;;   a function :: defined by calling the function on the episode,
+	;;                 such functions need to take care to use the
+	;;                 `transient' slot to narrow their searches, if
+	;;                 they do them -- the function should return `t'
+	;;                 if the quality is acceptable, `nil' otherwise.
+	;;
+	;; So, let's say we have 3 episodes available, with qualities ranging
+	;; from undefined to :normal to :high (and the latter two qualities
+	;; were defined by the user in their config file).  We don't want the
+	;; order of processing these 3 episodes to change the outcome of
+	;; which episode is selected.
+	;;
+	;; For any episodes that we select for downloading, we need to turn
+	;; off the `transient' flag.
+	;;      
+	(let* ((new-series-episodes
+		;; The episodes we are considering downloading
+		(query-episode :series-name (series-name series)
+			       :transient t))
+	       matching-episodes)
+	  (when (setq matching-episodes
+		  (matching-episodes group
+				     series
+				     new-series-episodes
+				     (or (series-quality series)
+					 (group-quality group))))
+	    (download-episodes
+	     (if* (null (cdr matching-episodes))
+		then ;; easy, only one
+		     matching-episodes
+		else (lowest-quality matching-episodes))
+	     ep-printer))))
+      (commit)
   
-    ;; Remove the remaining transient episodes
-    (dolist (ep (retrieve-from-index 'episode 'transient t :all t))
-      (delete-instance ep))
-    (commit)))
+      ;; Remove the remaining transient episodes
+      (dolist (ep (retrieve-from-index 'episode 'transient t :all t))
+	(delete-instance ep))
+      (commit)
+     next-feed
+      )))
 
 (defun matching-episodes (group series episodes quality)
   ;; Return a list of episodes, from the EPISODES list, that has minimum

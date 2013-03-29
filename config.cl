@@ -43,10 +43,8 @@
     :username (sys:getenv "TRANSMISSION_USER")
     :password (sys:getenv "TRANSMISSION_PASS")
     :add-paused nil
-    :ratio "1.04"
-    ;; Don't enable this because I like to see what's there before it's
-    ;; removed.
-    :remove-when-done nil)
+    :trash-torrent-file t
+    :ratio "1.04")
 
 (setq *download-root* "/me/layer/videos/")
 
