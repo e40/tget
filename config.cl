@@ -137,12 +137,12 @@
 (defseries "Louis Theroux Documentaries" :kevin)
 (defseries "Louis" :kevin)
 (defseries "Luther" :kevin)
-(defseries "Mad men" :kevin)
+(defseries "Mad Men" :kevin)
 (defseries "Misfits" :kevin)
 (defseries "Motive" :kevin)
 (defseries "Orphan Black" :kevin)
 (defseries "Person of Interest" :kevin)
-(defseries "Shameless (us)" :kevin)
+(defseries "Shameless (US)" :kevin)
 (defseries "Sherlock" :kevin)
 (defseries "Southland" :kevin)
 (defseries "Strike Back" :kevin)
@@ -150,7 +150,7 @@
 (defseries "The Colbert Report" :kevin)
 (defseries "The Daily Show with Jon Stewart" :kevin)
 (defseries "The Graham Norton Show" :kevin)
-(defseries "The IT crowd" :kevin)
+(defseries "The IT Crowd" :kevin)
 (defseries "The Jeselnik Offensive" :kevin)
 (defseries "The Newsroom (2012)" :kevin)
 (defseries "The Ultimate Fighter" :kevin)
@@ -196,7 +196,7 @@
     :quality t ;; built into the feed
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
-(defseries "regular show" ::btn-regular-show)
+(defseries "Regular Show" ::btn-regular-show)
 
 (defgroup :btn-spongebob
     :rss-url *btn-spongebob-rss*

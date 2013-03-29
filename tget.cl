@@ -32,7 +32,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.3")
+(defvar *tget-version* "1.4")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -390,7 +390,7 @@
     ,@(when quality `(:quality ,quality))))
 
 (defun make-series (&key name group delay quality)
-  (let* ((original-name name)
+  (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
 	 (old (retrieve-from-index 'series 'name name)))
     (check-delay delay)
@@ -401,12 +401,14 @@
     (or (stringp name)
 	(error "Series name must be a string: ~s." name))
     (if* old
-       then (setf (series-group old) group)
+       then (when (string/= (series-name old) pretty-name)
+	      (setf (series-pretty-name old) pretty-name))
+	    (setf (series-group old) group)
 	    (setf (series-delay old) delay)
 	    (setf (series-quality old) quality)
 	    old
        else (make-instance 'series
-	      :pretty-name original-name
+	      :pretty-name pretty-name
 	      :name name
 	      :group group
 	      :delay delay
