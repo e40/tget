@@ -30,6 +30,12 @@
 ;; - resolutions: 720p (less than this quality are crap)
 (defvar *btn-spongebob-rss* (sys:getenv "TGET_BTN_RSS_SPONGEBOB"))
 
+;; custom rss feed with these options:
+;; - category: Episode
+;; - containers: mp4
+;; - codecs: x264
+(defvar *btn-crazy-fools-rss* (sys:getenv "TGET_BTN_RSS_CRAZY_FOOLS"))
+
 #+not-yet
 (deftransmission ()
     :host (sys:getenv "TRANSMISSION_HOST")
@@ -207,6 +213,15 @@
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
 (defseries "Spongebob Squarepants" :btn-spongebob)
+
+(defgroup :btn-crazy-fools
+    :rss-url *btn-crazy-fools-rss*
+    :ratio "-1" 
+    :client :transmission-rpc
+    :quality t ;; built into the feed
+    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
+
+(defseries "World's Craziest Fools" :btn-crazy-fools)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
