@@ -1697,7 +1697,7 @@ Episode:\\s*(\\d+)?"
 (defvar *log-prefix* nil)
 
 (defun @log (format-string &rest args)
-  (when (and *verbose* *log-stream*)
+  (when *log-stream*
     (when (null *log-prefix*)
       (setq *log-prefix* (format nil "~a: " (excl.osi:getpid))))
     (princ *log-prefix* *log-stream*)
