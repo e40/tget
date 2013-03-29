@@ -196,7 +196,7 @@
     :quality t ;; built into the feed
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
-(defseries "Regular Show" ::btn-regular-show)
+(defseries "Regular Show" :btn-regular-show)
 
 (defgroup :btn-spongebob
     :rss-url *btn-spongebob-rss*
