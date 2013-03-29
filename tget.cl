@@ -281,26 +281,38 @@
 	  (episode-season obj))
 	(when (slot-boundp obj 'episode)
 	  (episode-episode obj))
-	(when (or (slot-boundp obj 'source)
-		  (slot-boundp obj 'codec)
-		  (slot-boundp obj 'resolution))
-	  (format
-	   nil "~@[ src=~s~]~@[ codec=~s~]~@[ res=~s~]"
-	   (when (slot-boundp obj 'source) (episode-source obj))
-	   (when (slot-boundp obj 'codec) (episode-codec obj))
-	   (when (slot-boundp obj 'resolution)
-	     (episode-resolution obj))))
+	(pretty-episode-quality obj)
 	(if* (slot-boundp obj 'transient)
 	   then (episode-transient obj)
 	   else "-unbound-")))))
    (t ;; print it for humans
-    (format stream "#<~s, ~@[S~2,'0d~]~@[E~2,'0d~] [~a,~a,~a]>"
+    (format stream "#<~s, ~@[S~2,'0d~]~@[E~2,'0d~] [~a]>"
 	    (episode-series-name obj)
 	    (episode-season obj)
 	    (episode-episode obj)
-	    (episode-source obj)
-	    (episode-codec obj)
-	    (episode-resolution obj)))))
+	    (pretty-episode-quality obj)))))
+
+(defun pretty-episode-quality (ep &aux name all-bound)
+  (if* (and (slot-boundp ep 'source)
+	    (slot-boundp ep 'codec)
+	    (slot-boundp ep 'resolution)
+	    (setq all-bound t)
+	    (setq name (episode-quality ep)))
+     then (format nil "~s" name)
+   elseif (and all-bound
+	       (null (episode-source ep))
+	       (null (episode-codec ep))
+	       (null (episode-resolution ep)))
+     then "unknown"
+   elseif (or (slot-boundp ep 'source)
+	      (slot-boundp ep 'codec)
+	      (slot-boundp ep 'resolution))
+     then (format
+	   nil "~a,~a,~a"
+	   (when (slot-boundp ep 'source) (episode-source ep))
+	   (when (slot-boundp ep 'codec) (episode-codec ep))
+	   (when (slot-boundp ep 'resolution) (episode-resolution ep)))
+     else "undefined"))
 
 (defmethod describe-object ((object episode) stream)
   (describe-persistent-clos-object object stream))
