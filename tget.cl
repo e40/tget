@@ -36,7 +36,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.6")
+(defvar *tget-version* "1.7")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1064,19 +1064,14 @@ $ tget --cron
       )))
 
 (defun matching-episodes (group series episodes quality)
-  ;; Return a list of episodes, from the EPISODES list, that has minimum
-  ;; quality given by QUALITY, which can be t (any quality), symbol (naming
-  ;; a function) or keyword (naming a quality definition).  SERIES is used
-  ;; to set the episode-series slot, if we care about the episode.
+  ;; Return a list of episodes, from the EPISODES list, which are transient
+  ;; episodes we have not yet decided to download, that have the quality
+  ;; given by QUALITY, which can be:
+  ;;   t (any quality)
+  ;;   symbol (naming a function)
+  ;;   keyword (naming a user-defined quality).
   ;;
-  ;; NOTE: there are all seasons and ep#'s in EPISODES.  We must take that
-  ;; into account when processing them.
-  ;;
-  ;; EPISODES are transient episodes which we have not yet decided to
-  ;; download.
-  ;;
-  ;; QUALITY is the minimum acceptable quality we allow.  In the case of a
-  ;; symbol naming a user-defined function, 
+  ;; NOTE: there are complete seasons and individual episodes in EPISODES.
   ;;
   (@log "matching for ~a and ~a"  group series)
   (do* ((quality
@@ -1109,10 +1104,9 @@ $ tget --cron
 		   nil
 	      else (@log "  don't have ep"))
 	   
-	   ;; acceptable quality:
-	   (if* (episode-quality>= ep quality)
+	   (if* (quality-acceptable-p ep quality)
 	      then (@log "  quality is good")
-	      else (@log "  ignore: quality no match")
+	      else (@log "  ignore: quality not good")
 		   nil)
 	   
 	   ;; Check that we don't have a delay for this series or group.
@@ -1133,34 +1127,35 @@ $ tget --cron
       (@log "  => matching episode")
       (push ep res))))
 
-(defun episode-quality>= (episode quality)
-  ;; Return T iff the quality of EPISODE is >= than that given by QUALITY.
-  (when (keywordp quality)
-    (error "didn't expect a keyword here: ~s" quality))
+(defun quality-acceptable-p (episode quality)
+  ;; Return T if the quality of EPISODE is the same as that given by
+  ;; QUALITY.
+  ;;
+  ;; This is a little more complex than just comparing the quality in the
+  ;; arguments, since QUALITY can be a user-defined function which returns
+  ;; a different quality based on time (since EPISODE was published).
+  ;;
+  (when (keywordp quality) (error "didn't expect a keyword here: ~s" quality))
+  
   (when (eq 't quality)
-    (@log "  episode-quality>=: quality=t, returning")
-    (return-from episode-quality>= t))
+    (@log "  quality-acceptable-p: quality=t, returning")
+    (return-from quality-acceptable-p t))
+
   (when (symbolp quality)
+    (@log "  user-defined quality function: ~s" quality)
     (setq quality (quality (funcall quality episode))))
-  (@log "  episode-quality>=:")
+  
+  (@log "  quality-acceptable-p: comparing")
   (@log "    episode=~a" episode)
   (@log "    quality=~a" quality)
-  (let ((source (episode-source episode))
-	(codec (episode-codec episode))
+  ;; Do a straight up compare, now that we're dealing with apples to
+  ;; apples.
+  (let ((source     (episode-source episode))
+	(codec      (episode-codec episode))
 	(resolution (episode-resolution episode)))
-    (and (eq source (quality-source quality))
-	 (eq codec (quality-codec quality))
-	 (resolution>= resolution (quality-resolution quality)))))
-
-(defun resolution>= (r1 r2
-		     &aux (res-alist '((:<720p . 0)
-				       ( :720p . 1)
-				       (:1080p . 2))))
-  (let ((r1-val (cdr (or (assoc r1 res-alist :test #'eq)
-			 (error "Couldn't find resolution ~s in alist." r1))))
-	(r2-val (cdr (or (assoc r2 res-alist :test #'eq)
-			 (error "Couldn't find resolution ~s in alist." r2)))))
-    (>= r1-val r2-val)))
+    (and (eq source     (quality-source quality))
+	 (eq codec      (quality-codec quality))
+	 (eq resolution (quality-resolution quality)))))
 
 (defun lowest-quality (episodes)
   ;; In the list of EPISODES, all from the same series, weed out dups that
@@ -1213,6 +1208,16 @@ $ tget --cron
 			   (episode-episode this)))))
       (push this res))
     (setq last this)))
+
+(defun resolution>= (r1 r2
+		     &aux (res-alist '((:<720p . 0)
+				       ( :720p . 1)
+				       (:1080p . 2))))
+  (let ((r1-val (cdr (or (assoc r1 res-alist :test #'eq)
+			 (error "Couldn't find resolution ~s in alist." r1))))
+	(r2-val (cdr (or (assoc r2 res-alist :test #'eq)
+			 (error "Couldn't find resolution ~s in alist." r2)))))
+    (>= r1-val r2-val)))
 
 (defun download-episodes (episodes print-func)
   (dolist (episode episodes)
