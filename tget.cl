@@ -964,7 +964,8 @@ $ tget --cron
 	    (when first
 	      (format t "~&;; Processing group ~s~%" (group-name group))
 	      (setq first nil))
-	    (format t "~&~a~%" ep))))
+	    (format t "~&~a [~d hours]~%"
+		    ep (hours-available ep)))))
     
       ;; Convert the rss objects to episodes and process them.
 
