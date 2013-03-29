@@ -47,7 +47,9 @@ ifeq ($(FI_APPS_COMMON),t)
 ALL_EXTRA = repo_check
 endif
 
-all:	clean build test
+default: clean build
+
+all:	clean build test install
 
 build: FORCE
 	rm -fr tget build.tmp
