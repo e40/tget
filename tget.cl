@@ -32,7 +32,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.2")
+(defvar *tget-version* "1.3")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1457,10 +1457,10 @@ the second one): ~s, ~s."
 	:filename filename
 	:source (or source
 		    (match-re "\\.mp4" (rss-item-title rss) :case-fold t)
-		    (error "can't find source: ~s" rss))
+		    :unknown)
 	:codec (or codec
 		   (match-re "\\.mp4" (rss-item-title rss) :case-fold t)
-		   (error "can't parse codec: ~s" rss))
+		   :unknown)
 	;; for TVT it's always in the filename, but others it's in the title
 	:resolution resolution))))
 
