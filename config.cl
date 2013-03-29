@@ -186,6 +186,7 @@
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top Gear (US)" :adrian+kevin :quality :high)
+(defseries "World's Craziest Fools" :adrian+kevin)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
