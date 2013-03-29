@@ -36,7 +36,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.5")
+(defvar *tget-version* "1.6")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -701,6 +701,7 @@ $ tget --cron
 	     (schema-update (< (schema-version schema) *schema-version*))
 	     (program-update (string/= (schema-tget-version schema)
 				       *tget-version*))
+	     write-version-file
 	     backed-up)
     
 	(when (probe-file *database-name*)
@@ -716,6 +717,7 @@ $ tget --cron
 		     (or (eq 't *auto-backup*)
 			 (eq :program-update *auto-backup*)))
 	    (backup-database "for program update")
+	    (setq write-version-file t)
 	    (setq backed-up t))
 	  (when (and (not backed-up)
 		     (eq if-exists :supersede)
@@ -734,20 +736,25 @@ $ tget --cron
 	  (setf (file-contents *version-file*)
 	    (format nil "~s~%" stuff)))
     
-	(when (< (schema-version schema) *schema-version*)
-	  ;; the database schema version is older than the program's
-	  ;; schema version, upgrade necessary
-	  (do* ((v (schema-version schema) (1+ v)))
-	      ((= v *schema-version*))
-	    ;; Upgrade each step
-	    (handler-case (db-upgrade v)
-	      (error (c)
-		(error "Database upgrade to version ~d failed: ~a." v c)))
-	    ;; Update *version-file* to new version
-	    (setf (file-contents *version-file*)
-	      (format nil "(:version ~d :tget-version ~s)~%"
-		      (1+ v)
-		      *tget-version*))))
+	(if* (< (schema-version schema) *schema-version*)
+	   then ;; the database schema version is older than the program's
+		;; schema version, upgrade necessary
+		(do* ((v (schema-version schema) (1+ v)))
+		    ((= v *schema-version*))
+		  ;; Upgrade each step
+		  (handler-case (db-upgrade v)
+		    (error (c)
+		      (error "Database upgrade to version ~d failed: ~a." v c)))
+		  ;; Update *version-file* to new version
+		  (setf (file-contents *version-file*)
+		    (format nil "(:version ~d :tget-version ~s)~%"
+			    (1+ v)
+			    *tget-version*)))
+	 elseif write-version-file
+	   then (setf (file-contents *version-file*)
+		  (format nil "(:version ~d :tget-version ~s)~%"
+			  *schema-version* *tget-version*)))
+
 	(setq ok t))
     ;; In the event of an error, make sure we release the lock:
     (when (not ok)
