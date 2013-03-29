@@ -9,6 +9,10 @@
 ;; - way to dump out flexget series and learn from them??
 ;; - handle errors from read-feed (skip to next group)
 ;; - a test suite, especially for upgrades
+;; - episode-series slot is never used, but the episode-series-name slot is
+;;   used.... we should remove the episode-series-name slot and have
+;;   everyone use the episode-series slot??  Seems wasteful.
+
 ;;
 ;; PHASE 2: production mode
 ;; - transmission interface via "transmission-remote"??
