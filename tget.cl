@@ -1077,39 +1077,48 @@ $ tget --cron
     (@log "matching: ~a" ep)
     (when (and
 	   ;; Ignore whole seasons
-	   (not (eq :all (episode-episode ep)))
+	   (if* (eq :all (episode-episode ep))
+	      then (@log "  ignore: full season")
+		   nil
+	      else t)
+	   
 	   ;; Ignore episode 0's
-	   (not (eql 0 (episode-episode ep)))
-	   (@log "  not a full season or ep 0")
+	   (if* (eql 0 (episode-episode ep))
+	      then (@log "  ignore: ep 0")
+		   nil
+	      else t)
 	   
 	   ;; Make sure we don't already have it
-	   (not
-	    (query-episode :series-name (episode-series-name ep)
+	   (if* (query-episode :series-name (episode-series-name ep)
 			   :season (episode-season ep)
 			   :ep-number (episode-episode ep)
-			   :transient nil))
-	   (@log "  we don't have it already")
-	     
+			   :transient nil)
+	      then (@log "  ignore: already have ep")
+		   nil
+	      else (@log "  don't have ep"))
+	   
 	   ;; acceptable quality:
-	   (episode-quality>= ep quality)
-	   (@log "  acceptable quality: ~a" quality)
+	   (if* (episode-quality>= ep quality)
+	      then (@log "  quality is good")
+	      else (@log "  ignore: quality no match")
+		   nil)
 	   
 	   ;; Check that we don't have a delay for this series or group.
 	   (let ((delay (or (series-delay series)
-			    (group-delay group))))
-	     (@log "  delay is ~a" delay)
-	     (@log "  hours available ~a" (hours-available ep))
-	     (or (null delay)		;No
-		 (= 0 delay)		; ...delay
-		 
-		 ;; The hours this episode has been available is larger
-		 ;; than the delay specified, so we're OK.
-		 (>= (hours-available ep) delay))))
+			    (group-delay group)))
+		 hours)
+	     (if* (or (null delay) (= 0 delay))
+		then (@log "  no delay")
+	      elseif (>= (setq hours (hours-available ep)) delay)
+		then (@log "  hours available (~d) >= delay (~d)" hours delay)
+		else (@log "  ignore: hours available (~d) < delay (~d) "
+			   hours delay)
+		     nil)))
       ;; A good time to make sure the `series' slot in the episode
       ;; has a meaningful value.  (This change is not important enough to
       ;; warrant a commit.)
-      (@log "  => matching episode")
       (setf (episode-series ep) series)
+      (@log "  => matching episode")
       (push ep res))))
 
 (defun episode-quality>= (episode quality)
