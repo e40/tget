@@ -4,4 +4,4 @@
 *.out
 *.in
 /tget/
-/test.db/
+/test.db*
