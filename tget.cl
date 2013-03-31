@@ -4,7 +4,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;TODO:
-;; PHASE 1: test mode
 ;; - test date parser to make sure timezone is correct
 ;; - way to dump out flexget series and learn from them??
 ;; - handle errors from read-feed (skip to next group)
@@ -22,10 +21,6 @@
 ;;   speed things up
 ;; - put a time limit on repacks????
 ;; - series dups not detected at config load time
-
-;;
-;; PHASE 2: production mode
-;; - transmission interface via "transmission-remote"??
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (eval-when (compile eval load)
@@ -46,7 +41,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.8")
+(defvar *tget-version* "1.9")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -190,30 +185,13 @@
 			       :wmv :bd))
 (defparameter *valid-resolutions* '(:sd :720p :1080p :1080i))
 )
-;;transmission-remote ${TRANSMISSION_HOST}:${TRANSMISSION_PORT}
-;;    --auth=${TRANSMISSION_USER}:${TRANSMISSION_PASS} -l
-;; :ratio => -sr
-;; :host/:port => see above
-;; :add-paused => --start-paused & --no-start-paused
-;; :remove-when-done => ????
-;;
-(defclass* transmission (:conc-name t :print nil :init nil)
-  host
-  port
-  username
-  password
-  add-paused
-  ratio
-  remove-when-done)
-
-(defmethod describe-object ((object transmission) stream)
-  (describe-persistent-clos-object object stream))
 
 (defclass* group (:conc-name t :print nil :init nil)
   ;;e.g. :kevin
   (name :index :any-unique)
   rss-url
   delay
+;;;;TODO: would like to remove this, but I get GC errors when I do
   transmission-client
   ratio
   quality
@@ -365,6 +343,20 @@
   version
   tget-version)
 
+(defstruct (transmission
+	    (:constructor .make-transmission 
+			  (&key host port username password add-paused
+				trash-torrent-file ratio)))
+  host
+  port
+  username
+  password
+  add-paused
+  trash-torrent-file
+  ratio)
+
+(defvar *transmission-remote* nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UI Macros
 
@@ -437,7 +429,6 @@
     (if* old
        then (setf (group-rss-url old) rss-url)
 	    (setf (group-delay old) delay)
-	    (setf (group-transmission-client old) client)
 	    (setf (group-ratio old) ratio)
 	    (setf (group-quality old) quality)
 	    (setf (group-download-path old) download-path)
@@ -446,8 +437,6 @@
 	      :name name
 	      :rss-url rss-url
 	      :delay delay
-;;;;TODO: change keyword for defgroup???
-	      :transmission-client client
 	      :ratio ratio
 	      :quality quality
 	      :download-path download-path))))
@@ -483,6 +472,62 @@
 	      :group group
 	      :delay delay
 	      :quality quality))))
+
+(defmacro deftransmission (options &key host port username password
+					add-paused trash-torrent-file
+					ratio)
+  (declare (ignore options)) ;; just for indentation
+  (let ((g-host (gensym "host"))
+	(g-port (gensym "port"))
+	(g-username (gensym "username"))
+	(g-password (gensym "passwd"))
+	(g-add-paused (gensym "addpaused"))
+	(g-trash-torrent-file (gensym "trash"))
+	(g-ratio (gensym "ratio")))
+    `(let* ((,g-host ,host)
+	    (,g-port ,port)
+	    (,g-username ,username)
+	    (,g-password ,password)
+	    (,g-add-paused ,add-paused)
+	    (,g-trash-torrent-file ,trash-torrent-file)
+	    (,g-ratio ,ratio))
+       (make-transmission
+	:host ,g-host
+	:port ,g-port
+	:username ,g-username
+	:password ,g-password
+	:add-paused ,g-add-paused
+	:trash-torrent-file ,g-trash-torrent-file
+	:ratio ,g-ratio))))
+
+(defun make-transmission (&key host port username password add-paused
+			       trash-torrent-file ratio)
+  (when *transmission-remote*
+    (error "Multiple deftransmission definitions in config file."))
+  
+  (or (stringp host)
+      (error "transmission host is not a string: ~s." host))
+  (or (numberp port)
+      (and (stringp port)
+	   (numberp (setq port
+		      (ignore-errors
+		       (parse-integer port :junk-allowed nil)))))
+      (error "transmission port is not a number or string: ~s." port))
+  (or (stringp username)
+      (error "transmission username is not a string: ~s." username))
+  (or (stringp password)
+      (error "transmission password is not a string: ~s." password))
+  (check-ratio ratio)
+  
+  (setq *transmission-remote*
+    (.make-transmission
+     :host host
+     :port port
+     :username username
+     :password password
+     :add-paused add-paused
+     :trash-torrent-file trash-torrent-file
+     :ratio ratio)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -844,12 +889,12 @@ $ tget --dump-episodes \"James May's Man Lab\"
 			    :if-does-not-exist if-does-not-exist
 			    :read-only nil
 			    :if-exists if-exists)
-	(when (not (probe-file *version-file*))
-	  ;; New database, write it
-	  (setf (file-contents *version-file*)
-	    (format nil "~s~%" stuff)))
-    
-	(if* (< (schema-version schema) *schema-version*)
+	
+	(if* (not (probe-file *version-file*))
+	   then ;; New database, write it
+		(setf (file-contents *version-file*)
+		  (format nil "~s~%" stuff))
+	 elseif (< (schema-version schema) *schema-version*)
 	   then ;; the database schema version is older than the program's
 		;; schema version, upgrade necessary
 		(do* ((v (schema-version schema) (1+ v)))
@@ -912,6 +957,16 @@ $ tget --dump-episodes \"James May's Man Lab\"
   ;; The change from 3 to 4: ...
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version)))
+
+#+ignore
+(defmethod db-upgrade ((version (eql 4)))
+  ;; The change from 4 to 5: removed transmission-client slot of group
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (doclass (group (find-class 'group))
+   group ;; quiet compiler
+    )
+  (commit))
 
 ;;;;TODO: add this as an exit hook?
 (defun close-tget-database ()
@@ -1151,6 +1206,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
 				     (or (series-quality series)
 					 (group-quality group))))
 	    (download-episodes
+	     group
 	     (if* (null (cdr matching-episodes))
 		then ;; easy, only one
 		     matching-episodes
@@ -1327,15 +1383,46 @@ $ tget --dump-episodes \"James May's Man Lab\"
       (push this res))
     (setq last this)))
 
-(defun download-episodes (episodes print-func)
+(defun download-episodes (group episodes print-func)
   (dolist (episode episodes)
     (@log "download: ~a" episode)
     (funcall print-func episode)
     (setf (episode-transient episode) nil)
-    (when (not *learn*)
-;;;;TODO: actually download episodes -- use *learn*, too
-      ))
+    (transmission-remote-download episode group))
   (commit))
+
+(defun transmission-remote-download (episode group)
+  (let* ((cmd
+	  (format nil "~
+transmission-remote ~a:~a ~
+  --auth=~a:~a ~
+  -a '~a' ~
+  ~a ~
+  -sr ~a ~@[--trash-torrent~*~] ~
+  --download-dir '~a'"
+		  (transmission-host *transmission-remote*)
+		  (transmission-port *transmission-remote*)
+		  (transmission-username *transmission-remote*)
+		  (transmission-password *transmission-remote*)
+		  (episode-torrent-url episode)
+		  (if* (transmission-add-paused *transmission-remote*)
+		     then "--start-paused"
+		     else "--no-start-paused")
+		  (or (group-ratio group)
+		      (transmission-ratio *transmission-remote*))
+		  (transmission-trash-torrent-file *transmission-remote*)
+		  (group-download-path group))))
+    (cond
+     (*learn*
+      (@log "cmd[not executed]: ~a" cmd))
+     (t
+      (multiple-value-bind (stdout stderr exit-status)
+	  (excl.osi:command-output cmd :whole t)
+	(@log "cmd: ~a" cmd)
+	(@log "  exit status: ~a" exit-status)
+	(when (/= 0 exit-status)
+	  (@log "  stdout: ~a" stdout)
+	  (@log "  stderr: ~a" stderr)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Feed processing

@@ -19,10 +19,9 @@
 
 (defvar *tvt-rss* 'tvt-rss-feed)
 
-#+not-yet
 (deftransmission ()
     :host (sys:getenv "TRANSMISSION_HOST")
-    :port 9091
+    :port (sys:getenv "TRANSMISSION_PORT")
     :username (sys:getenv "TRANSMISSION_USER")
     :password (sys:getenv "TRANSMISSION_PASS")
     :add-paused nil
@@ -36,7 +35,7 @@
 
 (defquality :normal
     :priority 50
-    :source ':hdtv
+    :source :hdtv
     :codec :x264 
     :resolution :sd)
 
@@ -83,7 +82,6 @@
 (defgroup :adrian
     :rss-url *tvt-rss*
     :delay *tvt-delay*
-    :client :transmission-rpc
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
@@ -94,7 +92,6 @@
 (defgroup :anh
     :rss-url *tvt-rss*
     :delay *tvt-delay*
-    :client :transmission-rpc
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
@@ -106,7 +103,6 @@
 (defgroup :kevin
     :rss-url *tvt-rss*
     :delay *tvt-delay*
-    :client :transmission-rpc
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
@@ -154,7 +150,6 @@
 (defgroup :adrian+kevin
     :rss-url *tvt-rss*
     :delay *tvt-delay*
-    :client :transmission-rpc
     :quality 'my-quality
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
@@ -183,7 +178,6 @@
 (defgroup :anh+kevin
     :rss-url *tvt-rss*
     :delay *tvt-delay*
-    :client :transmission-rpc
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
@@ -218,7 +212,6 @@
 (defgroup :btn-adrian+kevin
     :rss-url *btn-my-series-feed*
     :ratio "-1" 
-    :client :transmission-rpc
     :quality :normal
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
