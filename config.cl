@@ -4,7 +4,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Feed and other options
 
-(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+;;;;Not really using this, and it's a lot of data:
+;;(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
 (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
 
 ;; Wait 6 hours before downloading (most) episodes, to wait for repacks and
@@ -12,29 +13,11 @@
 (defvar *tvt-delay* 6)
 
 (defun tvt-rss-feed (days)
-  (format nil "~a&interval=~d+days" (sys:getenv "TGET_TVT_RSS_BASE") days))
+  (format nil "~a&interval=~d+days"
+	  "http://www.tvtorrents.com/..."
+	  days))
 
 (defvar *tvt-rss* 'tvt-rss-feed)
-
-;; custom rss feed with these options:
-;; - feed name: RegularShow
-;; - series: Regular Show
-;; - category: Episode
-;; - resolutions: 720p (less than this quality are crap)
-(defvar *btn-regular-show-rss* (sys:getenv "TGET_BTN_RSS_REGULARSHOW"))
-
-;; custom rss feed with these options:
-;; - feed name: Spongebob
-;; - series: Spongebob Squarepants
-;; - category: Episode
-;; - resolutions: 720p (less than this quality are crap)
-(defvar *btn-spongebob-rss* (sys:getenv "TGET_BTN_RSS_SPONGEBOB"))
-
-;; custom rss feed with these options:
-;; - category: Episode
-;; - containers: mp4
-;; - codecs: x264
-(defvar *btn-crazy-fools-rss* (sys:getenv "TGET_BTN_RSS_CRAZY_FOOLS"))
 
 #+not-yet
 (deftransmission ()
@@ -52,19 +35,22 @@
 ;; Quality settings
 
 (defquality :normal
-    :source :hdtv
+    :priority 50
+    :source ':hdtv
     :codec :x264 
-    :resolution :<720p)
+    :resolution :sd)
 
 (defquality :high
+    :priority 40
     :source :hdtv
     :codec :x264 
     :resolution :720p)
 
 (defquality :low
+    :priority 30
     :source :hdtv
     :codec :xvid
-    :resolution :<720p)
+    :resolution :sd)
 
 (defun my-quality (episode)
   ;; Download :normal quality immediately.
@@ -194,35 +180,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defgroup :btn-regular-show
-    :rss-url *btn-regular-show-rss*
-    :ratio "-1" 
-    :client :transmission-rpc
-    :quality t ;; built into the feed
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defseries "Regular Show" :btn-regular-show)
-
-(defgroup :btn-spongebob
-    :rss-url *btn-spongebob-rss*
-    :ratio "-1" 
-    :client :transmission-rpc
-    :quality t ;; built into the feed
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defseries "Spongebob Squarepants" :btn-spongebob)
-
-(defgroup :btn-crazy-fools
-    :rss-url *btn-crazy-fools-rss*
-    :ratio "-1" 
-    :client :transmission-rpc
-    :quality t ;; built into the feed
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defseries "World's Craziest Fools" :btn-crazy-fools)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defgroup :anh+kevin
     :rss-url *tvt-rss*
     :delay *tvt-delay*
@@ -238,3 +195,33 @@
 (defseries "The Killing" :anh+kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; BTN quality is kinda funky and inconsistent.  Define some different
+;; qualities for shows from them.
+
+(defquality :high-any-source
+    :priority 40
+    :codec :x264 
+    :resolution :720p)
+
+(defquality :x264-?dtv-mp4
+    :priority 10
+    :container :mp4
+    :source '(:pdtv :hdtv)
+    :codec :x264)
+
+(defvar *btn-my-series-feed*
+    "https://broadcasthe.net/...")
+
+(defgroup :btn-adrian+kevin
+    :rss-url *btn-my-series-feed*
+    :ratio "-1" 
+    :client :transmission-rpc
+    :quality :normal
+    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
+
+(defseries "Regular Show" :btn-adrian+kevin :quality :high-any-source)
+(defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
+(defseries "World's Craziest Fools" :btn-crazy-fools :quality :x264-?dtv-mp4)

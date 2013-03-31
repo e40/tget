@@ -47,7 +47,11 @@ ifeq ($(FI_APPS_COMMON),t)
 ALL_EXTRA = repo_check
 endif
 
-default: clean build
+default: clean build config.cl
+
+config.cl: tget-config/config.cl
+	sed -e 's,"\(http.*://[^/]*/\).*","\1...",g' \
+		< tget-config/config.cl > config.cl
 
 all:	clean build test install
 

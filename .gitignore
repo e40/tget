@@ -1,7 +1,9 @@
 *.fasl
-*.xml
+*.in
 *.lxml
 *.out
-*.in
-/tget/
+/*.xml
 /test.db*
+/tget/
+/tget-config/
+/tget-test-data/

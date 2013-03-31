@@ -2,4 +2,4 @@
 # If this is defined, the copy the file it points to to the app build
 # directory.  This allows the installation directory to be self contained.
 
-INSTALL_CONFIG_FILE = config.cl
+INSTALL_CONFIG_FILE = tget-config/config.cl

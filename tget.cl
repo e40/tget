@@ -12,6 +12,15 @@
 ;; - episode-series slot is never used, but the episode-series-name slot is
 ;;   used.... we should remove the episode-series-name slot and have
 ;;   everyone use the episode-series slot??  Seems wasteful.
+;; - For shows like The Daily Show that have their episodes canonicalized,
+;;   I really should save the original episode name when printing, so the
+;;   user doesn't get confused.  That is S2013E86 isn't as recognizable as
+;;   2013.03.28
+;; - have a mode where the episodes *not* downloaded (but from the same
+;;   series) are printed
+;; - cache the episode to quality lookup -- this happens a lot and could
+;;   speed things up
+;; - put a time limit on repacks????
 
 ;;
 ;; PHASE 2: production mode
@@ -36,17 +45,18 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.7")
+(defvar *tget-version* "1.8")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
     ;; 3 == added schema versioning
-    3)
+    ;; 4 == added `container' slots to episode and quality
+    ;;      added `priority' to quality
+    ;;      added `repack' to episode
+    4)
 
 (defvar *tget-data-directory* "~/.tget.d/")
-(defvar *auto-backup*
-    ;; There is a command line option to change this:
-    t)
+(defvar *auto-backup* t)
 (defvar *database-name* nil)
 (defvar *version-file* nil)
 (defvar *config-file* nil)
@@ -138,6 +148,8 @@
   ;; The name of the quality.  Users define this to be something like
   ;; `:normal'.
   (name :index :any-unique)
+  priority
+  container
   source
   codec
   resolution)
@@ -148,14 +160,18 @@
     (print-object-persistent-clos-object
      obj stream
      (lambda (obj)
-       (format nil "~a, source=~s, codec=~s, res=~s"
+       (format nil "~a, priority=~s, container=~s, source=~s, codec=~s, res=~s"
 	       (quality-name obj)
+	       (when (slot-boundp obj 'priority) (quality-priority obj))
+	       (when (slot-boundp obj 'container) (quality-container obj))
 	       (when (slot-boundp obj 'source) (quality-source obj))
 	       (when (slot-boundp obj 'codec) (quality-codec obj))
 	       (when (slot-boundp obj 'resolution) (quality-resolution obj))))))
    (t ;; print it for humans
-    (format stream "#<quality ~s [~s,~s,~s]>"
+    (format stream "#<quality ~s/~d [~@[~s,~]~s,~s,~s]>"
 	    (quality-name obj)
+	    (quality-priority obj)
+	    (quality-container obj)
 	    (quality-source obj)
 	    (quality-codec obj)
 	    (quality-resolution obj)))))
@@ -163,10 +179,16 @@
 (defmethod describe-object ((object quality) stream)
   (describe-persistent-clos-object object stream))
 
-(defparameter *valid-sources* '(:hdtv :unknown))
-(defparameter *valid-codecs* '(:x264 :xvid))
-(defparameter *valid-resolutions '(:<720p :720p :1080p))
-
+(eval-when (compile eval load)
+(defparameter *valid-containers* '(:avi :mkv :vob :mpeg :mp4 :iso :wmv :ts
+				   :m4v :m2ts))
+(defparameter *valid-sources* '(:pdtv :hdtv :dsr :dvdrip :tvrip :vhsrip
+				:bluray :bdrip :brrip :dvd5 :dvd9 :hddvd
+				:web-dl))
+(defparameter *valid-codecs* '(:x264 :h.264 :xvid :mpeg2 :divx :dvdr :vc-1
+			       :wmv :bd))
+(defparameter *valid-resolutions* '(:sd :720p :1080p :1080i))
+)
 ;;transmission-remote ${TRANSMISSION_HOST}:${TRANSMISSION_PORT}
 ;;    --auth=${TRANSMISSION_USER}:${TRANSMISSION_PASS} -l
 ;; :ratio => -sr
@@ -223,7 +245,9 @@
   ;; episode after that is missing.  NOTE: if last-episode is from a
   ;; different season, and the next episode after that is episode `1' from
   ;; the next season, then we assume the episodes are contiguous.
-;;;;TODO: need to implement this:
+  ;; Also, we need this so we don't download old episodes that may become
+  ;; available.
+;;;;TODO: I don't think this is needed....
   discontinuous-episodes
   delay
 ;;;; overrides for group:
@@ -255,7 +279,9 @@
   (season :index :any)
   ;;number or :all
   (episode :index :any)
+  repack					;repack or proper?
   ;; quality from torrent
+  (container :index :any)
   (source :index :any)
   (codec :index :any)
   (resolution :index :any)
@@ -274,41 +300,45 @@
      (lambda (obj)
        (format
 	nil
-	"~a~@[ S~2,'0d~]~@[E~2,'0d~]~@[; quality:~a~]; transient=~s"
-	(when (slot-boundp obj 'series-name)
-	  (episode-series-name obj))
-	(when (slot-boundp obj 'season)
-	  (episode-season obj))
-	(when (slot-boundp obj 'episode)
-	  (episode-episode obj))
+	"~a~@[, REPACK~*~]~@[ S~2,'0d~]~@[E~2,'0d~]~@[; quality=~a~]; transient=~s"
+	(when (slot-boundp obj 'series-name) (episode-series-name obj))
+	(when (slot-boundp obj 'repack) (episode-repack obj))
+	(when (slot-boundp obj 'season) (episode-season obj))
+	(when (slot-boundp obj 'episode) (episode-episode obj))
 	(pretty-episode-quality obj)
 	(if* (slot-boundp obj 'transient)
 	   then (episode-transient obj)
 	   else "-unbound-")))))
    (t ;; print it for humans
-    (format stream "#<~s, ~@[S~2,'0d~]~@[E~2,'0d~] [~a]>"
+    (format stream "#<~s~@[, REPACK~*~], ~@[S~2,'0d~]~@[E~2,'0d~] [~a]>"
 	    (episode-series-name obj)
+	    (episode-repack obj)
 	    (episode-season obj)
 	    (episode-episode obj)
 	    (pretty-episode-quality obj)))))
 
 (defun pretty-episode-quality (ep &aux name all-bound)
-  (if* (and (slot-boundp ep 'source)
+  ;; Ignore priority of quality.
+  (if* (and (slot-boundp ep 'container)
+	    (slot-boundp ep 'source)
 	    (slot-boundp ep 'codec)
 	    (slot-boundp ep 'resolution)
 	    (setq all-bound t)
 	    (setq name (episode-quality ep)))
      then (format nil "~s" name)
    elseif (and all-bound
+	       (null (episode-container ep))
 	       (null (episode-source ep))
 	       (null (episode-codec ep))
 	       (null (episode-resolution ep)))
      then "unknown"
-   elseif (or (slot-boundp ep 'source)
+   elseif (or (slot-boundp ep 'container)
+	      (slot-boundp ep 'source)
 	      (slot-boundp ep 'codec)
 	      (slot-boundp ep 'resolution))
      then (format
-	   nil "~a,~a,~a"
+	   nil "~@[~a,~]~a,~a,~a"
+	   (when (slot-boundp ep 'container) (episode-container ep))
 	   (when (slot-boundp ep 'source) (episode-source ep))
 	   (when (slot-boundp ep 'codec) (episode-codec ep))
 	   (when (slot-boundp ep 'resolution) (episode-resolution ep)))
@@ -337,28 +367,50 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UI Macros
 
-(defmacro defquality (name &key source codec resolution)
+(defmacro defquality (name &key priority container source codec resolution)
   `(make-quality
      :name ,name
+     :priority ,priority
+     :container ,container
      :source ,source
      :codec ,codec
      :resolution ,resolution))
 
-(defun make-quality (&key name source codec resolution)
+(defun check-atom-or-list (atom-or-list allowed-values what)
+  ;; `nil' is allowed and ignored
+  (when atom-or-list
+    (when (not (consp atom-or-list))
+      (setq atom-or-list (list atom-or-list)))
+    (dolist (atom atom-or-list)
+      (or (member atom allowed-values :test #'eq)
+	  (error "Bad ~a value: ~s." what atom)))
+    atom-or-list))
+
+(defun make-quality (&key name priority container source codec resolution)
   (let ((old (retrieve-from-index 'quality 'name name)))
-    (or (member source *valid-sources* :test #'eq)
-	(error "Bad source: ~s." source))
-    (or (member codec *valid-codecs* :test #'eq)
-	(error "Bad codec: ~s." codec))
-    (or (member resolution *valid-resolutions :test #'eq)
-	(error "Bad resolution: ~s." resolution))
+
+    (or (and (null priority)
+	     (setq priority 1))
+	(numberp priority)
+	(error "Priority must be a number: ~s." priority))
+    (setq container
+      (check-atom-or-list container *valid-containers* 'container))
+    (setq source (check-atom-or-list source *valid-sources* 'source))
+    (setq codec (check-atom-or-list codec *valid-codecs* 'codec))
+    (setq resolution
+      (check-atom-or-list resolution *valid-resolutions* 'resolution))
+
     (if* old
-       then (setf (quality-source old) source)
+       then (setf (quality-priority old) priority)
+	    (setf (quality-container old) container)
+	    (setf (quality-source old) source)
 	    (setf (quality-codec old) codec)
 	    (setf (quality-resolution old) resolution)
 	    old
        else (make-instance 'quality
 	      :name name
+	      :priority priority
+	      :container container
 	      :source source
 	      :codec codec
 	      :resolution resolution))))
@@ -478,38 +530,66 @@
 (defvar *usage*
     "~
 Usage:
-$ tget [--help] [--debug] [--cron] [--db database]
-       [--auto-backup { reset | program-update | schema-update }]
+$ tget [--help] [--debug] [--cron] [--db database] [--auto-backup condition]
        [--root data-directory] [--reset] [--learn] [--feed-interval ndays]
+       [--dump-series] [--dump-episodes] [--delete-episodes]
 
---help                :: print this help text
---debug               :: debug mode (recommended for developers)
---cron                :: quiet mode
---db database         :: path to database
---auto-backup { reset | program-update | schema-update | never }
-                      :: automatically do a backup of the database:
-                         'reset' when the database is being reset,
-                         'program-update' when the program is version is
-                         different than the last time the database was
-                         updated, 'schema-update' the database schema is
-                         changes, and 'never' to never make a backup.
-                         The default is to make backups under all
-                         conditions above.
---root data-directory :: change the data directory; defaults to ~/.tget.d/
---reset               :: reset database before beginning operation
---learn               :: don't download anything--useful in conjunction
-                         with reset to wipe the database and start over
---feed-interval ndays :: set the feed interval to `ndays'.  Only useful
-                         when a user-defined function of one argument is
-                         given to defgroup's :rss-url option.
+--help                 :: print this help text
+--debug                :: debug mode (recommended for developers)
+--cron                 :: quiet mode
+--db database          :: path to database
+--auto-backup { reset | program-update | schema-update | force | never }
+                       :: automatically do a backup of the database:
+                          'reset' when the database is being reset,
+                          'program-update' when the program is version is
+                          different than the last time the database was
+                          updated, 'schema-update' the database schema is
+                          changes, 'force' causes a database update, and
+                          'never' to never make a backup.  The default is
+                          to make backups under all
+                          conditions above.
+--root data-directory  :: change the data directory, the defaults is
+                          $HOME/.tget.d/
+--reset                :: reset database before beginning operation--this
+                          removes *all* data from the database, so it is
+                          recommended that you use --auto-backup force
+                          before executing this.
+--learn                :: don't download anything--useful in conjunction
+                          with reset to wipe the database and start over,
+                          or when starting to use tget for the first time.
+--feed-interval ndays  :: set the feed interval to `ndays'.  Only useful
+                          when a user-defined function of one argument is
+                          given to defgroup's :rss-url option.
+
+NOTE: each of the `name' arguments below, naming series, are canonicalized
+      by removing single quotes (') and converting to lower case.
+
+--dump-series name     :: dump all `series' objects matching series name `name'
+--dump-episodes name   :: dump all `episode' objects matching series name `name'
+--delete-episodes name :: delete episodes with series name matching `name'.
+                          This is permanant!  Using --auto-backup force is
+                          recommended.
 
 Examples:
 # Toss current database and catch up on shows released in the last 180 days
 # marking them all as `downloaded'
 $ tget --reset --learn --feed-interval 180
+# Same, but to a `temp' database in the current directory:
+$ tget --reset --learn --feed-interval 180 --root $PWD --db test.db
 
 # Usage from Cron:
 $ tget --cron
+
+# Let's see what the series object for \"Regular Show\" looks like
+# (the series name is not case sensitive):
+$ tget --dump-series \"regular show\"
+# these all refer to the same series:
+$ tget --dump-series \"james mays man lab\"
+$ tget --dump-series \"James Mays Man Lab\"
+$ tget --dump-series \"James May's Man Lab\"
+
+# To see the episodes of the above, you would:
+$ tget --dump-episodes \"James May's Man Lab\"
 ")
 
 (defvar *verbose*
@@ -520,12 +600,20 @@ $ tget --cron
     ;; Don't download anything, just learn
     nil)
 
+(defvar *debug-feed*
+    ;; Turns on debugging mode and uses the value of this variable as the
+    ;; file naming the XML for all feeds.
+    nil)
+
+(defvar *kw-package* (find-package :keyword))
+
 (defun main ()
   (flet
       ((doit ()
 	 (system:with-command-line-arguments
 	     (("help" :long help)
 	      ("debug" :long debug-mode)
+	      ("debug-feed" :long debug-feed :required-companion)
 	      ("config" :long config-file :required-companion)
 	      ("cron" :long cron-mode)
 	      ("learn" :long learn-mode)
@@ -537,8 +625,7 @@ $ tget --cron
 	      
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-episodes" :long dump-episodes :required-companion)
-	      ("delete-episodes" :long delete-episodes :required-companion)
-	      )
+	      ("delete-episodes" :long delete-episodes :required-companion))
 	     (extra-args :usage *usage*)
 	   (when help
 	     (format t "~a~&" *usage*)
@@ -562,6 +649,12 @@ $ tget --cron
 		   "~/.tget.cl"
 		   (merge-pathnames "config.cl" *tget-data-directory*)))
 	   
+	   (when debug-feed
+	     (or (probe-file debug-feed)
+		 (error "File referenced by --debug-feed does not exist: ~a."
+			debug-feed))
+	     (setq *debug-feed* debug-feed)
+	     (setq *debug* t))
 	   (when debug-mode (setq *debug* t))
 	   (setq *verbose* (not cron-mode))
 	   (setq *learn* learn-mode)
@@ -582,7 +675,9 @@ $ tget --cron
 	   (when database
 	     ;; Remove trailing slash, if there is one
 	     (when (=~ "(.*)/$" database) (setq database $1))
-	     (setq *database-name* (pathname database))
+	     (setq *database-name*
+	       (merge-pathnames (pathname database)
+				*tget-data-directory*))
 	     (setq *version-file*
 	       (pathname (format nil "~a/version.cl" database))))
 	   
@@ -597,6 +692,7 @@ $ tget --cron
 		     ((string= "reset" auto-backup) :reset)
 		     ((string= "program-update" auto-backup) :program-update)
 		     ((string= "schema-update" auto-backup) :schema-update)
+		     ((string= "force" auto-backup) :force)
 		     (t
 		      (error "Bad value for --auto-backup: ~a."
 			     auto-backup)))))
@@ -736,6 +832,10 @@ $ tget --cron
 		     (or (eq 't *auto-backup*)
 			 (eq :reset *auto-backup*)))
 	    (backup-database "for database reset")
+	    (setq backed-up t))
+	  (when (and (not backed-up)
+		     (eq :force *auto-backup*))
+	    (backup-database "because requested")
 	    (setq backed-up t)))
     
 	(open-file-database *database-name*
@@ -807,6 +907,11 @@ $ tget --cron
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version)))
 
+(defmethod db-upgrade ((version (eql 3)))
+  ;; The change from 3 to 4: ...
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version)))
+
 ;;;;TODO: add this as an exit hook?
 (defun close-tget-database ()
   (when *verbose* (format t ";; closing database...~%"))
@@ -830,7 +935,9 @@ $ tget --cron
 			  title
 			  season
 			  episode
+			  repack
 			  filename
+			  container
 			  source
 			  codec
 			  resolution
@@ -841,6 +948,7 @@ $ tget --cron
 	 (query-episode :series-name series-name
 			:season season
 			:ep-number episode
+			:container container
 			:source source
 			:codec codec
 			:resolution resolution))
@@ -861,7 +969,9 @@ $ tget --cron
 	   :title title
 	   :season season
 	   :episode episode
+	   :repack repack
 	   :filename filename
+	   :container container
 	   :source source
 	   :codec codec
 	   :resolution resolution)))
@@ -869,6 +979,7 @@ $ tget --cron
 (defun query-episode (&key series-name
 			   season
 			   ep-number
+			   container
 			   source
 			   codec
 			   resolution
@@ -891,6 +1002,7 @@ $ tget --cron
 		     (= series-name ,series-name)
 		     ,@(when season `((= season ,season)))
 		     ,@(when ep-number `((= episode ,ep-number)))
+		     ,@(when container `((= container ,container)))
 		     ,@(when source `((= source ,source)))
 		     ,@(when codec `((= codec ,codec)))
 		     ,@(when resolution `((= resolution ,resolution))))))
@@ -919,10 +1031,7 @@ $ tget --cron
 		   `((= transient ,transient)))
 	       (= series-name ,(episode-series-name ep))
 	       (= season ,(episode-season ep))
-	       (= episode ,(episode-episode ep))
-	       ,@(when q `((= source ,(quality-source q))))
-	       ,@(when q `((= codec ,(quality-codec q))))
-	       ,@(when q `((= resolution ,(quality-resolution q)))))))
+	       (= episode ,(episode-episode ep)))))
 	   (episodes '()))
       (when cursor
 	(loop
@@ -930,7 +1039,9 @@ $ tget --cron
 	    (when (null e)
 	      (free-index-cursor cursor)
 	      (return))
-	    (push e episodes))))
+	    ;; The quality slots we are comparing against are lists of
+	    ;; items, so can't do that in the express-cursor
+	    (when (quality-match-p e q) (push e episodes)))))
       episodes))
    (t (error "No keywords for episode selection where given"))))
 
@@ -946,24 +1057,14 @@ $ tget --cron
      else ;; user-defined function or `t', just return it
 	  thing))
 
-(defun episode-quality (ep)
+(defun episode-quality (ep &key priority)
   ;; Given an episode, return the name of the quality
-  (let ((cursor (create-expression-cursor
-		 'quality
-		 `(and (= source ,(episode-source ep))
-		       (= codec ,(episode-codec ep))
-		       (= resolution ,(episode-resolution ep)))))
-	(res '()))
-    (loop
-      (let ((q (next-index-cursor cursor)))
-	(when (null q)
-	  (free-index-cursor cursor)
-	  (return))
-	(push q res)))
-    (when (cdr res)
-      (error "There is more than one quality that matches ~s." ep))
-    (when res
-      (quality-name (car res)))))
+  (doclass (q (find-class 'quality))
+    (when (quality-match-p ep q)
+      (return
+	(if* priority
+	   then (quality-priority q)
+	   else (quality-name q))))))
 
 (defun hours-available (episode)
   ;; Return the number of hours EPISODE has been available in the feed in
@@ -1052,7 +1153,7 @@ $ tget --cron
 	     (if* (null (cdr matching-episodes))
 		then ;; easy, only one
 		     matching-episodes
-		else (lowest-quality matching-episodes))
+		else (select-episodes matching-episodes))
 	     ep-printer))))
       (commit)
   
@@ -1097,14 +1198,29 @@ $ tget --cron
 	   
 	   ;; Make sure we don't already have it
 	   (if* (query-episode :series-name (episode-series-name ep)
-			   :season (episode-season ep)
-			   :ep-number (episode-episode ep)
-			   :transient nil)
-	      then (@log "  ignore: already have ep")
-		   nil
+			       :season (episode-season ep)
+			       :ep-number (episode-episode ep)
+			       :transient nil)
+	      then ;; how many could we get here?
+		   ;; 1: original non-repack
+		   ;; 2: original + repack
+		   ;; 3: ???
+;;;;TODO: do we want to download a repack of a repack?
+		   (if* (episode-repack ep)
+		      then (@log "  is a repack")
+			   t
+		      else (@log "  ignore: already have ep")
+			   nil)
 	      else (@log "  don't have ep"))
-	   
-	   (if* (quality-acceptable-p ep quality)
+
+	   (if* (series-quality series)
+	      then ;; We have a series quality override.  Only accept that.
+		   (if* (eq (episode-quality ep)
+			    (series-quality series))
+		      then (@log "  quality == series override")
+		      else (@log "  quality != series override")
+			   nil)
+	    elseif (quality-acceptable-p ep quality)
 	      then (@log "  quality is good")
 	      else (@log "  ignore: quality not good")
 		   nil)
@@ -1148,37 +1264,35 @@ $ tget --cron
   (@log "  quality-acceptable-p: comparing")
   (@log "    episode=~a" episode)
   (@log "    quality=~a" quality)
-  ;; Do a straight up compare, now that we're dealing with apples to
-  ;; apples.
-  (let ((source     (episode-source episode))
-	(codec      (episode-codec episode))
-	(resolution (episode-resolution episode)))
-    (and (eq source     (quality-source quality))
-	 (eq codec      (quality-codec quality))
-	 (eq resolution (quality-resolution quality)))))
+  (if* (quality-match-p episode quality)
+     then (@log "    matches")
+     else (@log "    no match")))
 
-(defun lowest-quality (episodes)
-  ;; In the list of EPISODES, all from the same series, weed out dups that
-  ;; differ only by quality and always choose the lower quality (and the
-  ;; smaller file).
+(defun quality-match-p (ep q &aux temp)
+  ;; Match the quality in EP to Q.  Return T if there is a match.
+  ;; For container, source, codec, or resolution, if any are `nil' in Q,
+  ;; then that is the same as "any" and that slot `matches'.  Otherwise,
+  ;; it's an `eq' test.  If Q is nil, that's a match for everything.
   ;;
-  ;; Typical input is:
-  ;;   vikings S01E01; quality: src=:hdtv codec=:x264 res=:720p
-  ;;   vikings S01E01; quality: src=:hdtv codec=:x264 res=:<720p
-  ;;   vikings S01E02; quality: src=:hdtv codec=:x264 res=:720p
-  ;;   vikings S01E02; quality: src=:hdtv codec=:x264 res=:<720p
-  ;;   vikings S01E03; quality: src=:hdtv codec=:x264 res=:720p
-  ;;   vikings S01E03; quality: src=:hdtv codec=:x264 res=:<720p
-  ;;   vikings S01E04; quality: src=:hdtv codec=:x264 res=:720p
-  ;;   vikings S01E04; quality: src=:hdtv codec=:x264 res=:<720p
-  ;; The correct output is:
-  ;;   vikings S01E01; quality: src=:hdtv codec=:x264 res=:<720p
-  ;;   vikings S01E02; quality: src=:hdtv codec=:x264 res=:<720p
-  ;;   vikings S01E03; quality: src=:hdtv codec=:x264 res=:<720p
-  ;;   vikings S01E04; quality: src=:hdtv codec=:x264 res=:<720p
+  ;;NOTE: do NOT invoke the printer mechanism for EP here, since that would
+  ;;      cause infinite recursion.
+  (or (null q)
+      (and (or (null (setq temp (quality-container q)))
+	       (member (episode-container ep) temp :test #'eq))
+	   (or (null (setq temp (quality-source q)))
+	       (member (episode-source ep) temp :test #'eq))
+	   (or (null (setq temp (quality-codec q)))
+	       (member (episode-codec ep) temp :test #'eq))
+	   (or (null (setq temp (quality-resolution q)))
+	       (member (episode-resolution ep) temp
+		       :test #'eq)))))
+
+(defun select-episodes (episodes)
+  ;; In the list of EPISODES, all from the same series, weed out dups that
+  ;; differ only by quality and always choose the highest priority quality.
   ;;
   ;; strategy:
-  ;;  - sort based on series-name, season, ep#, and res
+  ;;  - sort based on series-name, season, ep#, and priority (high to low)
   ;;  - iterate through skipping the dups
   (do* ((last nil)
 	(eps (sort
@@ -1188,9 +1302,12 @@ $ tget --cron
 			(episode-season e2))
 		   then (if* (= (episode-episode e1)
 				(episode-episode e2))
-			   then (not (resolution>=
-				      (episode-resolution e1)
-				      (episode-resolution e2)))
+			   then ;; sort priority high to low
+				(let ((p1 (or (episode-quality e1 :priority t)
+					      1))
+				      (p2 (or (episode-quality e2 :priority t)
+					      1)))
+				  (> p1 p2))
 			   else (< (episode-episode e1)
 				   (episode-episode e2)))
 		   else (< (episode-season e1)
@@ -1208,16 +1325,6 @@ $ tget --cron
 			   (episode-episode this)))))
       (push this res))
     (setq last this)))
-
-(defun resolution>= (r1 r2
-		     &aux (res-alist '((:<720p . 0)
-				       ( :720p . 1)
-				       (:1080p . 2))))
-  (let ((r1-val (cdr (or (assoc r1 res-alist :test #'eq)
-			 (error "Couldn't find resolution ~s in alist." r1))))
-	(r2-val (cdr (or (assoc r2 res-alist :test #'eq)
-			 (error "Couldn't find resolution ~s in alist." r2)))))
-    (>= r1-val r2-val)))
 
 (defun download-episodes (episodes print-func)
   (dolist (episode episodes)
@@ -1254,11 +1361,11 @@ $ tget --cron
      then (@log "using cached feed for ~a" url)
 	  (cdr temp)
      else (let ((res
-		 (if* *debug*
+		 (if* *debug-feed*
 		    then ;; while debugging, use a static version of the
 			 ;; feed, so we don't hammer the server.
 			 (@log "using static feed for ~a" url)
-			 (feed-to-rss-objects :file "tvt.xml")
+			 (feed-to-rss-objects :file *debug-feed*)
 		    else (@log "read feed for ~a" url)
 			 (feed-to-rss-objects :url url))))
 	    (push (cons url res) *cached-feeds*)
@@ -1287,10 +1394,10 @@ $ tget --cron
 	 (source (cadr (find 'net.rss:link channel :key #'car)))
 	 (items (cdr (find 'net.rss:all-items channel :key #'car))))
     (multiple-value-bind (match whole source-name)
-	(match-re "(tvtorrents\\.com|broadcasthe\\.net|ezrss\\.it)" source)
+	(match-re "(tvtorrents\\.com|broadcasthe\\.net)" source)
       (declare (ignore whole))
       (when (not match) (error "don't grok the feed source: ~s." source))
-      (setq source (intern source-name (find-package :keyword))))
+      (setq source (intern source-name *kw-package*)))
     (feed-to-rss-objects-1 source items)))
 
 (defun feed-to-rss-objects-1 (source items)
@@ -1315,8 +1422,7 @@ $ tget --cron
 			     net.rss:title)
 		       :test #'eq))
 	  (when (eq 'net.rss:pubDate sym) (setq sym 'pub-date))
-	  (push (intern (symbol-name sym)
-			(load-time-value (find-package :keyword)))
+	  (push (intern (symbol-name sym) *kw-package*)
 		constructor)
 	  (push (second element) constructor))
 	 ;; elements of the form of ((sym value1 value2...))
@@ -1354,10 +1460,13 @@ $ tget --cron
   ;; filename and return multiple values.  Return `nil' for any that we
   ;; cannot determine.  In the case of `source', return `:unknown' for XviD
   ;; when we cannot determine the source.
-  (let (series-name season episode source codec resolution uncut
-	match whole year month day)
+  (let (series-name season episode repack container source codec resolution
+	uncut match whole year month day)
     (declare (ignore-if-unused whole))
     
+    (when (=~ ".*\\.([A-Za-z0-9]+)$" filename)
+      (setq container (intern $1 *kw-package*)))
+
     (setq source
       (or (when (or (match-re "(hdtv|720p)" filename :case-fold t)
 		    (match-re "x264" filename :case-fold t))
@@ -1382,12 +1491,13 @@ $ tget --cron
 	 then :720p
        elseif (match-re "\\.1080p\\." filename :case-fold t)
 	 then :1080p
-	 else :<720p))
+	 else :sd))
 
     (multiple-value-setq (match whole series-name season episode)
       (match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
 		:case-fold t))
     (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
+    (setq repack (match-re "\\.repack\\." filename :case-fold t))
     (when match
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
@@ -1431,11 +1541,13 @@ $ tget --cron
 		  (date-time-yd-day
 		   (date-time (format nil "~a-~a-~a" year month day)))))))
 
-    (values series-name season episode source codec resolution)))
+    (values series-name season episode repack container source codec
+	    resolution)))
 
 (defmethod convert-rss-to-episode ((type (eql :tvtorrents.com)) rss)
   (let ((des (rss-item-description rss))
-	series-name season episode source codec resolution uncut)
+	series-name season episode repack container source codec resolution
+	uncut)
     (multiple-value-bind (match whole des-series-name title des-season
 			  des-episode filename)
 	(match-re
@@ -1478,7 +1590,8 @@ $ tget --cron
 		 (date-time (format nil "~a-~a-~a" des-season $1 $2)))
 	   else (parse-integer des-episode)))
 
-      (multiple-value-setq (series-name season episode source codec resolution)
+      (multiple-value-setq (series-name season episode repack container
+			    source codec resolution)
 	(extract-episode-info-from-filename filename))
 
       (setq des-series-name (canonicalize-series-name des-series-name))
@@ -1487,6 +1600,10 @@ $ tget --cron
       (when uncut
 	(setq des-series-name
 	  (concatenate 'simple-string des-series-name " (uncut)")))
+      (or repack
+	  ;; See if it's a repack/proper from the title
+	  (setq repack
+	    (match-re "\\((repack|proper)\\)" (rss-item-title rss))))
 
       (when (and des-season season
 		 (/= des-season season))
@@ -1526,7 +1643,9 @@ the second one): ~s, ~s."
 	:title title
 	:season (or des-season season)
 	:episode (or des-episode episode)
+	:repack repack
 	:filename filename
+	:container container
 	:source (or source
 		    (match-re "\\.mp4" (rss-item-title rss) :case-fold t)
 		    :unknown)
@@ -1555,38 +1674,70 @@ the second one): ~s, ~s."
   (replace-re name "[']" ""))
 
 (defmethod convert-rss-to-episode ((type (eql :broadcasthe.net)) rss)
-  (let ((des (rss-item-description rss))
-	series-name)
+  (let ((rss-des (rss-item-description rss))
+	(rss-title (rss-item-title rss))
+	series-name repack
+	container source codec resolution)
     
-    (when (not des)
+    (when (not rss-des)
       ;; some sporting events have no description and only a title.  Ignore
       ;; these.
       (return-from convert-rss-to-episode nil))
     
     ;; Show name must be extracted from the rss-item-title
     (multiple-value-bind (found whole show-name)
-	(match-re "^(.*) - " (rss-item-title rss))
+	(match-re "^(.*) - " rss-title)
       (declare (ignore whole))
       (when (not found)
-	(error "Couldn't find show name from title: ~s." (rss-item-title rss)))
+	(error "Couldn't find show name from title: ~s." rss-title))
       ;; Canonicalize the series name, so "Tosh.0" becomes "Tosh 0".
       (setq series-name (replace-re show-name "\\." " ")))
     
+    (setq repack (match-re "\\.repack\\." rss-title :case-fold t))
+    
+    (when (=~ #.(concatenate 'simple-string
+		  " ("
+		  (excl:list-to-delimited-string *valid-containers* "|")
+		  ") ")
+	      rss-title :case-fold t)
+      (setq container (intern (string-downcase $1) *kw-package*)))
+    
+    (when (=~ #.(concatenate 'simple-string
+		  " ("
+		  (excl:list-to-delimited-string *valid-containers* "|")
+		  ") ")
+	      rss-title :case-fold t)
+      (setq source (intern (string-downcase $1) *kw-package*)))
+    
+    (when (=~ #.(concatenate 'simple-string
+		  " ("
+		  (excl:list-to-delimited-string *valid-codecs* "|")
+		  ") ")
+	      rss-title :case-fold t)
+      (setq codec (intern (string-downcase $1) *kw-package*)))
+    
+    (when (=~ #.(concatenate 'simple-string
+		  " ("
+		  (excl:list-to-delimited-string *valid-resolutions* "|")
+		  ") ")
+	      rss-title :case-fold t)
+      (setq resolution (intern (string-downcase $1) *kw-package*)))
+    
     ;; The rest of the things we're looking for are in the
     ;; rss-item-description, but weirdly, delimited by <br >/\n
-    (multiple-value-bind (found whole title season episode)
+    (multiple-value-bind (found whole des-title season episode)
 	(match-re
 	 "Episode Name:\\s*([^<]+)?<br />
 Season:\\s*(\\d+)?<br />
 Episode:\\s*(\\d+)?"
-	 des
+	 rss-des
 	 :case-fold t
 	 :multiple-lines t)
       (declare (ignore found whole))
 
       (make-episode
 	:transient t
-	:full-title (rss-item-title rss)
+	:full-title rss-title
 	:torrent-url (rss-item-link rss)
 	:pub-date (and (rss-item-pub-date rss)
 		       (parse-rss20-date (rss-item-pub-date rss)))
@@ -1596,44 +1747,16 @@ Episode:\\s*(\\d+)?"
 		     (parse-integer (rss-item-length rss)))
      
 	:series-name (string-downcase series-name)
-	:title title
+	:title des-title
 	:season (when (and season (string/= "" season)) (parse-integer season))
 	:episode (when (and episode (string/= "" episode))
 		   (parse-integer episode))
+	:repack repack
 	;; no :filename in BTN feed!
-	))))
-
-;;;; The eztv.it RSS feeds are really, really old.  While I can parse what
-;;;; they have there, they seem to be defunct.  Leaving this code here as
-;;;; an example, for possible future resurrection.
-(defmethod convert-rss-to-episode ((type (eql :ezrss.it)) rss)
-  (let ((des (rss-item-description rss)))
-    (multiple-value-bind (match whole series-name title season episode)
-	(match-re
-	 "Show Name:\\s*([^;]+)\\s*;\\s*Episode Title:\\s*([^;]+)\\s*;\\s*Season:\\s*([0-9]+)\\s*;\\s*Episode:\\s*([0-9]+)"
-	 des
-	 :case-fold t)
-      (declare (ignore whole))
-
-      (when (not match) (error "couldn't parse rss description: ~s." des))
-
-      ;; Canonicalize the series name, so "Tosh.0" becomes "Tosh 0".
-      (setq series-name (replace-re series-name "\\." " "))
-      
-      (make-episode
-	:transient t
-	:full-title (rss-item-title rss)
-	:torrent-url (rss-item-link rss)
-	:pub-date (parse-rss20-date (rss-item-pub-date rss))
-	:type (rss-item-type rss)
-	:length (parse-integer (rss-item-length rss))
-     
-	:series-name (string-downcase series-name)
-	:title title
-	:season (parse-integer season)
-	:episode (parse-integer episode)
-	;; no filename in this feed
-	))))
+	:container container
+	:source source
+	:codec codec
+	:resolution resolution))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dates -- this will go away when I get string-to-universal-time done and
