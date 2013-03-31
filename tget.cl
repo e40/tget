@@ -21,6 +21,7 @@
 ;; - cache the episode to quality lookup -- this happens a lot and could
 ;;   speed things up
 ;; - put a time limit on repacks????
+;; - series dups not detected at config load time
 
 ;;
 ;; PHASE 2: production mode
