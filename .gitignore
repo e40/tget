@@ -3,7 +3,8 @@
 *.lxml
 *.out
 /*.xml
+/build.tmp
 /test.db*
-/tget/
 /tget-config/
 /tget-test-data/
+/tget/

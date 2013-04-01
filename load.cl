@@ -9,7 +9,7 @@
 (setq *learn* t)
 (setq *verbose* t)
 
-(dolist (file '("rssreader.cl" "tget.cl"))
+(dolist (file '("rssreader.cl" "tget.cl" "t-tget.cl"))
   (load (compile-file file)))
 
 (defun opendb (&key reset)

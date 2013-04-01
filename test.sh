@@ -1,4 +1,6 @@
 #! /bin/bash
+#
+# Most tests are in t-tget.cl
 
 set -eux
 
@@ -13,12 +15,6 @@ clean_database()
     rm -fr test.db*
 }
 
-test_start_fresh()
-{
-    clean_database
-    tget
-}
-
 test_upgrade()
 {
     clean_database
@@ -26,5 +22,4 @@ test_upgrade()
     tget
 }
 
-test_start_fresh
 test_upgrade

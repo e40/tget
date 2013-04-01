@@ -41,7 +41,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.10")
+(defvar *tget-version* "1.12")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1162,53 +1162,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
       ;; need to download any of them, and and easily find them to remove
       ;; them when we're done.
 
-      ;; Now, we comb through the series for this group and look for matches
-      ;; to download
-      (dolist (series (query-group-to-series group))
-	;; Find any transient episodes that match the series name
-	;;
-	;; series-defined quality trumps group-defined quality.
-	;;
-	;; series-defined quality can be a keyword naming a defined quality
-	;; type.
-	;;
-	;; group-defined quality can be:
-	;;   t :: any quality is fine
-	;;   a keyword :: defined by the keyword naming the quality
-	;;   a function :: defined by calling the function on the episode,
-	;;                 such functions need to take care to use the
-	;;                 `transient' slot to narrow their searches, if
-	;;                 they do them -- the function should return `t'
-	;;                 if the quality is acceptable, `nil' otherwise.
-	;;
-	;; So, let's say we have 3 episodes available, with qualities ranging
-	;; from undefined to :normal to :high (and the latter two qualities
-	;; were defined by the user in their config file).  We don't want the
-	;; order of processing these 3 episodes to change the outcome of
-	;; which episode is selected.
-	;;
-	;; For any episodes that we select for downloading, we need to turn
-	;; off the `transient' flag.
-	;;      
-	(let* ((new-series-episodes
-		;; The episodes we are considering downloading
-		(query-episode :series-name (series-name series)
-			       :transient t))
-	       matching-episodes)
-	  (when (setq matching-episodes
-		  (matching-episodes group
-				     series
-				     new-series-episodes
-				     (or (series-quality series)
-					 (group-quality group))))
-	    (download-episodes
-	     group
-	     (if* (null (cdr matching-episodes))
-		then ;; easy, only one
-		     matching-episodes
-		else (select-episodes matching-episodes))
-	     ep-printer))))
-      (commit)
+      (process-transient-objects group ep-printer)
   
       ;; Remove the remaining transient episodes
       (dolist (ep (retrieve-from-index 'episode 'transient t :all t))
@@ -1216,6 +1170,55 @@ $ tget --dump-episodes \"James May's Man Lab\"
       (commit)
      next-feed
       )))
+
+(defun process-transient-objects (group ep-printer)
+  ;; Now, we comb through the series for this group and look for matches
+  ;; to download
+  (dolist (series (query-group-to-series group))
+    ;; Find any transient episodes that match the series name
+    ;;
+    ;; series-defined quality trumps group-defined quality.
+    ;;
+    ;; series-defined quality can be a keyword naming a defined quality
+    ;; type.
+    ;;
+    ;; group-defined quality can be:
+    ;;   t :: any quality is fine
+    ;;   a keyword :: defined by the keyword naming the quality
+    ;;   a function :: defined by calling the function on the episode,
+    ;;                 such functions need to take care to use the
+    ;;                 `transient' slot to narrow their searches, if
+    ;;                 they do them -- the function should return `t'
+    ;;                 if the quality is acceptable, `nil' otherwise.
+    ;;
+    ;; So, let's say we have 3 episodes available, with qualities ranging
+    ;; from undefined to :normal to :high (and the latter two qualities
+    ;; were defined by the user in their config file).  We don't want the
+    ;; order of processing these 3 episodes to change the outcome of
+    ;; which episode is selected.
+    ;;
+    ;; For any episodes that we select for downloading, we need to turn
+    ;; off the `transient' flag.
+    ;;      
+    (let* ((new-series-episodes
+	    ;; The episodes we are considering downloading
+	    (query-episode :series-name (series-name series)
+			   :transient t))
+	   matching-episodes)
+      (when (setq matching-episodes
+	      (matching-episodes group
+				 series
+				 new-series-episodes
+				 (or (series-quality series)
+				     (group-quality group))))
+	(download-episodes
+	 group
+	 (if* (null (cdr matching-episodes))
+	    then ;; easy, only one
+		 matching-episodes
+	    else (select-episodes matching-episodes))
+	 ep-printer))))
+  (commit))
 
 (defun matching-episodes (group series episodes quality)
   ;; Return a list of episodes, from the EPISODES list, which are transient
@@ -1227,13 +1230,13 @@ $ tget --dump-episodes \"James May's Man Lab\"
   ;;
   ;; NOTE: there are complete seasons and individual episodes in EPISODES.
   ;;
-  (@log "matching for ~a and ~a"  group series)
   (do* ((quality
 	 ;; If it's a keyword, convert to quality instance
 	 (quality quality))
 	(eps episodes (cdr eps))
 	(ep (car eps) (car eps))
-	(res '()))
+	(res '())
+	temp)
       ((null eps) res)
     (@log "matching: ~a" ep)
     (when (and
@@ -1250,21 +1253,36 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	      else t)
 	   
 	   ;; Make sure we don't already have it
-	   (if* (query-episode :series-name (episode-series-name ep)
-			       :season (episode-season ep)
-			       :ep-number (episode-episode ep)
-			       :transient nil)
-	      then ;; how many could we get here?
-		   ;; 1: original non-repack
-		   ;; 2: original + repack
-		   ;; 3: ???
-;;;;TODO: do we want to download a repack of a repack?
-		   (if* (episode-repack ep)
-		      then (@log "  is a repack")
-			   t
+	   (if* (setq temp
+		  (query-episode :series-name (episode-series-name ep)
+				 :season (episode-season ep)
+				 :ep-number (episode-episode ep)
+				 :transient nil))
+	      then (if* (episode-repack ep)
+		      then (cond
+			    ((dolist (old temp nil)
+			       (@log "  repack compare to old: ~a" old)
+			       (when (and
+				      (equal (episode-container old)
+					     (episode-container ep))
+				      (equal (episode-source old)
+					     (episode-source ep))
+				      (equal (episode-codec old)
+					     (episode-codec ep))
+				      (equal (episode-resolution old)
+					     (episode-resolution ep)))
+				 (return t)))
+			     ;; Repack of an ep of the same quality as one
+			     ;; in the database.  We might want it.
+			     (@log "  is a repack")
+			     t)
+			    (t
+			     (@log "  ignore: not our repack")
+			     nil))
 		      else (@log "  ignore: already have ep")
 			   nil)
-	      else (@log "  don't have ep"))
+	      else (@log "  don't have ep")
+		   t)
 
 	   (if* (series-quality series)
 	      then ;; We have a series quality override.  Only accept that.
@@ -1312,14 +1330,18 @@ $ tget --dump-episodes \"James May's Man Lab\"
 
   (when (symbolp quality)
     (@log "  user-defined quality function: ~s" quality)
-    (setq quality (quality (funcall quality episode))))
+    (setq quality (quality (funcall quality episode)))
+    (@log "    => ~s" (or (quality-name quality)
+			  quality)))
   
   (@log "  quality-acceptable-p: comparing")
   (@log "    episode=~a" episode)
   (@log "    quality=~a" quality)
   (if* (quality-match-p episode quality)
      then (@log "    matches")
-     else (@log "    no match")))
+	  t
+     else (@log "    no match")
+	  nil))
 
 (defun quality-match-p (ep q &aux temp)
   ;; Match the quality in EP to Q.  Return T if there is a match.
@@ -1664,13 +1686,15 @@ transmission-remote ~a:~a ~
 	     "\\d\\d\\.\\d|"
 	     "\\d\\d\\.\\d\\d|"
 	     "\\d\\d\\.all|"
-	     "\\d\\d-\\d\\d"
+	     "\\d\\d\\d?-\\d\\d\\d?"
 	     ")\\s*;\\s*"
 	     "Filename:\\s*([^;]+);")
 	 des
 	 :case-fold t)
       (declare (ignore whole))
-      (when (not match) (error "couldn't parse rss description: ~s." des))
+      (when (not match)
+	(warn "TVT: couldn't parse rss description: ~s." des)
+	(return-from convert-rss-to-episode nil))
       
       ;; ".UNCUT." is in the "Filename" but not the "Show Name", but
       ;; "(Uncut)" is in the "Show Title"!  We need to put it into the
@@ -1698,13 +1722,13 @@ transmission-remote ~a:~a ~
 	   then ;; \\d\\d is the month -- this is a lie, but I don't care
 		;; about these types of downloads:
 		:all
+	 elseif (=~ "^(\\d\\d\\d?)-(\\d\\d\\d?)$" des-episode)
+	   then ;; a range of episodes
+		(cons (parse-integer $1) (parse-integer $2))
 	 elseif (= 5 (length des-episode))
 	   then (if* (=~ "^(\\d\\d)\\.(\\d\\d)$" des-episode)
 		   then (date-time-yd-day
 			 (date-time (format nil "~a-~a-~a" des-season $1 $2)))
-		 elseif (=~ "^(\\d\\d)-(\\d\\d)$" des-episode)
-		   then ;; a range of episodes
-			(cons (parse-integer $1) (parse-integer $2))
 		   else (error "can't parse episode: ~s" des-episode))
 	   else (parse-integer des-episode)))
 
@@ -1847,41 +1871,47 @@ the second one): ~s, ~s."
 	      rss-title #|:case-fold t|# ;; doesn't work
 	      )
       (setq resolution (intern (string-downcase $1) *kw-package*)))
-    
+
     ;; The rest of the things we're looking for are in the
     ;; rss-item-description, but weirdly, delimited by <br >/\n
     (multiple-value-bind (found whole des-title season episode)
 	(match-re
-	 "Episode Name:\\s*([^<]+)?<br />
-Season:\\s*(\\d+)?<br />
+	 "Episode Name:\\s*([^<]+)?<br />\\s*
+Season:\\s*(\\d+)?<br />\\s*
 Episode:\\s*(\\d+)?"
 	 rss-des
 	 :case-fold t
 	 :multiple-lines t)
-      (declare (ignore found whole))
-
-      (make-episode
-	:transient t
-	:full-title rss-title
-	:torrent-url (rss-item-link rss)
-	:pub-date (and (rss-item-pub-date rss)
-		       (parse-rss20-date (rss-item-pub-date rss)))
-	;;both `nil' for BTN!
-	:type (rss-item-type rss)
-	:length (and (rss-item-length rss)
-		     (parse-integer (rss-item-length rss)))
+      (declare (ignore whole))
+      (cond
+       ((not found)
+	;; If we can't parse the description, then we have nothing.
+	;; Log it and move on.
+	#+ignore ;; too many to log.  :(
+	(@log "BTN: couldn't parse description: ~s." rss-des))
+       (t
+	(make-episode
+	 :transient t
+	 :full-title rss-title
+	 :torrent-url (rss-item-link rss)
+	 :pub-date (and (rss-item-pub-date rss)
+			(parse-rss20-date (rss-item-pub-date rss)))
+	 ;;both `nil' for BTN!
+	 :type (rss-item-type rss)
+	 :length (and (rss-item-length rss)
+		      (parse-integer (rss-item-length rss)))
      
-	:series-name (string-downcase series-name)
-	:title des-title
-	:season (when (and season (string/= "" season)) (parse-integer season))
-	:episode (when (and episode (string/= "" episode))
-		   (parse-integer episode))
-	:repack repack
-	;; no :filename in BTN feed!
-	:container container
-	:source source
-	:codec codec
-	:resolution resolution))))
+	 :series-name (string-downcase series-name)
+	 :title des-title
+	 :season (when (and season (string/= "" season)) (parse-integer season))
+	 :episode (when (and episode (string/= "" episode))
+		    (parse-integer episode))
+	 :repack repack
+	 ;; no :filename in BTN feed!
+	 :container container
+	 :source source
+	 :codec codec
+	 :resolution resolution))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dates -- this will go away when I get string-to-universal-time done and

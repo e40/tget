@@ -66,6 +66,10 @@ endif
 
 test: FORCE
 	sh test.sh
+	rm -f build.tmp
+	echo '(load "load.cl")' >> build.tmp
+	echo '(exit (test-tget))' >> build.tmp
+	$(runlisp)
 
 ifeq ($(FI_APPS_COMMON),t)
 repo_check: FORCE
