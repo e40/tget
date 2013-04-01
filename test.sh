@@ -4,9 +4,8 @@ set -eux
 
 tget()
 {
-    ./tget/tget --learn --root "$PWD" --db "$PWD/test.db" \
-	--config "$PWD/tget-config/config.cl" \
-	$*
+    ./tget/tget --debug --learn --root "$PWD" --db "$PWD/test.db" \
+	--config "$PWD/tget-config/config.cl" $*
 }
 
 clean_database()
@@ -17,14 +16,12 @@ clean_database()
 test_start_fresh()
 {
     clean_database
-    tget --feed-interval 180
+    tget
 }
 
 test_upgrade()
 {
     clean_database
-
-    # test upgrade
     cp -rp ~/.tget.d/db test.db
     tget
 }

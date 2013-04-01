@@ -41,7 +41,7 @@
 
 (setq *global-gc-behavior* :auto)
 
-(defvar *tget-version* "1.9")
+(defvar *tget-version* "1.10")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -49,6 +49,8 @@
     ;; 4 == added `container' slots to episode and quality
     ;;      added `priority' to quality
     ;;      added `repack' to episode
+    ;; **** changed the name of an unused slot here, didn't need to change
+    ;; **** schema based on my testing
     4)
 
 (defvar *tget-data-directory* "~/.tget.d/")
@@ -191,11 +193,11 @@
   (name :index :any-unique)
   rss-url
   delay
-;;;;TODO: would like to remove this, but I get GC errors when I do
-  transmission-client
+  debug-feed ;; formerly the unused `transmission-client'
   ratio
   quality
-  download-path)
+  download-path
+  )
 
 (defmethod print-object ((obj group) stream)
   (cond
@@ -408,19 +410,23 @@
 	      :codec codec
 	      :resolution resolution))))
 
-(defmacro defgroup (name &key rss-url delay client ratio quality download-path)
+(defmacro defgroup (name &key rss-url debug-feed delay client ratio quality
+			      download-path)
   `(make-group
      :name ,name
      :rss-url ,rss-url
+     :debug-feed ,debug-feed
      :delay ,delay
      :client ,client
      :ratio ,ratio
      :quality ,quality
      :download-path ,download-path))
 
-(defun make-group (&key name rss-url delay client ratio quality download-path)
+(defun make-group (&key name rss-url debug-feed delay client ratio quality
+			download-path)
   (let ((old (retrieve-from-index 'group 'name name)))
     (check-rss-url rss-url)
+    ;; don't check debug-feed
     (check-delay delay)
     (check-client client)
     (check-ratio ratio)
@@ -428,6 +434,7 @@
     (setq download-path (check-download-path download-path))
     (if* old
        then (setf (group-rss-url old) rss-url)
+	    (setf (group-debug-feed old) debug-feed)
 	    (setf (group-delay old) delay)
 	    (setf (group-ratio old) ratio)
 	    (setf (group-quality old) quality)
@@ -436,6 +443,7 @@
        else (make-instance 'group
 	      :name name
 	      :rss-url rss-url
+	      :debug-feed debug-feed
 	      :delay delay
 	      :ratio ratio
 	      :quality quality
@@ -646,11 +654,6 @@ $ tget --dump-episodes \"James May's Man Lab\"
     ;; Don't download anything, just learn
     nil)
 
-(defvar *debug-feed*
-    ;; Turns on debugging mode and uses the value of this variable as the
-    ;; file naming the XML for all feeds.
-    nil)
-
 (defvar *kw-package* (find-package :keyword))
 
 (defun main ()
@@ -659,7 +662,6 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	 (system:with-command-line-arguments
 	     (("help" :long help)
 	      ("debug" :long debug-mode)
-	      ("debug-feed" :long debug-feed :required-companion)
 	      ("config" :long config-file :required-companion)
 	      ("cron" :long cron-mode)
 	      ("learn" :long learn-mode)
@@ -695,12 +697,6 @@ $ tget --dump-episodes \"James May's Man Lab\"
 		   "~/.tget.cl"
 		   (merge-pathnames "config.cl" *tget-data-directory*)))
 	   
-	   (when debug-feed
-	     (or (probe-file debug-feed)
-		 (error "File referenced by --debug-feed does not exist: ~a."
-			debug-feed))
-	     (setq *debug-feed* debug-feed)
-	     (setq *debug* t))
 	   (when debug-mode (setq *debug* t))
 	   (setq *verbose* (not cron-mode))
 	   (setq *learn* learn-mode)
@@ -1155,7 +1151,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
       ;;
       (handler-case
 	  (mapcar 'rss-to-episode
-		  (maybe-log-rss (fetch-feed (group-rss-url group))))
+		  (maybe-log-rss (fetch-feed group)))
 	(net.rss:feed-error (c)
 	  (format t "~a~%" c)
 	  (go next-feed)))
@@ -1357,16 +1353,14 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	      (lambda (e1 e2)
 		(if* (= (episode-season e1)
 			(episode-season e2))
-		   then (if* (= (episode-episode e1)
-				(episode-episode e2))
+		   then (if* (episode-number= e1 e2)
 			   then ;; sort priority high to low
 				(let ((p1 (or (episode-quality e1 :priority t)
 					      1))
 				      (p2 (or (episode-quality e2 :priority t)
 					      1)))
 				  (> p1 p2))
-			   else (< (episode-episode e1)
-				   (episode-episode e2)))
+			   else (episode-number< e1 e2))
 		   else (< (episode-season e1)
 			   (episode-season e2)))))
 	     (cdr eps))
@@ -1378,10 +1372,27 @@ $ tget --dump-episodes \"James May's Man Lab\"
 			(episode-series-name this))
 	      (not (and (= (episode-season last)
 			   (episode-season this))
-			(= (episode-episode last)
-			   (episode-episode this)))))
+			(episode-number= last this))))
       (push this res))
     (setq last this)))
+
+(defun episode-number= (e1 e2)
+  (equal (episode-episode e1) (episode-episode e2)))
+
+(defun episode-number< (e1 e2)
+  (let ((n1 (episode-episode e1))
+	(n2 (episode-episode e2)))
+    (if* (and (numberp n1) (numberp n2))
+       then (< n1 n2)
+     elseif (and (consp n1) (consp n2))
+       then (let ((start1 (car n1))
+		  (start2 (car n2)))
+	      (< start1 start2))
+     elseif (consp n1)
+       then (< (car n1) n2)
+     elseif (consp n2)
+       then (< n1 (car n2))
+       else (error "internal error: episode-number<: ~s ~s." n1 n2))))
 
 (defun download-episodes (group episodes print-func)
   (dolist (episode episodes)
@@ -1431,7 +1442,9 @@ transmission-remote ~a:~a ~
     ;; An alist of (feed-url . rss-objects)
     nil)
 
-(defun fetch-feed (thing &aux temp url)
+(defun fetch-feed (group
+		   &aux (thing (group-rss-url group))
+			temp url)
   ;; Retrieve the rss feed from URL and return a list of net.rss:item's
   ;;
   ;; Cache the feed results.  We don't want to hit the feed 5-10 times in a
@@ -1449,11 +1462,11 @@ transmission-remote ~a:~a ~
      then (@log "using cached feed for ~a" url)
 	  (cdr temp)
      else (let ((res
-		 (if* *debug-feed*
+		 (if* (and *debug* (group-debug-feed group))
 		    then ;; while debugging, use a static version of the
 			 ;; feed, so we don't hammer the server.
 			 (@log "using static feed for ~a" url)
-			 (feed-to-rss-objects :file *debug-feed*)
+			 (feed-to-rss-objects :file (group-debug-feed group))
 		    else (@log "read feed for ~a" url)
 			 (feed-to-rss-objects :url url))))
 	    (push (cons url res) *cached-feeds*)
@@ -1641,25 +1654,28 @@ transmission-remote ~a:~a ~
 	(match-re
 	 #.(concatenate 'simple-string
 	     "Show Name:\\s*([^;]+)\\s*;\\s*"
-	     "Show Title:\\s*([^;]+)\\s*;\\s*"
+	     "Show Title:\\s*(.+)\\s*;\\s*"
 	     "Season:\\s*([0-9]+)\\s*;\\s*"
 	     "Episode:\\s*("
 	     "[0-9]+|"
 	     "all|"
+	     "complete|"
+	     "special|"
+	     "\\d\\d\\.\\d|"
 	     "\\d\\d\\.\\d\\d|"
-	     "\\d\\d\\.all"
+	     "\\d\\d\\.all|"
+	     "\\d\\d-\\d\\d"
 	     ")\\s*;\\s*"
 	     "Filename:\\s*([^;]+);")
 	 des
 	 :case-fold t)
       (declare (ignore whole))
+      (when (not match) (error "couldn't parse rss description: ~s." des))
       
       ;; ".UNCUT." is in the "Filename" but not the "Show Name", but
       ;; "(Uncut)" is in the "Show Title"!  We need to put it into the
       ;; series-name...
       (setq uncut (match-re "uncut" title :case-fold t))
-      
-      (when (not match) (error "couldn't parse rss description: ~s." des))
       
 ;;;;TODO: early on, we need to lookup the series-name and see if we know
 ;;;;      about it.  If not, then we should bail and return `nil'.  No need
@@ -1667,15 +1683,29 @@ transmission-remote ~a:~a ~
   
       (setq des-season (parse-integer des-season))
       (setq des-episode
-	(if* (match-re "all" des-episode :case-fold t)
+	(if* (or (equalp "all" des-episode)
+		 (equalp "complete" des-episode))
 	   then ;; The above is wrong, since it matches "all" and "01.all",
 		;; but it doesn't matter since I don't download seasons
 		:all
+	 elseif (equalp "special" des-episode)
+	   then :special
+	 elseif (=~ "^(\\d\\d)\\.(\\d)$" des-episode)
+	   then ;; e.g., 08.1 => return `8'
+		(parse-integer $1)
+	 elseif (and (= 6 (length des-episode))
+		     (=~ "^(\\d\\d)\\.(?i:all)$" des-episode))
+	   then ;; \\d\\d is the month -- this is a lie, but I don't care
+		;; about these types of downloads:
+		:all
 	 elseif (= 5 (length des-episode))
-	   then (or (=~ "(\\d\\d)\\.(\\d\\d)" des-episode)
-		    (error "can't parse episode: ~s" des-episode))
-		(date-time-yd-day
-		 (date-time (format nil "~a-~a-~a" des-season $1 $2)))
+	   then (if* (=~ "^(\\d\\d)\\.(\\d\\d)$" des-episode)
+		   then (date-time-yd-day
+			 (date-time (format nil "~a-~a-~a" des-season $1 $2)))
+		 elseif (=~ "^(\\d\\d)-(\\d\\d)$" des-episode)
+		   then ;; a range of episodes
+			(cons (parse-integer $1) (parse-integer $2))
+		   else (error "can't parse episode: ~s" des-episode))
 	   else (parse-integer des-episode)))
 
       (multiple-value-setq (series-name season episode repack container
@@ -1695,23 +1725,23 @@ transmission-remote ~a:~a ~
 
       (when (and des-season season
 		 (/= des-season season))
-	(error "Description and filename season do not agree: ~s, ~s."
-	       des-season season))
+	(@log "Description and filename season do not agree (use 2nd): ~s, ~s."
+	      des-season season))
       (when (or (and (numberp des-episode)
 		     des-episode episode
 		     (/= des-episode episode))
 		(and (symbolp des-episode)
 		     des-episode episode
 		     (not (eq des-episode episode))))
-	(error "Description and filename episode do not agree: ~s, ~s."
-	       des-episode episode))
+	(@log "Description and filename episode do not agree (use 2nd): ~s, ~s."
+	      des-episode episode))
       
       ;; sanity check
       (when (and des-series-name series-name
 		 (not (equalp des-series-name series-name))
 		 (not (equalp (strip-trailing-year des-series-name)
 			      (strip-trailing-year series-name))))
-	(warn "Description and filename series name do not agree (using ~
+	(@log "Description and filename series name do not agree (using ~
 the second one): ~s, ~s."
 	      des-series-name series-name))
       
@@ -1729,8 +1759,12 @@ the second one): ~s, ~s."
 		       series-name
 		       des-series-name))
 	:title title
-	:season (or des-season season)
-	:episode (or des-episode episode)
+	:season (or season
+		    ;; description version is wrong more often
+		    des-season)
+	:episode (or episode
+		    ;; description version is wrong more often
+		     des-episode)
 	:repack repack
 	:filename filename
 	:container container
@@ -1791,24 +1825,27 @@ the second one): ~s, ~s."
       (setq container (intern (string-downcase $1) *kw-package*)))
     
     (when (=~ #.(concatenate 'simple-string
-		  " ("
+		  " (?i:("
 		  (excl:list-to-delimited-string *valid-containers* "|")
-		  ") ")
-	      rss-title :case-fold t)
+		  ")) ")
+	      rss-title #|:case-fold t|# ;; doesn't work
+	      )
       (setq source (intern (string-downcase $1) *kw-package*)))
     
     (when (=~ #.(concatenate 'simple-string
-		  " ("
+		  " (?i:("
 		  (excl:list-to-delimited-string *valid-codecs* "|")
-		  ") ")
-	      rss-title :case-fold t)
+		  ")) ")
+	      rss-title #|:case-fold t|# ;; doesn't work
+	      )
       (setq codec (intern (string-downcase $1) *kw-package*)))
     
     (when (=~ #.(concatenate 'simple-string
-		  " ("
+		  " (?i:("
 		  (excl:list-to-delimited-string *valid-resolutions* "|")
-		  ") ")
-	      rss-title :case-fold t)
+		  ")) ")
+	      rss-title #|:case-fold t|# ;; doesn't work
+	      )
       (setq resolution (intern (string-downcase $1) *kw-package*)))
     
     ;; The rest of the things we're looking for are in the
@@ -1925,11 +1962,15 @@ Episode:\\s*(\\d+)?"
 (defvar *log-prefix* nil)
 
 (defun @log (format-string &rest args)
-  (when *log-stream*
+  (cond
+   (*log-stream*
     (when (null *log-prefix*)
       (setq *log-prefix* (format nil "~a: " (excl.osi:getpid))))
     (princ *log-prefix* *log-stream*)
     (apply #'format *log-stream* format-string args)
     (fresh-line *log-stream*))
+   (*verbose*
+    (apply #'format t format-string args)
+    (fresh-line t)))
   ;; Return t so this function can be used in logic chains.
   t)

@@ -2,22 +2,11 @@
 (in-package :user)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Feed and other options
+;; General options
 
 ;;;;Not really using this, and it's a lot of data:
 ;;(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
 (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
-
-;; Wait 6 hours before downloading (most) episodes, to wait for repacks and
-;; propers.
-(defvar *tvt-delay* 6)
-
-(defun tvt-rss-feed (days)
-  (format nil "~a&interval=~d+days"
-	  "http://www.tvtorrents.com/..."
-	  days))
-
-(defvar *tvt-rss* 'tvt-rss-feed)
 
 (deftransmission ()
     :host (sys:getenv "TRANSMISSION_HOST")
@@ -31,7 +20,23 @@
 (setq *download-root* "/me/layer/videos/")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Quality settings
+;; TVT
+
+;; Wait 6 hours before downloading (most) episodes, to wait for repacks and
+;; propers.
+(defvar *tvt-delay* 6)
+
+(setq *feed-interval* 14)
+
+(defun tvt-rss-feed (interval)
+  (format nil "~a&interval=~d+days"
+	  ;; This is the "Recent torrents" feed instead of the "Favorite
+	  ;; shows" feed I was using before.
+	  "http://www.tvtorrents.com/..."
+	  interval))
+
+(defvar *tvt-rss* 'tvt-rss-feed)
+(defvar *tvt-debug-feed* "tget-test-data/tvt-recent.xml")
 
 (defquality :normal
     :priority 50
@@ -77,120 +82,112 @@
      then :low
      else :normal))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defgroup :adrian
     :rss-url *tvt-rss*
+    :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
-(defseries "Phineas and Furb" :adrian)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defgroup :anh
     :rss-url *tvt-rss*
+    :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
-(defseries "Downton Abbey" :anh)
-(defseries "Midsomer Murders" :anh)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defgroup :kevin
     :rss-url *tvt-rss*
+    :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
+(defgroup :adrian+kevin
+    :rss-url *tvt-rss*
+    :debug-feed *tvt-debug-feed*
+    :delay *tvt-delay*
+    :quality 'my-quality
+    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
+
+(defgroup :anh+kevin
+    :rss-url *tvt-rss*
+    :debug-feed *tvt-debug-feed*
+    :delay *tvt-delay*
+    :quality 'my-quality
+    :download-path (merge-pathnames "anh+kevin/" *download-root*))
+
 (defseries "8 Out of 10 Cats" :kevin)
+(defseries "An Idiot Abroad" :adrian+kevin)
+(defseries "Bates Motel" :anh+kevin)
 (defseries "Boardwalk Empire" :kevin)
 (defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
 (defseries "Childrens Hospital (US)" :kevin)
 (defseries "Come Fly with Me (2010)" :kevin)
+(defseries "Community" :adrian+kevin)
+(defseries "Curb your Enthusiasm" :anh+kevin)
 (defseries "Dexter" :kevin)
-(defseries "Dragons Den" :kevin)
+(defseries "Doc Martin" :anh+kevin)
+(defseries "Downton Abbey" :anh)
+(defseries "Dragons Den (UK)" :kevin)
+(defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin)
 (defseries "Falling Skies" :kevin)
 (defseries "Frontline" :kevin)
+(defseries "Futurama" :adrian+kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
 (defseries "Homeland" :kevin)
+(defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin :delay 0) ;; immediate download
+(defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)
-(defseries "Louis" :kevin)
+(defseries "Louie" :kevin)
 (defseries "Luther" :kevin)
 (defseries "Mad Men" :kevin)
+(defseries "Midsomer Murders" :anh)
 (defseries "Misfits" :kevin)
+(defseries "Modern Family" :adrian+kevin)
 (defseries "Motive" :kevin)
+(defseries "Mythbusters" :adrian+kevin)
+(defseries "NCIS" :adrian+kevin)
+(defseries "Nathan for You" :adrian+kevin)
+(defseries "Nova" :adrian+kevin)
+(defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Orphan Black" :kevin)
+(defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
+(defseries "Phineas and Furb" :adrian)
+(defseries "Ridiculousness" :adrian+kevin)
 (defseries "Shameless (US)" :kevin)
+(defseries "Shark Tank" :adrian+kevin)
 (defseries "Sherlock" :kevin)
 (defseries "Southland" :kevin)
 (defseries "Strike Back" :kevin)
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Colbert Report" :kevin)
 (defseries "The Daily Show with Jon Stewart" :kevin)
+(defseries "The Following" :anh+kevin)
+(defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The IT Crowd" :kevin)
 (defseries "The Jeselnik Offensive" :kevin)
-(defseries "The Newsroom (2012)" :kevin)
-(defseries "The Ultimate Fighter" :kevin)
-(defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-(defseries "Tosh.0" :kevin)
-(defseries "Vikings" :kevin)
-(defseries "Witness (2012)" :kevin)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defgroup :adrian+kevin
-    :rss-url *tvt-rss*
-    :delay *tvt-delay*
-    :quality 'my-quality
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defseries "An Idiot Abroad" :adrian+kevin)
-(defseries "Community" :adrian+kevin)
-(defseries "Eagleheart" :adrian+kevin)
-(defseries "Futurama" :adrian+kevin)
-(defseries "James May's Man Lab" :adrian+kevin)
-(defseries "Modern Family" :adrian+kevin)
-(defseries "Mythbusters" :adrian+kevin)
-(defseries "Nathan for You" :adrian+kevin)
-(defseries "NCIS" :adrian+kevin)
-(defseries "Nova" :adrian+kevin)
-(defseries "Parks and Recreation" :adrian+kevin)
-(defseries "Ridiculousness" :adrian+kevin)
-(defseries "Shark Tank" :adrian+kevin)
+(defseries "The Killing" :anh+kevin)
 (defseries "The Mentalist" :adrian+kevin)
 (defseries "The Neighbors (2012)" :adrian+kevin)
+(defseries "The Newsroom (2012)" :kevin)
 (defseries "The Simpsons" :adrian+kevin)
-(defseries "Top Gear" :adrian+kevin :quality :high)
+(defseries "The Ultimate Fighter" :kevin)
+(defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
 (defseries "Top Gear (US)" :adrian+kevin :quality :high)
-(defseries "World's Craziest Fools" :adrian+kevin)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defgroup :anh+kevin
-    :rss-url *tvt-rss*
-    :delay *tvt-delay*
-    :quality 'my-quality
-    :download-path (merge-pathnames "anh+kevin/" *download-root*))
-
-(defseries "Bates Motel" :anh+kevin)
-(defseries "Curb your Enthusiasm" :anh+kevin)
-(defseries "Doc Martin" :anh+kevin)
-(defseries "The Following" :anh+kevin)
-(defseries "The Good Wife" :anh+kevin)
-(defseries "The Killing" :anh+kevin)
+(defseries "Top Gear" :adrian+kevin :quality :high)
+(defseries "Tosh.0" :kevin)
+(defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BTN
 
 ;; BTN quality is kinda funky and inconsistent.  Define some different
 ;; qualities for shows from them.
@@ -209,12 +206,23 @@
 (defvar *btn-my-series-feed*
     "https://broadcasthe.net/...")
 
+(defvar *btn-debug-feed* "tget-test-data/btn.xml")
+
 (defgroup :btn-adrian+kevin
     :rss-url *btn-my-series-feed*
+    :debug-feed *btn-debug-feed*
     :ratio "-1" 
     :quality :normal
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
+(defgroup :btn-kevin
+    :rss-url *btn-my-series-feed*
+    :debug-feed *btn-debug-feed*
+    :ratio "-1" 
+    :quality :normal
+    :download-path (merge-pathnames "kevin/" *download-root*))
+
 (defseries "Regular Show" :btn-adrian+kevin :quality :high-any-source)
 (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
-(defseries "World's Craziest Fools" :btn-crazy-fools :quality :x264-?dtv-mp4)
+(defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
+(defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
