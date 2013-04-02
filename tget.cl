@@ -6,8 +6,7 @@
 ;;;;TODO:
 ;; - test date parser to make sure timezone is correct
 ;; - way to dump out flexget series and learn from them??
-;; - handle errors from read-feed (skip to next group)
-;; - a test suite, especially for upgrades
+;; - a test suite for upgrades
 ;; - episode-series slot is never used, but the episode-series-name slot is
 ;;   used.... we should remove the episode-series-name slot and have
 ;;   everyone use the episode-series slot??  Seems wasteful.
@@ -21,6 +20,8 @@
 ;;   speed things up
 ;; - put a time limit on repacks????
 ;; - series dups not detected at config load time
+;; - for URL fetch errors, only email once after N hours, or make it a
+;;   config option what to do
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (eval-when (compile eval load)
@@ -410,25 +411,23 @@
 	      :codec codec
 	      :resolution resolution))))
 
-(defmacro defgroup (name &key rss-url debug-feed delay client ratio quality
+(defmacro defgroup (name &key rss-url debug-feed delay ratio quality
 			      download-path)
   `(make-group
      :name ,name
      :rss-url ,rss-url
      :debug-feed ,debug-feed
      :delay ,delay
-     :client ,client
      :ratio ,ratio
      :quality ,quality
      :download-path ,download-path))
 
-(defun make-group (&key name rss-url debug-feed delay client ratio quality
+(defun make-group (&key name rss-url debug-feed delay ratio quality
 			download-path)
   (let ((old (retrieve-from-index 'group 'name name)))
     (check-rss-url rss-url)
     ;; don't check debug-feed
     (check-delay delay)
-    (check-client client)
     (check-ratio ratio)
     (check-quality quality)
     (setq download-path (check-download-path download-path))
@@ -566,11 +565,6 @@
 		    (symbol-function quality)
 		    (error "Quality ~s does not exist." quality)))
 	   (error "Bad quality: ~s." quality))))
-
-(defun check-client (client)
-;;;;TODO: check client
-  client
-  )
 
 (defun check-download-path (download-path)
   #+not-yet ;; might be on a different machine?!
@@ -964,7 +958,6 @@ $ tget --dump-episodes \"James May's Man Lab\"
     )
   (commit))
 
-;;;;TODO: add this as an exit hook?
 (defun close-tget-database ()
   (when *verbose* (format t ";; closing database...~%"))
   (when db.allegrocache::*allegrocache*
@@ -1701,10 +1694,6 @@ transmission-remote ~a:~a ~
       ;; series-name...
       (setq uncut (match-re "uncut" title :case-fold t))
       
-;;;;TODO: early on, we need to lookup the series-name and see if we know
-;;;;      about it.  If not, then we should bail and return `nil'.  No need
-;;;;      to process something we don't care about.
-  
       (setq des-season (parse-integer des-season))
       (setq des-episode
 	(if* (or (equalp "all" des-episode)
