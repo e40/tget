@@ -40,7 +40,7 @@
 
 (in-package :user)
 
-(defvar *tget-version* "1.12")
+(defvar *tget-version* "1.13")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1674,7 +1674,7 @@ transmission-remote ~a:~a ~
 	     "[0-9]+|"
 	     "all|"
 	     "complete|"
-	     "special|"
+	     "special.*|"
 	     "\\d\\d\\.\\d|"
 	     "\\d\\d\\.\\d\\d|"
 	     "\\d\\d\\.all|"
@@ -1700,7 +1700,7 @@ transmission-remote ~a:~a ~
 	   then ;; The above is wrong, since it matches "all" and "01.all",
 		;; but it doesn't matter since I don't download seasons
 		:all
-	 elseif (equalp "special" des-episode)
+	 elseif (match-re "special.*" des-episode :case-fold t)
 	   then :special
 	 elseif (=~ "^(\\d\\d)\\.(\\d)$" des-episode)
 	   then ;; e.g., 08.1 => return `8'

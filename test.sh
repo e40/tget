@@ -6,7 +6,8 @@ set -eux
 
 tget()
 {
-    ./tget/tget --debug --learn --root "$PWD" --db "$PWD/test.db" \
+# no --debug
+    ./tget/tget --learn --root "$PWD" --db "$PWD/test.db" \
 	--config "$PWD/tget-config/config.cl" $*
 }
 
