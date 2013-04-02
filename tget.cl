@@ -40,8 +40,6 @@
 
 (in-package :user)
 
-(setq *global-gc-behavior* :auto)
-
 (defvar *tget-version* "1.12")
 (defvar *schema-version*
     ;; 1 == initial version
@@ -651,6 +649,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
 (defvar *kw-package* (find-package :keyword))
 
 (defun main ()
+  (setq *global-gc-behavior* :auto)
   (flet
       ((doit ()
 	 (system:with-command-line-arguments
