@@ -4,6 +4,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;TODO:
+;; - add --complete-to argument to dump out complete-to series info
 ;; - test date parser to make sure timezone is correct
 ;; - way to dump out flexget series and learn from them??
 ;; - a test suite for upgrades
@@ -40,7 +41,7 @@
 
 (in-package :user)
 
-(defvar *tget-version* "1.13")
+(defvar *tget-version* "1.14")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -50,7 +51,8 @@
     ;;      added `repack' to episode
     ;; **** changed the name of an unused slot here, didn't need to change
     ;; **** schema based on my testing
-    4)
+    ;; 5 == changed series `last-episode' to `complete-to'
+    5)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -218,16 +220,10 @@
   ;;canonicalized version of the series name
   ;; ***must match episode class naming***
   (name :index :any-unique)
-;;;;TODO: need to implement this:
-  last-episode 
-  ;; a list of episodes that have gaps after last-episode.  That
-  ;; is, last-episode is the last contiguous episode, and (at least!) the
-  ;; episode after that is missing.  NOTE: if last-episode is from a
-  ;; different season, and the next episode after that is episode `1' from
-  ;; the next season, then we assume the episodes are contiguous.
-  ;; Also, we need this so we don't download old episodes that may become
-  ;; available.
-;;;;TODO: I don't think this is needed....
+  ;; The series is considered complete to this season/episode or season.
+  ;; Format is `(season . episode)' or `season'.
+  complete-to 
+  ;; episodes that came in after complete-to but there are gaps
   discontinuous-episodes
   delay
 ;;;; overrides for group:
@@ -245,6 +241,8 @@
 
 (defmethod describe-object ((object series) stream)
   (describe-persistent-clos-object object stream))
+
+(defvar *max-epnum* 9999)
 
 (defclass* episode (:conc-name t :print nil :init nil)
   series
@@ -456,7 +454,7 @@
 (defun make-series (&key name group delay quality)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
-	 (old (retrieve-from-index 'series 'name name)))
+	 (old (query-series-name-to-series name)))
     (check-delay delay)
     (check-quality quality)
 ;;;;TODO: check group
@@ -474,6 +472,8 @@
        else (make-instance 'series
 	      :pretty-name pretty-name
 	      :name name
+	      :complete-to nil
+	      :discontinuous-episodes nil
 	      :group group
 	      :delay delay
 	      :quality quality))))
@@ -657,7 +657,10 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	      ("debug" :long debug-mode)
 	      ("config" :long config-file :required-companion)
 	      ("cron" :long cron-mode)
+	      
 	      ("learn" :long learn-mode)
+	      ("catch-up" :long catch-up-mode)
+
 	      ("reset" :long reset-database)
 	      ("feed-interval" :long feed-interval :required-companion)
 	      ("root" :long root :required-companion)
@@ -756,6 +759,8 @@ $ tget --dump-episodes \"James May's Man Lab\"
 		     (format t "removing ~a~%" ep)
 		     (delete-instance ep))
 		   (commit)
+	    elseif catch-up-mode
+	      then (catch-up)
 	      else (process-groups))
 	   
 	   (exit 0 :quiet t))))
@@ -947,19 +952,24 @@ $ tget --dump-episodes \"James May's Man Lab\"
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version)))
 
-#+ignore
 (defmethod db-upgrade ((version (eql 4)))
-  ;; The change from 4 to 5: removed transmission-client slot of group
+  ;; The change from 4 to 5: series slot name change, `last-episode' to
+  ;; `complete-to', and it and `discontinuous-episodes' needs to be
+  ;; initialized to `nil'.
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
-  (doclass (group (find-class 'group))
-   group ;; quiet compiler
-    )
+  (format t ";;   Initializing new slots of series instances.~%")
+  (doclass (series (find-class 'series))
+;;;;TODO: If I don't print the series objects, the slots aren't updated!
+    (format t ";; updating ~a...~%" series)
+    (setf (series-complete-to series) nil)
+    (setf (series-discontinuous-episodes series) nil))
   (commit))
 
 (defun close-tget-database ()
   (when *verbose* (format t ";; closing database...~%"))
   (when db.allegrocache::*allegrocache*
+    (commit) ;; is this needed?
     (close-database)
     (setq db.allegrocache::*allegrocache* nil)
     (release-database-lock-file)))
@@ -975,6 +985,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
 			  pub-date
 			  type
 			  length
+			  series
 			  series-name
 			  title
 			  season
@@ -1009,6 +1020,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	   :pub-date pub-date
 	   :type type
 	   :length length
+	   :series series
 	   :series-name series-name
 	   :title title
 	   :season season
@@ -1232,9 +1244,9 @@ $ tget --dump-episodes \"James May's Man Lab\"
       ((null eps) res)
     (@log "matching: ~a" ep)
     (when (and
-	   ;; Ignore whole seasons
-	   (if* (eq :all (episode-episode ep))
-	      then (@log "  ignore: full season")
+	   ;; Ignore whole seasons, months, specials, etc
+	   (if* (keywordp (episode-episode ep))
+	      then (@log "  ignore: ep: ~s" (episode-episode ep))
 		   nil
 	      else t)
 	   
@@ -1243,6 +1255,10 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	      then (@log "  ignore: ep 0")
 		   nil
 	      else t)
+	   
+	   ;; Make sure it's not before our cutoff in the series
+	   ;; complete-to
+	   (episode-after-complete-to ep series)
 	   
 	   ;; Make sure we don't already have it
 	   (if* (setq temp
@@ -1299,10 +1315,6 @@ $ tget --dump-episodes \"James May's Man Lab\"
 		else (@log "  ignore: hours available (~d) < delay (~d) "
 			   hours delay)
 		     nil)))
-      ;; A good time to make sure the `series' slot in the episode
-      ;; has a meaningful value.  (This change is not important enough to
-      ;; warrant a commit.)
-      (setf (episode-series ep) series)
       (@log "  => matching episode")
       (push ep res))))
 
@@ -1413,6 +1425,9 @@ $ tget --dump-episodes \"James May's Man Lab\"
     (@log "download: ~a" episode)
     (funcall print-func episode)
     (setf (episode-transient episode) nil)
+    (update-complete-to (episode-series episode)
+			(episode-season episode)
+			(episode-episode episode))
     (transmission-remote-download episode group))
   (commit))
 
@@ -1448,6 +1463,137 @@ transmission-remote ~a:~a ~
 	(when (/= 0 exit-status)
 	  (@log "  stdout: ~a" stdout)
 	  (@log "  stderr: ~a" stderr)))))))
+
+(defun catch-up ()
+  ;; Our job is to mark the complete-to slot of all series objects with the
+  ;; data from the episodes objects we have in the database.
+  (format t ";; Catching up for all series:~%")
+  (doclass (series (find-class 'series))
+    ;; We merely have to call update-complete-to on all episodes in this
+    ;; series and that function will set the complete-to and
+    ;; discontinuous-episodes slots properly.
+    (format t ";; ~52a: " (series-pretty-name series))
+    (force-output t)
+    (dolist (ep (query-episode :series-name (series-name series)
+			       ;; There should be no other type, at this
+			       ;; point:
+			       :transient nil))
+      (update-complete-to series
+			  (episode-season ep)
+			  (episode-episode ep)))
+    (if* (series-complete-to series)
+       then (format t "S~2,'0dE~2,'0d~%"
+		    (car (series-complete-to series))
+		    (cdr (series-complete-to series)))
+       else (format t "--~%")))
+  (commit))
+
+(defun update-complete-to (series season epnum
+			   &aux ct
+				(new-ct (cons season epnum)))
+  ;; Note that season/epnum have been seen for purposes of future
+  ;; downloading.
+  
+  (when (null series) (error "series is nil!"))
+  (when (null season) (error "season is nil!"))
+  (when (null epnum) (error "epnum is nil!"))
+  
+  ;; sanity check
+  (when (and (null (series-complete-to series))
+	     (series-discontinuous-episodes series))
+    (error "internal error: complete-to empty, but d-e not: ~s."
+	   (series-discontinuous-episodes series)))
+  
+  (setq ct (series-complete-to series))
+  
+  (labels
+      ((contiguous-episodes (ct1 ct2)
+	 ;; Return T if CT1 and CT2 represent contiguous episodes.
+	 ;; Examples of contiguous episodes:
+	 ;;  CT1          CT2
+	 ;;  (1 . 10)     (1 . 11)
+	 ;;  (1 . 10)     (2 . 1)
+	 (or
+	  ;; same season, next ep:
+	  (and (= (car ct1) (car ct2))
+	       (= (1+ (cdr ct1)) (cdr ct2)))
+	  ;; next season, E01
+	  (and (= (1+ (car ct1)) (car ct2))
+	       (= 1 (cdr ct2)))))
+       (canonicalize-discontinuous-episodes (series)
+	 ;; Check for newly contiguous episodes in the head of the
+	 ;; discontinuous-episodes list.
+	 ;; If the d-le list is '((1 . 3) (1 . 4)), then the
+	 ;; series-complete-to would be set to '(1 . 4) and the d-e slot to
+	 ;; nil.
+	 (loop
+	   (when (not (and
+		       ;; make sure we didn't already exhaust it:
+		       (series-discontinuous-episodes series)
+		       (contiguous-episodes
+			(series-complete-to series)
+			(car (series-discontinuous-episodes series)))))
+	     (return))
+	   (setf (series-complete-to series) 
+	     (car (series-discontinuous-episodes series)))
+	   (setf (series-discontinuous-episodes series)
+	     (cdr (series-discontinuous-episodes series)))))
+       (sorted-insert (new-ct ct-list)
+	 ;; CT is a new complete-to list we need to insert into CT-LIST,
+	 ;; but keeping CT-LIST sorted.
+	 (let ((res '()))
+	   (dolist (ct ct-list)
+	     (when (older-p new-ct ct)
+	       (push new-ct res)
+	       (setq new-ct nil))
+	     (push ct res))
+	   (when new-ct (push new-ct res))
+	   (nreverse res)))
+
+       (older-p (ct1 ct2)
+	 ;; Return T if CT1 comes before CT2 in the season/epnum sequence
+	 (or (< (car ct1) (car ct2))
+	     (and (= (car ct1) (car ct2))
+		  (< (cdr ct1) (cdr ct2))))))
+    (cond
+     ((null ct)
+      ;; No complete-to, so just save it
+      (setf (series-complete-to series) new-ct))
+     
+     ((older-p new-ct ct)
+      ;; ignore this, since NEW-CT is older than CT
+      )
+     
+     ((null (series-discontinuous-episodes series))
+      ;; No discontinuous-episodes...
+      (if* (contiguous-episodes ct new-ct)
+	 then ;; ...and the epsisodes are contiguous, so save it
+	      (setf (series-complete-to series) new-ct)
+	 else ;; ...and the epsisodes are not contiguous, so start
+	      ;; discontinuous-episodes
+	      (setf (series-discontinuous-episodes series)
+		(list new-ct))))
+     
+     (t
+      ;; We have discontinuous episodes.  Need to carefully manage things.
+      (if* (contiguous-episodes ct new-ct)
+	 then (setf (series-complete-to series) new-ct)
+	      ;; Normalize discontinuous-episodes, since there
+	      ;; might be new contiguous episodes in that list now
+	      (canonicalize-discontinuous-episodes series)
+	 else ;; Episodes are not contiguous, so merge NEW-CT into the list
+	      ;; of discontiguous-episodes, but keep it sorted
+	      (setf (series-discontinuous-episodes series)
+		(sorted-insert new-ct
+			       (series-discontinuous-episodes series))))))))
+
+(defun episode-after-complete-to (ep series)
+  (cond
+   ((null (series-complete-to series)) t)
+   (t
+    (or (> (episode-season ep) (car (series-complete-to series)))
+	(and (= (episode-season ep) (car (series-complete-to series)))
+	     (> (episode-episode ep) (cdr (series-complete-to series))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Feed processing
@@ -1661,8 +1807,8 @@ transmission-remote ~a:~a ~
 
 (defmethod convert-rss-to-episode ((type (eql :tvtorrents.com)) rss)
   (let ((des (rss-item-description rss))
-	series-name season episode repack container source codec resolution
-	uncut)
+	series series-name season episode repack container source codec
+	resolution uncut)
     (multiple-value-bind (match whole des-series-name title des-season
 			  des-episode filename)
 	(match-re
@@ -1709,7 +1855,7 @@ transmission-remote ~a:~a ~
 		     (=~ "^(\\d\\d)\\.(?i:all)$" des-episode))
 	   then ;; \\d\\d is the month -- this is a lie, but I don't care
 		;; about these types of downloads:
-		:all
+		:complete-month
 	 elseif (=~ "^(\\d\\d\\d?)-(\\d\\d\\d?)$" des-episode)
 	   then ;; a range of episodes
 		(cons (parse-integer $1) (parse-integer $2))
@@ -1756,7 +1902,24 @@ transmission-remote ~a:~a ~
 	(@log "Description and filename series name do not agree (using ~
 the second one): ~s, ~s."
 	      des-series-name series-name))
+
+      (setq series-name (string-downcase
+			 (or
+			  ;; filename version is more reliable
+			  series-name
+			  des-series-name)))
+      (when (null (setq series (query-series-name-to-series series-name)))
+	(return-from convert-rss-to-episode))
       
+      ;; a series we care about
+      
+      (setq season (or season
+		       ;; description version is wrong more often
+		       des-season))
+      (setq episode (or episode
+			;; description version is wrong more often
+			des-episode))
+
       (make-episode
 	:transient t
 	:full-title (rss-item-title rss)
@@ -1764,19 +1927,12 @@ the second one): ~s, ~s."
 	:pub-date (parse-rss20-date (rss-item-pub-date rss))
 	:type (rss-item-type rss)
 	:length (parse-integer (rss-item-length rss))
-     
-	:series-name (string-downcase
-		      (or
-		       ;; filename version is more reliable
-		       series-name
-		       des-series-name))
+
+	:series series
+	:series-name series-name
 	:title title
-	:season (or season
-		    ;; description version is wrong more often
-		    des-season)
-	:episode (or episode
-		    ;; description version is wrong more often
-		     des-episode)
+	:season season
+	:episode episode
 	:repack repack
 	:filename filename
 	:container container
@@ -1810,8 +1966,7 @@ the second one): ~s, ~s."
 (defmethod convert-rss-to-episode ((type (eql :broadcasthe.net)) rss)
   (let ((rss-des (rss-item-description rss))
 	(rss-title (rss-item-title rss))
-	series-name repack
-	container source codec resolution)
+	series series-name repack container source codec resolution)
     
     (when (not rss-des)
       ;; some sporting events have no description and only a title.  Ignore
@@ -1871,35 +2026,42 @@ Episode:\\s*(\\d+)?"
 	 :case-fold t
 	 :multiple-lines t)
       (declare (ignore whole))
-      (cond
-       ((not found)
+      (when (not found)
 	;; If we can't parse the description, then we have nothing.
 	;; Log it and move on.
 	#+ignore ;; too many to log.  :(
-	(@log "BTN: couldn't parse description: ~s." rss-des))
-       (t
-	(make-episode
-	 :transient t
-	 :full-title rss-title
-	 :torrent-url (rss-item-link rss)
-	 :pub-date (and (rss-item-pub-date rss)
-			(parse-rss20-date (rss-item-pub-date rss)))
-	 ;;both `nil' for BTN!
-	 :type (rss-item-type rss)
-	 :length (and (rss-item-length rss)
-		      (parse-integer (rss-item-length rss)))
-     
-	 :series-name (string-downcase series-name)
-	 :title des-title
-	 :season (when (and season (string/= "" season)) (parse-integer season))
-	 :episode (when (and episode (string/= "" episode))
-		    (parse-integer episode))
-	 :repack repack
-	 ;; no :filename in BTN feed!
-	 :container container
-	 :source source
-	 :codec codec
-	 :resolution resolution))))))
+	(@log "BTN: couldn't parse description: ~s." rss-des)
+	(return-from convert-rss-to-episode))
+      
+      (setq series-name (string-downcase series-name))
+      (when (null (setq series (query-series-name-to-series series-name)))
+	(return-from convert-rss-to-episode))
+      
+      ;; a series we care about
+
+      (make-episode
+       :transient t
+       :full-title rss-title
+       :torrent-url (rss-item-link rss)
+       :pub-date (and (rss-item-pub-date rss)
+		      (parse-rss20-date (rss-item-pub-date rss)))
+       ;;both `nil' for BTN!
+       :type (rss-item-type rss)
+       :length (and (rss-item-length rss)
+		    (parse-integer (rss-item-length rss)))
+
+       :series series
+       :series-name series-name
+       :title des-title
+       :season (when (and season (string/= "" season)) (parse-integer season))
+       :episode (when (and episode (string/= "" episode))
+		  (parse-integer episode))
+       :repack repack
+       ;; no :filename in BTN feed!
+       :container container
+       :source source
+       :codec codec
+       :resolution resolution))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dates -- this will go away when I get string-to-universal-time done and

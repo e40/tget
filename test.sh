@@ -1,26 +1,20 @@
 #! /bin/bash
 #
-# Most tests are in t-tget.cl
+# Most tests are now in t-tget.cl.
+#
+# The test here just tests upgrading and what episodes would be
+# downloaded with the new version of the program.
+
+args="--root $PWD --db $PWD/test.db --config $PWD/tget-config/config.cl"
+tget="./tget/tget $args"
 
 set -eux
 
-tget()
-{
-# no --debug
-    ./tget/tget --learn --root "$PWD" --db "$PWD/test.db" \
-	--config "$PWD/tget-config/config.cl" $*
-}
+rm -fr test.db*
 
-clean_database()
-{
-    rm -fr test.db*
-}
+cp -rp ~/.tget.d/db test.db
 
-test_upgrade()
-{
-    clean_database
-    cp -rp ~/.tget.d/db test.db
-    tget
-}
+### This is a one-time test thing:
+#$tget --catch-up
 
-test_upgrade
+$tget --learn
