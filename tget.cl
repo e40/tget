@@ -41,7 +41,7 @@
 
 (in-package :user)
 
-(defvar *tget-version* "1.14")
+(defvar *tget-version* "1.15")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -52,7 +52,8 @@
     ;; **** changed the name of an unused slot here, didn't need to change
     ;; **** schema based on my testing
     ;; 5 == changed series `last-episode' to `complete-to'
-    5)
+    ;; 6 == fix `container' and `repack' slots
+    6)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -578,7 +579,8 @@
 Usage:
 $ tget [--help] [--debug] [--cron] [--db database] [--auto-backup condition]
        [--root data-directory] [--reset] [--learn] [--feed-interval ndays]
-       [--dump-series] [--dump-episodes] [--delete-episodes]
+       [--dump-raw] [--dump-all] [--dump-series] [--dump-episodes]
+       [--delete-episodes]
 
 --help                 :: print this help text
 --debug                :: debug mode (recommended for developers)
@@ -610,6 +612,8 @@ $ tget [--help] [--debug] [--cron] [--db database] [--auto-backup condition]
 NOTE: each of the `name' arguments below, naming series, are canonicalized
       by removing single quotes (') and converting to lower case.
 
+--dump-raw             :: dump raw data, else --dump-* dump briefly
+--dump-all             :: dump all `episode' objects
 --dump-series name     :: dump all `series' objects matching series name `name'
 --dump-episodes name   :: dump all `episode' objects matching series name `name'
 --delete-episodes name :: delete episodes with series name matching `name'.
@@ -651,7 +655,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
 (defun main ()
   (setq *global-gc-behavior* :auto)
   (flet
-      ((doit ()
+      ((doit (&aux dump)
 	 (system:with-command-line-arguments
 	     (("help" :long help)
 	      ("debug" :long debug-mode)
@@ -667,6 +671,8 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	      ("db" :long database :required-companion)
 	      ("auto-backup" :long auto-backup :required-companion)
 	      
+	      ("dump-raw" :long dump-raw)
+	      ("dump-all" :long dump-all)
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-episodes" :long dump-episodes :required-companion)
 	      ("delete-episodes" :long delete-episodes :required-companion))
@@ -675,6 +681,11 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	     (format t "~a~&" *usage*)
 	     (exit 0 :quiet t))
 	   (when extra-args (error "extra arguments:~{ ~a~}." extra-args))
+	   
+	   (setq dump (lambda (thing)
+			(if* dump-raw
+			   then (describe thing)
+			   else (format t "~a~%" thing))))
 
 	   (when root
 	     (or (probe-file root)
@@ -740,18 +751,21 @@ $ tget --dump-episodes \"James May's Man Lab\"
 					     else :open))
 	   (load config-file :verbose *verbose*)
 	   (open-log-files)
-	   
-	   (if* dump-series
+
+	   (if* dump-all
+	      then (doclass (ep (find-class 'episode))
+		     (funcall dump ep))
+	    elseif dump-series
 	      then (let* ((series-name (canonicalize-series-name dump-series))
 			  (series (query-series-name-to-series series-name)))
 		     (if* series
-			then (describe series)
+			then (funcall dump series)
 			else (format t "No series named ~s.~%" dump-series)))
 	    elseif dump-episodes
 	      then (dolist (ep (query-episode
 				:series-name
 				(canonicalize-series-name dump-episodes)))
-		     (describe ep))
+		     (funcall dump ep))
 	    elseif delete-episodes
 	      then (dolist (ep (query-episode
 				:series-name
@@ -964,6 +978,20 @@ $ tget --dump-episodes \"James May's Man Lab\"
     (format t ";; updating ~a...~%" series)
     (setf (series-complete-to series) nil)
     (setf (series-discontinuous-episodes series) nil))
+  (commit))
+
+(defmethod db-upgrade ((version (eql 5)))
+  ;; The change from 5 to 6: series slot name change, `last-episode' to
+  ;; `complete-to', and it and `discontinuous-episodes' needs to be
+  ;; initialized to `nil'.
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (format t ";;   Fix container and repack slots of episodes.~%")
+  (doclass (ep (find-class 'episode))
+    (when (not (slot-boundp ep 'container))
+      (setf (episode-container ep) nil))
+    (when (not (slot-boundp ep 'repack))
+      (setf (episode-repack ep) nil)))
   (commit))
 
 (defun close-tget-database ()
@@ -1258,7 +1286,13 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	   
 	   ;; Make sure it's not before our cutoff in the series
 	   ;; complete-to
-	   (episode-after-complete-to ep series)
+	   (if* (episode-after-complete-to ep series)
+	      thenret
+	      else (@log "  ignore: before complete-to of ~a"
+			 (pretty-season-and-episode
+			  (car (series-complete-to series))
+			  (cdr (series-complete-to series))))
+		   nil)
 	   
 	   ;; Make sure we don't already have it
 	   (if* (setq temp
@@ -1464,6 +1498,9 @@ transmission-remote ~a:~a ~
 	  (@log "  stdout: ~a" stdout)
 	  (@log "  stderr: ~a" stderr)))))))
 
+(defun pretty-season-and-episode (season epnum)
+  (format nil "S~2,'0dE~2,'0d~%" season epnum))
+
 (defun catch-up ()
   ;; Our job is to mark the complete-to slot of all series objects with the
   ;; data from the episodes objects we have in the database.
@@ -1482,9 +1519,10 @@ transmission-remote ~a:~a ~
 			  (episode-season ep)
 			  (episode-episode ep)))
     (if* (series-complete-to series)
-       then (format t "S~2,'0dE~2,'0d~%"
-		    (car (series-complete-to series))
-		    (cdr (series-complete-to series)))
+       then (format t "~a~%"
+		    (pretty-season-and-episode
+		     (car (series-complete-to series))
+		     (cdr (series-complete-to series))))
        else (format t "--~%")))
   (commit))
 

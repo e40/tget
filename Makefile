@@ -65,11 +65,11 @@ ifdef INSTALL_CONFIG_FILE
 endif
 
 test: FORCE
-	sh test.sh
 	rm -f build.tmp
 	echo '(load "load.cl")' >> build.tmp
 	echo '(exit (test-tget))' >> build.tmp
 	$(runlisp)
+	sh test.sh
 
 ifeq ($(FI_APPS_COMMON),t)
 repo_check: FORCE
