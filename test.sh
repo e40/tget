@@ -44,7 +44,7 @@ case $key in
 	$tget --auto-backup never --dump-stats --archive archive.before
 	$tget --restore archive.before --dump-stats
 	$tget --archive archive.after --dump-stats
-	diff archive.before archive.aftere || true
+	diff archive.before archive.after || true
 	;;
     save-restore)
 	rm -f archive.before archive.after
