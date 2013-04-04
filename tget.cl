@@ -594,6 +594,9 @@ NOTE: each of the `name' arguments below, naming series, are canonicalized
 --delete-episodes name
    :: delete episodes with series name matching `name'.  This is permanant!
       Using this option with --auto-backup force is recommended.
+--delete-series name
+   :: delete series with series name matching `name'.  This is permanant!
+      Using this option with --auto-backup force is recommended.
 --dump-all
    :: dump all `episode' objects
 --dump-complete-to
@@ -631,8 +634,6 @@ NOTE: each of the `name' arguments below, naming series, are canonicalized
    :: path to database
 --debug
    :: debug mode (recommended only for developers)
---dump-raw
-   :: dump raw data, else --dump-* dump briefly
 --feed-interval ndays
    :: set the feed interval to `ndays'.  Only useful when a user-defined
       function of one argument is given to defgroup's :rss-url option.
@@ -696,7 +697,7 @@ $ tget --catch-up-series \"breaking bad s04\"
 (defun main ()
   (setq *global-gc-behavior* :auto)
   (flet
-      ((doit (&aux dump)
+      ((doit ()
 	 (system:with-command-line-arguments
 	     (("help" :long help)
 	      
@@ -704,6 +705,7 @@ $ tget --catch-up-series \"breaking bad s04\"
 	      ("catch-up" :long catch-up-mode)
 	      ("catch-up-series" :long catch-up-series :required-companion)
 	      ("delete-episodes" :long delete-episodes :required-companion)
+	      ("delete-series" :long delete-series :required-companion)
 	      ("dump-all" :long dump-all)
 	      ("dump-complete-to" :long dump-complete-to)
 	      ("dump-episodes" :long dump-episodes :required-companion)
@@ -718,7 +720,6 @@ $ tget --catch-up-series \"breaking bad s04\"
 	      ("cron" :long cron-mode)
 	      ("db" :long database :required-companion)
 	      ("debug" :long debug-mode)
-	      ("dump-raw" :long dump-raw)
 	      ("feed-interval" :long feed-interval :required-companion)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
@@ -730,11 +731,6 @@ $ tget --catch-up-series \"breaking bad s04\"
 	     (exit 0 :quiet t))
 	   (when extra-args (error "extra arguments:~{ ~a~}." extra-args))
 	   
-	   (setq dump (lambda (thing)
-			(if* dump-raw
-			   then (describe thing)
-			   else (format t "~a~%" thing))))
-
 	   (when root
 	     (or (probe-file root)
 		 (error "-root directory does not exist: ~a." root))
@@ -820,6 +816,7 @@ $ tget --catch-up-series \"breaking bad s04\"
 				   (if* (or dump-all dump-complete-to
 					    dump-stats dump-series
 					    dump-episodes delete-episodes
+					    delete-series
 					    catch-up-mode catch-up-series)
 				      then :error
 				      else :create)
@@ -833,7 +830,7 @@ $ tget --catch-up-series \"breaking bad s04\"
 
 	   (if* dump-all
 	      then (doclass (ep (find-class 'episode))
-		     (funcall dump ep))
+		     (describe ep))
 	    elseif dump-complete-to
 	      then (let ((res '()))
 		     (doclass (series (find-class 'series))
@@ -868,13 +865,13 @@ $ tget --catch-up-series \"breaking bad s04\"
 	      then (let* ((series-name (canonicalize-series-name dump-series))
 			  (series (query-series-name-to-series series-name)))
 		     (if* series
-			then (funcall dump series)
+			then (describe series)
 			else (format t "No series named ~s.~%" dump-series)))
 	    elseif dump-episodes
 	      then (dolist (ep (query-episode
 				:series-name
 				(canonicalize-series-name dump-episodes)))
-		     (funcall dump ep))
+		     (describe ep))
 	    elseif delete-episodes
 	      then (dolist (ep (query-episode
 				:series-name
@@ -882,6 +879,14 @@ $ tget --catch-up-series \"breaking bad s04\"
 		     (format t "removing ~a~%" ep)
 		     (delete-instance ep))
 		   (commit)
+	    elseif delete-series
+	      then (let* ((series-name (canonicalize-series-name delete-series))
+			  (s (query-series-name-to-series series-name)))
+		     (when (null s)
+		       (error "Could not find series: ~s." delete-series))
+		     (format t "removing ~a~%" s)
+		     (delete-instance s)
+		     (commit))
 	    elseif catch-up-mode
 	      then (catch-up)
 	    elseif catch-up-series
