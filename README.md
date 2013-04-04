@@ -47,7 +47,7 @@ and that is currently the only documentation.
 Running from *cron* is the preferred method of operation.  This
 crontab entry will do the job:
 
-    * 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron | $HOME/bin/notify.sh tget
+    0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron | $HOME/bin/notify.sh tget
 
 It runs every day at 3AM.  The `notify.sh` script is what I use to
 email the output of the program, but only if there is output (no empty
