@@ -755,8 +755,21 @@ Catch up series to a specific episode:
   (with-open-file (s "README.md" :direction :output
 		   :if-exists :supersede)
     (with-open-file (ug "userguide.md")
-      (sys:copy-file ug s)
-      (format s *usage*))
+      (let (line)
+	(loop
+	  (setq line (read-line ug nil ug))
+	  (when (eq line ug) (return))
+	  (cond
+	   ((=~ "^%%VALUE:\\s+(.*)\\s*$" line)
+	    (let ((sym (intern $1 *package*)))
+	      (when (not (boundp sym))
+		(error "user::~a does not have a value." $1))
+	      (format s "    ~{~s~^, ~}~%" (symbol-value sym))))
+	   (t
+	    (write line :stream s :escape nil)
+	    (terpri s))))))
+      
+    (format s *usage*)
     
     (with-open-file (cfg "config.cl" :direction :input)
       (format s "~%## Example configuration file~%~%")
@@ -766,7 +779,7 @@ Catch up series to a specific episode:
 	  (when (eq line cfg) (return))
 	  (write "    " :stream s :escape nil)
 	  (write line :stream s :escape nil)
-	  (fresh-line s))))))
+	  (terpri s))))))
 
 (defvar *verbose*
     ;; Be noisy.  `nil' is used for cron mode.

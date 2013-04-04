@@ -1,11 +1,14 @@
+;; Config file for tget
 
 (in-package :user)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General options
 
-;;;;Not really using this, and it's a lot of data:
-;;(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+#+ignore ;; Not really using this and it's a lot of data
+(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+
+;; A good resource to see why something is or isn't downloading
 (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
 
 (deftransmission ()
@@ -22,25 +25,57 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TVT
 
-;; Wait 6 hours before downloading (most) episodes, to wait for repacks and
-;; propers.
+;; Not all sites support the idea of a delay, but TVT does.
+;; It's a nice feature, because it allows you to delay "seeing" RSS items,
+;; to give the various downloads time to settle.  It reduces the chances of
+;; having to download repacks or propers (another name for repacks).
+;;
+;; I like a 6 hour delay.
 (defvar *tvt-delay* 6)
 
+;; Not all sites support the idea of a feed interval, but TVT does.
+;; It's a nice feature, because if you decide to download a new series,
+;; you'll get any episodes released in this period of time.  And, for the
+;; initial installation, you can specify a really high interval (on the
+;; command line, not here), to populate your database with your shows.
 (setq *feed-interval* 14)
 
+;; This function is given as the value of the defgroup :rss-url option.
+;; The function is called, when tget needs to fetch the feed, with the
+;; value *feed-interval* or the command line override for that variable
+;; (the --interval argument).
 (defun tvt-rss-feed (interval)
   (format nil "~a&interval=~d+days"
 	  ;; This is the "Recent torrents" feed instead of the "Favorite
 	  ;; shows" feed I was using before.
+	  ;;
+	  ;; Using "Favorite shows" feed means you have to maintain your
+	  ;; list of shows in *two* places, which I find very annoying.
+	  ;;
 	  "http://www.tvtorrents.com/..."
 	  interval))
 
 (defvar *tvt-rss* 'tvt-rss-feed)
+
+;; When --debug is given on the command line, the debug version is used,
+;; and that's what this is.  No need to bombard the RSS server with
+;; requests while debugging.
 (defvar *tvt-debug-feed* "tget-test-data/tvt-recent.xml")
 
+;; This is how you define names for qualities you care about.
+;;
 (defquality :normal
+    ;; The priority of a quality allows selection of episodes when more
+    ;; than one quality is available at the same time, as is often the
+    ;; case.  Higher numerical priority is given precedence.
+    ;;
+    ;; This is my preferred quality.
     :priority 50
+    
+    ;; The source, for TVT, is almost always :hdtv.
     :source :hdtv
+    
+    ;; ...
     :codec :x264 
     :resolution :sd)
 

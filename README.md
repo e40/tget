@@ -1,19 +1,26 @@
 # tget - t0rrent get
 
 tget grew out of my dissatisfaction with flexget's behavior and
-configuration.  There were some things I couldn't get it to do, and
-the configuration is clumsy, at best.  Coming from the Lisp world YAML
-just sucks.
+configuration.  Don't get me wrong, flexget is an amazing program in
+its own right, but there were some things I couldn't get it to do.
+And configuration is clumsy, at best.  Coming from the Lisp world,
+YAML just sucks.  Go ahead and compare tget's example configuration
+file to that of flexget.  The power and flexibility of Lisp make the
+comparison a shutout.  Of course, that assumes tget does what you want
+it to do.
 
-The main thing I wanted to do, though, was to set the download quality
-based on time: wait 6 hours, then download the x264 SD version, but if
-after 12 hours that version isn't available, then download the x264
-720p version, and if either aren't available for 2 days then download
-the XviD SD version.  That's not possible in flexget, and I tried.
-Configuration in Lisp, on the other hand, is easy and natural.
+The main limitation I wanted to overcome by writing tget, though, was
+to set the download quality based on time: wait 6 hours (from
+publication date), then download the x264 SD version, but if after 12
+hours after that a version isn't available, then download the x264
+720p version, and if either of those aren't available for 2 days then
+download the XviD SD version.  The latter is really my last choice,
+because the quality can be pretty crappy.  What I just described is
+not possible in flexget.  tget makes this pretty easy.
 
-tget isn't nearly as functional as flexget.  And, it only works
-(currently) with two sites (TVT, BTN).
+tget isn't nearly as functional as flexget, though, and the feed
+parsing only works (currently) with two sites (TVT, BTN).  I'm looking
+at adding more.
 
 ### Table of Contents
 **[Installation](#installation)**  
@@ -25,22 +32,59 @@ tget isn't nearly as functional as flexget.  And, it only works
 
 ## Installation
 
-For now, no binary packages are available and you need Allegro Common
-Lisp to build it.  After cloning the repo, do this to build:
+I run tget on Linux.  It should run fine on Mac OS X, as well.
+
+tget depends on two other software packages:
+
+* *transmission-remote* -- a program that can communicate to a local
+  or remote instance of Transmission.  tget uses it to do the work of
+  download the files.  I run Transmission on Mac OS X, on the same
+  local area network.  *transmission-remote* makes this easy.
+
+* For now, at least, no binary packages of tget are available and you
+  need Allegro Common Lisp to build it.
+
+  After cloning the repo, do this to build tget:
 
     $ make
 
-That should produce a directory `tget/`, which can be installed with:
+  That should produce a directory `tget/`, which can be installed with:
 
     $ make install
 
-You can make a `Makefile.local` to override features of the GNU Make
-file.
+  You can make a `Makefile.local` to override features of the GNU Make
+  file.
 
 ## Configuration
 
-There is an example configuration file below.  It is fully anotated
-and that is currently the only documentation.
+There is an example configuration file below.  It is fully annotated
+and is a good place to start.
+
+For the `defquality` macro, the valid values for each keyword are
+given here:
+
+:priority -- any positive number number less than 100.
+
+:container -- the acceptable containers for the quality.  A container
+is, essentially, the file type of the downloaded file (e.g. *mp4*).
+Valid values:
+
+    :avi, :mkv, :vob, :mpeg, :mp4, :iso, :wmv, :ts, :m4v, :m2ts
+
+:source -- the acceptable source for the quality.  The source is where
+the stream originated.  *:hdtv* is a common source.  Valid values:
+
+    :pdtv, :hdtv, :dsr, :dvdrip, :tvrip, :vhsrip, :bluray, :bdrip, :brrip, :dvd5, :dvd9, :hddvd, :web-dl
+
+:codec -- the codec used to encode the original source (e.g. XviD or
+x264, aka h.264).  Valid values:
+
+    :x264, :h.264, :xvid, :mpeg2, :divx, :dvdr, :vc-1, :wmv, :bd
+
+:resolution -- the resolution of the encoded image (e.g. 720p).  Valid
+values:
+
+    :sd, :720p, :1080p, :1080i
 
 ## Putting it into service
 
@@ -49,9 +93,12 @@ crontab entry will do the job:
 
     0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron | $HOME/bin/notify.sh tget
 
-It runs every day at 3AM.  The `notify.sh` script is what I use to
-email the output of the program, but only if there is output (no empty
-emails).  That script is:
+It runs every day at 3AM.  Running more often is fine, but you need to
+be careful not to run afoul of the site rules.
+
+The `notify.sh` script is what I use to email the output of the
+program, but only if there is output (no empty emails).  That script
+is:
 
     #! /bin/bash
     # copy stdin to an email message, but only send one if there's something
@@ -65,7 +112,15 @@ emails).  That script is:
         Mail -s "${1-$0} $(date '+%Y-%M-%d %T')" username@domain
     fi
 
-You should change `username@domain` to your email address.
+You should change `username@domain` to your email address.  Of course,
+if the email address to which the cron output would go is your desired
+destination, then you need only specify the *crontab* entry like this:
+
+    0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron
+
+I source my `$HOME/.profile` (which is sourced by my `$HOME/.bashrc`)
+to pick up some environment variables used for the Transmission
+interface.
 
 ## Maintenance tasks
 
@@ -248,14 +303,17 @@ Catch up series to a specific episode:
 
 ## Example configuration file
 
+    ;; Config file for tget
     
     (in-package :user)
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; General options
     
-    ;;;;Not really using this, and it's a lot of data:
-    ;;(setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+    #+ignore ;; Not really using this and it's a lot of data
+    (setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+    
+    ;; A good resource to see why something is or isn't downloading
     (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
     
     (deftransmission ()
@@ -272,25 +330,57 @@ Catch up series to a specific episode:
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; TVT
     
-    ;; Wait 6 hours before downloading (most) episodes, to wait for repacks and
-    ;; propers.
+    ;; Not all sites support the idea of a delay, but TVT does.
+    ;; It's a nice feature, because it allows you to delay "seeing" RSS items,
+    ;; to give the various downloads time to settle.  It reduces the chances of
+    ;; having to download repacks or propers (another name for repacks).
+    ;;
+    ;; I like a 6 hour delay.
     (defvar *tvt-delay* 6)
     
+    ;; Not all sites support the idea of a feed interval, but TVT does.
+    ;; It's a nice feature, because if you decide to download a new series,
+    ;; you'll get any episodes released in this period of time.  And, for the
+    ;; initial installation, you can specify a really high interval (on the
+    ;; command line, not here), to populate your database with your shows.
     (setq *feed-interval* 14)
     
+    ;; This function is given as the value of the defgroup :rss-url option.
+    ;; The function is called, when tget needs to fetch the feed, with the
+    ;; value *feed-interval* or the command line override for that variable
+    ;; (the --interval argument).
     (defun tvt-rss-feed (interval)
       (format nil "~a&interval=~d+days"
     	  ;; This is the "Recent torrents" feed instead of the "Favorite
     	  ;; shows" feed I was using before.
+    	  ;;
+    	  ;; Using "Favorite shows" feed means you have to maintain your
+    	  ;; list of shows in *two* places, which I find very annoying.
+    	  ;;
     	  "http://www.tvtorrents.com/..."
     	  interval))
     
     (defvar *tvt-rss* 'tvt-rss-feed)
+    
+    ;; When --debug is given on the command line, the debug version is used,
+    ;; and that's what this is.  No need to bombard the RSS server with
+    ;; requests while debugging.
     (defvar *tvt-debug-feed* "tget-test-data/tvt-recent.xml")
     
+    ;; This is how you define names for qualities you care about.
+    ;;
     (defquality :normal
+        ;; The priority of a quality allows selection of episodes when more
+        ;; than one quality is available at the same time, as is often the
+        ;; case.  Higher numerical priority is given precedence.
+        ;;
+        ;; This is my preferred quality.
         :priority 50
+        
+        ;; The source, for TVT, is almost always :hdtv.
         :source :hdtv
+        
+        ;; ...
         :codec :x264 
         :resolution :sd)
     
