@@ -87,7 +87,7 @@ At the highest level, the configuration file defines these entities:
 That's the big picture.  There is an example configuration file below.
 It is fully annotated and is a good place to start.
 
-### `defquality`
+### `defquality &key priority container source codec resolution`
 
 The valid values for each keyword option are:
 
@@ -151,6 +151,8 @@ Required arguments:
 quotes are removed in parsing.
 
 `group` -- the group to which this series belongs.
+
+Optional arguments:
 
 `:delay` -- this allows the group delay to be overriden.
 
