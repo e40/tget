@@ -87,20 +87,21 @@ At the highest level, the configuration file defines these entities:
 That's the big picture.  There is an example configuration file below.
 It is fully annotated and is a good place to start.
 
-### `deftransmission &key host port username password add-paused trash-torrent-file ratio download-path`
+### `deftransmission &key ...keywords...`
 
-The values for each keyword option (the names after `&key`) have
-direct correspondence to *transmission-remote* command line arguments:
+The values for each keyword option (the names after `&key`, given in
+the following table) have direct correspondence to
+*transmission-remote* command line arguments:
 
-| tget keyword | *transmission-remote* command line argument |
-| ------------ | ------------------------------------------- |
-| `:host` & `:port` | host:port |
-| `:username` & `:password` | `--auth` username:password |
+| tget keyword | *transmission-remote* argument |
+| ------------ | ------------------------------ |
+| `:host` & `:port` | *host:port* |
+| `:username` & `:password` | `--auth` *username:password* |
 | `:add-paused t` | `--start-paused` |
 | `:add-paused nil` | `--no-start-paused` |
 | `:trash-torrent-file t` | `--trash-torrent` |
-| `:ratio` | `-sr` ratio |
-| `:download-path` | `--download-dir` path |
+| `:ratio` | `-sr` *ratio* |
+| `:download-path` | `--download-dir` *path* |
 
 You can use `(sys:getenv "ENV_VAR")` to grab values from the
 environment.
