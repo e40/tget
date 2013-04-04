@@ -5,13 +5,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;TODO:
 ;; - handle filename format "SxEE" (as opposed to SxxExx)
-;; - add --complete-to argument to dump out complete-to series info
 ;; - test date parser to make sure timezone is correct
-;; - way to dump out flexget series and learn from them??
 ;; - a test suite for upgrades
-;; - episode-series slot is never used, but the episode-series-name slot is
-;;   used.... we should remove the episode-series-name slot and have
-;;   everyone use the episode-series slot??  Seems wasteful.
 ;; - For shows like The Daily Show that have their episodes canonicalized,
 ;;   I really should save the original episode name when printing, so the
 ;;   user doesn't get confused.  That is S2013E86 isn't as recognizable as
@@ -840,14 +835,19 @@ $ tget --catch-up-series \"breaking bad s04\"
 	      then (doclass (ep (find-class 'episode))
 		     (funcall dump ep))
 	    elseif dump-complete-to
-	      then (doclass (series (find-class 'series))
-		     (format t "~55a: ~a~%"
-			     (series-pretty-name series)
-			     (if* (series-complete-to series)
-				then (pretty-season-and-episode
-				      (car (series-complete-to series))
-				      (cdr (series-complete-to series)))
-				else "--")))
+	      then (let ((res '()))
+		     (doclass (series (find-class 'series))
+		       (push
+			(format nil "~55a: ~a~%"
+				(series-pretty-name series)
+				(if* (series-complete-to series)
+				   then (pretty-season-and-episode
+					 (car (series-complete-to series))
+					 (cdr (series-complete-to series)))
+				   else "--"))
+			res))
+		     (setq res (sort res #'string<))
+		     (dolist (line res) (write line :escape nil)))
 	    elseif dump-stats
 	      then (let ((series 0)
 			 (groups 0)
