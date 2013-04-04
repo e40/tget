@@ -94,13 +94,13 @@ direct correspondence to *transmission-remote* command line arguments:
 
 | tget keyword | *transmission-remote* command line argument |
 | ------------ | ------------------------------------------- |
-| `:host` & `:port` | *host*:*port* |
-| `:username` & `:password` | `--auth` *username*:*password* |
+| `:host` & `:port` | host:port |
+| `:username` & `:password` | `--auth` username:password |
 | `:add-paused t` | `--start-paused` |
 | `:add-paused nil` | `--no-start-paused` |
 | `:trash-torrent-file t` | `--trash-torrent` |
-| `:ratio` | `-sr` *ratio* |
-| `:download-path` | `--download-dir` |
+| `:ratio` | `-sr` ratio |
+| `:download-path` | `--download-dir` path |
 
 You can use `(sys:getenv "ENV_VAR")` to grab values from the
 environment.
