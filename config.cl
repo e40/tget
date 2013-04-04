@@ -70,12 +70,10 @@
     ;; case.  Higher numerical priority is given precedence.
     ;;
     ;; This is my preferred quality.
+    
+;;;; The documentation for these options is in the README.md file.
     :priority 50
-    
-    ;; The source, for TVT, is almost always :hdtv.
     :source :hdtv
-    
-    ;; ...
     :codec :x264 
     :resolution :sd)
 
@@ -90,6 +88,8 @@
     :source :hdtv
     :codec :xvid
     :resolution :sd)
+
+;; This is a user-defined quality function.
 
 (defun my-quality (episode)
   ;; Download :normal quality immediately.

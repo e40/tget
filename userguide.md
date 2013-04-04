@@ -36,55 +36,125 @@ I run tget on Linux.  It should run fine on Mac OS X, as well.
 
 tget depends on two other software packages:
 
-* *transmission-remote* -- a program that can communicate to a local
-  or remote instance of Transmission.  tget uses it to do the work of
-  download the files.  I run Transmission on Mac OS X, on the same
-  local area network.  *transmission-remote* makes this easy.
+*transmission-remote* -- a program that can communicate to a local
+or remote instance of Transmission.  tget uses it to do the work of
+download the files.  I run Transmission on Mac OS X, on the same
+local area network.  *transmission-remote* makes this easy.
 
-* For now, at least, no binary packages of tget are available and you
-  need Allegro Common Lisp to build it.
+*Allegro Common Lisp* -- For now, at least, no binary packages of tget
+are available and you need Allegro Common Lisp to build it.
 
-  After cloning the repo, do this to build tget:
+After cloning the repo, do this to build tget:
 
     $ make
 
-  That should produce a directory `tget/`, which can be installed with:
+That should produce a directory `tget/`, which can be installed with:
 
     $ make install
 
-  You can make a `Makefile.local` to override features of the GNU Make
-  file.
+You can make a `Makefile.local` to override features of the GNU Make
+file.
 
 ## Configuration
 
-There is an example configuration file below.  It is fully annotated
-and is a good place to start.
+At the highest level, the configuration file defines these entities:
 
-For the `defquality` macro, the valid values for each keyword are
-given here:
+* *transmission-remote settings* - in the config example below I pull
+  items from the environment, mainly because I don't want to share
+  that private information in this documentation.  You can store yours
+  in the configuration file directly.
 
-:priority -- any positive number number less than 100.
+* *RSS feeds* - this is where tget gets the information on what is
+  available to download.  Each feed is site specific and possibly user
+  specific.
 
-:container -- the acceptable containers for the quality.  A container
+* *quality settings* - these define the quality of the files you want
+  to download.  It's a very important aspect of the configuration, as
+  it will directly affect your viewing pleasure.
+
+* *download groups* - if you have multiple people that are watching
+  episodes, or multiple sites from which you are downloading, then you
+  likely will want to use different groups with differing options for
+  each group.  Each group might, for example, have different download
+  locations.
+
+* *TV shows you care about* - the `defseries` macro defines the shows
+  you want to download.  A series is associated with a group, at a
+  minimum, and can override the quality of what you want to download.
+  For example, you may want to download *720p* versions of *Top Gear*,
+  but would accept a lower resolution of other shows.
+
+That's the big picture.  There is an example configuration file below.
+It is fully annotated and is a good place to start.
+
+### `defquality`
+
+The valid values for each keyword option are:
+
+`:priority` -- any positive integer from 1 to 100.  The higher the
+number the higher the priority the that has this quality will be given
+if there are multiple matching episodes.
+
+`:container` -- the acceptable containers for the quality.  A container
 is, essentially, the file type of the downloaded file (e.g. *mp4*).
 Valid values:
 
 %%VALUE: *valid-containers*
 
-:source -- the acceptable source for the quality.  The source is where
+`:source` -- the acceptable source for the quality.  The source is where
 the stream originated.  *:hdtv* is a common source.  Valid values:
 
 %%VALUE: *valid-sources*
 
-:codec -- the codec used to encode the original source (e.g. XviD or
-x264, aka h.264).  Valid values:
+`:codec` -- the codec used to encode the original source (e.g. *XviD* or
+*x264*, aka *h.264*).  Valid values:
 
 %%VALUE: *valid-codecs*
 
-:resolution -- the resolution of the encoded image (e.g. 720p).  Valid
-values:
+`:resolution` -- the resolution of the encoded image (e.g. *720p*).
+Valid values:
 
 %%VALUE: *valid-resolutions*
+
+### `defgroup name &key rss-url debug-feed delay ratio quality download-path`
+
+`name` -- the name of the group, a keyword (e.g. :bruce).
+
+`:rss-url` -- the URL of the RSS feed.
+
+`:debug-feed` -- a file name containing the static XML to be used in
+debug mode instead of the fetching it from the URL (given by
+:rss-url).
+
+`:delay` -- nil or a positive integer, which represents the delay, in
+hours, that episodes should be delayed from download.  **NOTE:** this
+is distinct from any site-specific delay that might be available in
+the RSS feed.
+
+`ratio` -- the share ratio given to all downloads for this group.
+It's a string not a floating point number, so we don't have to worry
+about the printed representation of floats.  It no ratio is given,
+then the default in Transmission is used.  A ratio of "-1" means seed
+forever.
+
+`:quality` -- a user-defined quality symbol.  See `defquality`.
+
+`:download-path` -- The path used by *transmission-remote* to store
+the downloaded file for this group.  Because the path can be remote,
+no checking on the validity of the path is done.
+
+### `defseries name group &key delay quality`
+
+Required arguments:
+
+`name` -- the name of the series.  Case is not significant, and single
+quotes are removed in parsing.
+
+`group` -- the group to which this series belongs.
+
+`:delay` -- this allows the group delay to be overriden.
+
+`:quality` -- this allows the group quality to be overriden.
 
 ## Putting it into service
 
