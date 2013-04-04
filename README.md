@@ -21,6 +21,7 @@ tget isn't nearly as functional as flexget.  And, it only works
 **[Putting it into service](#putting-it-into-service)**  
 **[Maintenance tasks](#maintenance-tasks)**  
 **[Usage](#usage)**  
+**[Example Configuration](#example-configuration)**  
 
 ## Installation
 
