@@ -3,6 +3,8 @@
 *.lxml
 *.out
 /*.xml
+/archive.after
+/archive.before
 /build.tmp
 /test.db*
 /tget-config/

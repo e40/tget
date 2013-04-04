@@ -4,6 +4,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;TODO:
+;; - handle filename format "SxEE" (as opposed to SxxExx)
 ;; - add --complete-to argument to dump out complete-to series info
 ;; - test date parser to make sure timezone is correct
 ;; - way to dump out flexget series and learn from them??
@@ -592,11 +593,16 @@ NOTE: each of the `name' arguments below, naming series, are canonicalized
       series the oldest episode that will ever be downloaded for that
       series; this prevents old episodes that are released from time to
       time from being downloaded
+--catch-up-series series-ep
+   :: catch series up to the episode given in the companion argument
+      see examples below
 --delete-episodes name
    :: delete episodes with series name matching `name'.  This is permanant!
       Using this option with --auto-backup force is recommended.
 --dump-all
    :: dump all `episode' objects
+--dump-complete-to
+   :: dump a table of complete-to information for all known series
 --dump-episodes name
    :: dump all `episode' objects matching series name `name'
 --dump-series name
@@ -674,6 +680,12 @@ $ tget --auto-backup never --dump-stats --archive archive.before
 $ tget --backup-method save-restore --auto-backup force \\
        --dump-stats --archive archive.after
 $ diff archive.before archive.after
+
+# Catch up series to a specific episode:
+#   note that episodes before s04e21 have been downloaded:
+$ tget --catch-up-series \"regular show s04e20\"
+#   note that all of season 4 has been downloaded:
+$ tget --catch-up-series \"breaking bad s04\"
 ")
 
 (defvar *verbose*
@@ -695,8 +707,10 @@ $ diff archive.before archive.after
 	      
 ;;;; primary arguments (determine behavior)
 	      ("catch-up" :long catch-up-mode)
+	      ("catch-up-series" :long catch-up-series :required-companion)
 	      ("delete-episodes" :long delete-episodes :required-companion)
 	      ("dump-all" :long dump-all)
+	      ("dump-complete-to" :long dump-complete-to)
 	      ("dump-episodes" :long dump-episodes :required-companion)
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-stats" :long dump-stats)
@@ -813,6 +827,15 @@ $ diff archive.before archive.after
 	   (if* dump-all
 	      then (doclass (ep (find-class 'episode))
 		     (funcall dump ep))
+	    elseif dump-complete-to
+	      then (doclass (series (find-class 'series))
+		     (format t "~55a: ~a~%"
+			     (series-pretty-name series)
+			     (if* (series-complete-to series)
+				then (pretty-season-and-episode
+				      (car (series-complete-to series))
+				      (cdr (series-complete-to series)))
+				else "--")))
 	    elseif dump-stats
 	      then (let ((series 0)
 			 (groups 0)
@@ -849,6 +872,8 @@ $ diff archive.before archive.after
 		   (commit)
 	    elseif catch-up-mode
 	      then (catch-up)
+	    elseif catch-up-series
+	      then (catch-up-series catch-up-series)
 	      else (process-groups))
 	   
 	   (exit 0 :quiet t))))
@@ -1672,6 +1697,27 @@ transmission-remote ~a:~a ~
 		     (cdr (series-complete-to series))))
        else (format t "--~%")))
   (commit))
+
+(defun catch-up-series (what)
+  ;; The episode descriptor is at the end of the series.
+  (multiple-value-bind (match whole series-name ignore1 season ignore2 epnum)
+      (match-re "^(.*)(\\s|\\.+)s([0-9]{2,3})(e([0-9]{2,3}))?$"
+		what :case-fold t)
+    (declare (ignore whole ignore1 ignore2))
+    (when (null match)
+      (error "Could not parse series name and episode info: ~a." what))
+    
+    (setq series-name (canonicalize-series-name series-name))
+    (let ((series (or (query-series-name-to-series series-name)
+		      (error "Could not find series: ~s." series-name))))
+      (setq season (parse-integer season))
+      (setq epnum
+	(if* epnum
+	   then (parse-integer epnum)
+	   else *max-epnum*))
+      (format t "Setting series ~a complete-to to season ~d and epnum ~d~%."
+	      season season epnum)
+      (update-complete-to series season epnum))))
 
 (defun update-complete-to (series season epnum
 			   &aux ct
