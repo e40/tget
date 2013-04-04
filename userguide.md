@@ -15,6 +15,13 @@ Configuration in Lisp, on the other hand, is easy and natural.
 tget isn't nearly as functional as flexget.  And, it only works
 (currently) with two sites (TVT, BTN).
 
+### Table of Contents
+**[Installation](#installation)**
+**[Configuration](#configuration)**
+**[Putting it into service](#putting-it-into-service)**
+**[Maintenance tasks](#maintenance-tasks)**
+**[Usage](#usage)**
+
 ## Installation
 
 ## Configuration
