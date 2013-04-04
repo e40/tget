@@ -58,11 +58,11 @@ emails).  That script is:
     # on stdin.  Kinda like how cron works.  No output, no email.
 
     if read line; then
-	(echo $line;
-	    while read line; do
-		echo $line
-	    done) 2>&1 |
-	Mail -s "${1-$0} $(date '+%Y-%M-%d %T')" username@domain
+        (echo $line;
+            while read line; do
+                echo $line
+            done) 2>&1 |
+        Mail -s "${1-$0} $(date '+%Y-%M-%d %T')" username@domain
     fi
 
 You should change `username@domain` to your email address.
