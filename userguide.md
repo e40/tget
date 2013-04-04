@@ -89,7 +89,7 @@ It is fully annotated and is a good place to start.
 
 ### `deftransmission &key ...keywords...`
 
-The values for each keyword option (the names after `&key`, given in
+The values for each keyword option (the names after *&key*, given in
 the following table) have direct correspondence to
 *transmission-remote* command line arguments:
 
@@ -108,7 +108,7 @@ environment.
 
 ### `defquality &key priority container source codec resolution`
 
-The valid values for each keyword option (the names after `&key`) are:
+The valid values for each keyword option (the names after *&key*) are:
 
 `:priority` -- any positive integer from 1 to 100.  The higher the
 number the higher the priority the that has this quality will be given
