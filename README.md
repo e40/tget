@@ -94,7 +94,7 @@ the following table) have direct correspondence to
 *transmission-remote* command line arguments:
 
 | tget keyword | *transmission-remote* argument |
-| ------------ | ------------------------------ |
+| :----------: | :----------------------------: |
 | `:host` & `:port` | *host:port* |
 | `:username` & `:password` | `--auth` *username:password* |
 | `:add-paused t` | `--start-paused` |
