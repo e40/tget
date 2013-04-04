@@ -16,17 +16,24 @@ tget isn't nearly as functional as flexget.  And, it only works
 (currently) with two sites (TVT, BTN).
 
 ### Table of Contents
-**[Installation](#installation)**
-**[Configuration](#configuration)**
-**[Putting it into service](#putting-it-into-service)**
-**[Maintenance tasks](#maintenance-tasks)**
-**[Usage](#usage)**
+**[Installation](#installation)**  
+**[Configuration](#configuration)**  
+**[Putting it into service](#putting-it-into-service)**  
+**[Maintenance tasks](#maintenance-tasks)**  
+**[Usage](#usage)**  
 
 ## Installation
 
+coming soon
+
 ## Configuration
+
+coming soon
 
 ## Putting it into service
 
+coming soon
+
 ## Maintenance tasks
 
+coming soon
