@@ -817,10 +817,22 @@ $ tget --catch-up-series \"breaking bad s04\"
 		      (not (probe-file restore)))
 	     (error "Archive restore file does not exist: ~a." restore))
 	   
-	   (open-tget-database :if-exists (if* reset-database
-					     then :supersede
-					     else :open)
-			       :restore restore)
+	   (handler-case
+	       (open-tget-database :if-exists (if* reset-database
+						 then :supersede
+						 else :open)
+				   :if-does-not-exist
+				   (if* (or dump-all dump-complete-to
+					    dump-stats dump-series
+					    dump-episodes delete-episodes
+					    catch-up-mode catch-up-series)
+				      then :error
+				      else :create)
+				   :restore restore)
+	     (error (c)
+	       ;; no backtrace for this one
+	       (format t "~a~&" c)
+	       (exit 1 :quiet t)))
 	   (load config-file :verbose *verbose*)
 	   (open-log-files)
 
@@ -1671,7 +1683,7 @@ transmission-remote ~a:~a ~
 	  (@log "  stderr: ~a" stderr)))))))
 
 (defun pretty-season-and-episode (season epnum)
-  (format nil "S~2,'0dE~2,'0d~%" season epnum))
+  (format nil "S~2,'0dE~2,'0d" season epnum))
 
 (defun catch-up ()
   ;; Our job is to mark the complete-to slot of all series objects with the
