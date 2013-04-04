@@ -756,8 +756,17 @@ Catch up series to a specific episode:
 		   :if-exists :supersede)
     (with-open-file (ug "userguide.md")
       (sys:copy-file ug s)
-      (format s *usage*)
-      )))
+      (format s *usage*))
+    
+    (with-open-file (cfg "config.cl" :direction :input)
+      (format s "~%## Example configuration file~%~%")
+      (let (line)
+	(loop
+	  (setq line (read-line cfg nil cfg))
+	  (when (eq line cfg) (return))
+	  (write "    " :stream s :escape nil)
+	  (write line :stream s :escape nil)
+	  (fresh-line s))))))
 
 (defvar *verbose*
     ;; Be noisy.  `nil' is used for cron mode.
