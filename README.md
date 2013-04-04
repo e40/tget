@@ -87,9 +87,26 @@ At the highest level, the configuration file defines these entities:
 That's the big picture.  There is an example configuration file below.
 It is fully annotated and is a good place to start.
 
+### `deftransmission &key host port username password add-paused trash-torrent-file ratio download-path`
+
+The values for each keyword option (the names after `&key`) have
+direct correspondence to *transmission-remote* command line arguments:
+
+tget keyword | *transmission-remote* command line argument
+`:host` & `:port` | *host*:*port*
+`:username` & `:password` | `--auth` *username*:*password*
+`:add-paused t` | `--start-paused`
+`:add-paused nil` | `--no-start-paused`
+`:trash-torrent-file t` | `--trash-torrent`
+`:ratio` | `-sr` *ratio*
+`:download-path` | `--download-dir`
+
+You can use `(sys:getenv "ENV_VAR")` to grab values from the
+environment.
+
 ### `defquality &key priority container source codec resolution`
 
-The valid values for each keyword option are:
+The valid values for each keyword option (the names after `&key`) are:
 
 `:priority` -- any positive integer from 1 to 100.  The higher the
 number the higher the priority the that has this quality will be given
