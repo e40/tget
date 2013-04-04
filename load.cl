@@ -8,6 +8,7 @@
 (setq *feed-interval* 180)
 (setq *learn* t)
 (setq *verbose* t)
+(setq *auto-backup* nil)
 
 (dolist (file '("rssreader.cl" "tget.cl" "t-tget.cl"))
   (load (compile-file file)))

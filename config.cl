@@ -181,6 +181,7 @@
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
 (defseries "Top Gear (US)" :adrian+kevin :quality :high)
 (defseries "Top Gear" :adrian+kevin :quality :high)
+(defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)

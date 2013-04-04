@@ -69,7 +69,9 @@ test: FORCE
 	echo '(load "load.cl")' >> build.tmp
 	echo '(exit (test-tget))' >> build.tmp
 	$(runlisp)
-	sh test.sh
+	./test.sh save-restore
+	./test.sh archive-restore
+	./test.sh --learn
 
 ifeq ($(FI_APPS_COMMON),t)
 repo_check: FORCE
@@ -101,6 +103,7 @@ endif
 clean: FORCE
 	rm -fr tget BUILD RPMS SRPMS BUILDROOT SPECS
 	rm -fr test.db*
+	rm -f archive.before archive.after
 	rm -f *.fasl */*.fasl *.out *.log build.in *.debug build.tmp
 
 tarball: FORCE

@@ -41,7 +41,7 @@
 
 (in-package :user)
 
-(defvar *tget-version* "1.15")
+(defvar *tget-version* "1.16")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -57,6 +57,7 @@
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
+(defvar *backup-method* :copy)
 (defvar *database-name* nil)
 (defvar *version-file* nil)
 (defvar *config-file* nil)
@@ -577,48 +578,75 @@
 (defvar *usage*
     "~
 Usage:
-$ tget [--help] [--debug] [--cron] [--db database] [--auto-backup condition]
-       [--root data-directory] [--reset] [--learn] [--feed-interval ndays]
-       [--dump-raw] [--dump-all] [--dump-series] [--dump-episodes]
-       [--delete-episodes]
-
---help                 :: print this help text
---debug                :: debug mode (recommended for developers)
---cron                 :: quiet mode
---db database          :: path to database
---auto-backup { reset | program-update | schema-update | force | never }
-                       :: automatically do a backup of the database:
-                          'reset' when the database is being reset,
-                          'program-update' when the program is version is
-                          different than the last time the database was
-                          updated, 'schema-update' the database schema is
-                          changes, 'force' causes a database update, and
-                          'never' to never make a backup.  The default is
-                          to make backups under all
-                          conditions above.
---root data-directory  :: change the data directory, the defaults is
-                          $HOME/.tget.d/
---reset                :: reset database before beginning operation--this
-                          removes *all* data from the database, so it is
-                          recommended that you use --auto-backup force
-                          before executing this.
---learn                :: don't download anything--useful in conjunction
-                          with reset to wipe the database and start over,
-                          or when starting to use tget for the first time.
---feed-interval ndays  :: set the feed interval to `ndays'.  Only useful
-                          when a user-defined function of one argument is
-                          given to defgroup's :rss-url option.
-
+$ tget [options]
 NOTE: each of the `name' arguments below, naming series, are canonicalized
       by removing single quotes (') and converting to lower case.
 
---dump-raw             :: dump raw data, else --dump-* dump briefly
---dump-all             :: dump all `episode' objects
---dump-series name     :: dump all `series' objects matching series name `name'
---dump-episodes name   :: dump all `episode' objects matching series name `name'
---delete-episodes name :: delete episodes with series name matching `name'.
-                          This is permanant!  Using --auto-backup force is
-                          recommended.
+--help
+   :: print this help text and exit
+
+;; Primary options (behavior determing):
+
+--catch-up
+   :: go through the database and make the newest episode of each
+      series the oldest episode that will ever be downloaded for that
+      series; this prevents old episodes that are released from time to
+      time from being downloaded
+--delete-episodes name
+   :: delete episodes with series name matching `name'.  This is permanant!
+      Using this option with --auto-backup force is recommended.
+--dump-all
+   :: dump all `episode' objects
+--dump-episodes name
+   :: dump all `episode' objects matching series name `name'
+--dump-series name
+   :: dump all `series' objects matching series name `name'
+--dump-stats
+   :: dump information about the database
+
+;; Modifier options (change primary behavor or have side effects):
+
+--archive file
+   :: save the database to `file' in XML format for easier archiving
+--auto-backup { reset | program-update | schema-update | restore |
+                force | never }
+   :: automatically do a backup of the database
+        force          - always
+        never          - never
+        program-update - when the program changed since the last db update
+        reset          - when the database is being reset
+        restore        - when a restore is being requested
+        schema-update  - when the schema changes
+      The default is to make backups for all conditions above.
+--backup-method { copy | save-restore }
+   :: select the backup method, either by copying the files (fast) or
+      saving/restoring (slow); save/restore has the benefit of compacting a
+      big database; the default is `copy'.
+--config file
+   :: load `file' as the configuration file instead of the built-in defaults
+--cron
+   :: quiet mode
+--db database
+   :: path to database
+--debug
+   :: debug mode (recommended only for developers)
+--dump-raw
+   :: dump raw data, else --dump-* dump briefly
+--feed-interval ndays
+   :: set the feed interval to `ndays'.  Only useful when a user-defined
+      function of one argument is given to defgroup's :rss-url option.
+--learn
+   :: don't download anything--useful in conjunction with reset to wipe the
+      database and start over, or when starting to use tget for the first
+      time.
+--reset
+   :: reset database before beginning operation--this removes *all* data
+      from the database, so it is recommended that you use `--auto-backup
+      force' before executing this.
+--restore file
+   :: restore the database from `file', made with the --archive option
+--root data-directory
+   :: change the data directory, the defaults is $HOME/.tget.d/
 
 Examples:
 # Toss current database and catch up on shows released in the last 180 days
@@ -640,6 +668,12 @@ $ tget --dump-series \"James May's Man Lab\"
 
 # To see the episodes of the above, you would:
 $ tget --dump-episodes \"James May's Man Lab\"
+
+# Compact the database and compare the result
+$ tget --auto-backup never --dump-stats --archive archive.before
+$ tget --backup-method save-restore --auto-backup force \\
+       --dump-stats --archive archive.after
+$ diff archive.before archive.after
 ")
 
 (defvar *verbose*
@@ -658,24 +692,29 @@ $ tget --dump-episodes \"James May's Man Lab\"
       ((doit (&aux dump)
 	 (system:with-command-line-arguments
 	     (("help" :long help)
-	      ("debug" :long debug-mode)
+	      
+;;;; primary arguments (determine behavior)
+	      ("catch-up" :long catch-up-mode)
+	      ("delete-episodes" :long delete-episodes :required-companion)
+	      ("dump-all" :long dump-all)
+	      ("dump-episodes" :long dump-episodes :required-companion)
+	      ("dump-series" :long dump-series :required-companion)
+	      ("dump-stats" :long dump-stats)
+
+;;;; modifiers (change primary behavior)
+	      ("archive" :long archive :required-companion)
+	      ("auto-backup" :long auto-backup :required-companion)
+	      ("backup-method" :long backup-method :required-companion)
 	      ("config" :long config-file :required-companion)
 	      ("cron" :long cron-mode)
-	      
-	      ("learn" :long learn-mode)
-	      ("catch-up" :long catch-up-mode)
-
-	      ("reset" :long reset-database)
-	      ("feed-interval" :long feed-interval :required-companion)
-	      ("root" :long root :required-companion)
 	      ("db" :long database :required-companion)
-	      ("auto-backup" :long auto-backup :required-companion)
-	      
+	      ("debug" :long debug-mode)
 	      ("dump-raw" :long dump-raw)
-	      ("dump-all" :long dump-all)
-	      ("dump-series" :long dump-series :required-companion)
-	      ("dump-episodes" :long dump-episodes :required-companion)
-	      ("delete-episodes" :long delete-episodes :required-companion))
+	      ("feed-interval" :long feed-interval :required-companion)
+	      ("learn" :long learn-mode)
+	      ("reset" :long reset-database)
+	      ("restore" :long restore :required-companion)
+	      ("root" :long root :required-companion))
 	     (extra-args :usage *usage*)
 	   (when help
 	     (format t "~a~&" *usage*)
@@ -737,24 +776,59 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	   
 	   (when auto-backup
 	     (setq *auto-backup*
-	       (cond ((string= "never" auto-backup) nil)
-		     ((string= "reset" auto-backup) :reset)
-		     ((string= "program-update" auto-backup) :program-update)
-		     ((string= "schema-update" auto-backup) :schema-update)
-		     ((string= "force" auto-backup) :force)
-		     (t
-		      (error "Bad value for --auto-backup: ~a."
-			     auto-backup)))))
+	       (cond
+		((string= "force" auto-backup) :force)
+		((string= "never" auto-backup) nil)
+		((string= "program-update" auto-backup) :program-update)
+		((string= "reset" auto-backup) :reset)
+		((string= "restore" auto-backup) :restore)
+		((string= "schema-update" auto-backup) :schema-update)
+		(t (error "Bad value for --auto-backup: ~a."
+			  auto-backup)))))
+	   (when backup-method
+	     (setq *backup-method*
+	       (cond ((string= "copy" backup-method) :copy)
+		     ((string= "save-restore" backup-method) :save-restore)
+		     (t (error "Bad value for --backup-method: ~a."
+			       backup-method)))))
 
+	   (when archive
+	     (when (probe-file archive)
+	       (error "Archive destination file should not exist: ~a."
+		      archive))
+	     (format t ";; Archiving database to ~a...~%" archive)
+	     (save-database archive :file *database-name* :verbose nil))
+	   
+	   (when (and restore
+		      (not (probe-file restore)))
+	     (error "Archive restore file does not exist: ~a." restore))
+	   
 	   (open-tget-database :if-exists (if* reset-database
 					     then :supersede
-					     else :open))
+					     else :open)
+			       :restore restore)
 	   (load config-file :verbose *verbose*)
 	   (open-log-files)
 
 	   (if* dump-all
 	      then (doclass (ep (find-class 'episode))
 		     (funcall dump ep))
+	    elseif dump-stats
+	      then (let ((series 0)
+			 (groups 0)
+			 (qualities 0)
+			 (episodes 0))
+		     (doclass (o (find-class 'series)) o (incf series))
+		     (doclass (o (find-class 'group)) o (incf groups))
+		     (doclass (o (find-class 'quality)) o (incf qualities))
+		     (doclass (o (find-class 'episode)) o (incf episodes))
+		     (format t "~
+;; series: ~d
+;; groups: ~d
+;; qualities: ~d
+;; episodes: ~d
+"
+			     series groups qualities episodes))
 	    elseif dump-series
 	      then (let* ((series-name (canonicalize-series-name dump-series))
 			  (series (query-series-name-to-series series-name)))
@@ -833,7 +907,8 @@ $ tget --dump-episodes \"James May's Man Lab\"
     (error "Tried to release lock file before it was created."))
   (ignore-errors (delete-file *lock-file*)))
 
-(defun open-tget-database (&key (if-does-not-exist :create)
+(defun open-tget-database (&key restore
+				(if-does-not-exist :create)
 				(if-exists :open)
 			   &aux ok)
   (when db.allegrocache::*allegrocache*
@@ -842,7 +917,7 @@ $ tget --dump-episodes \"James May's Man Lab\"
   (ensure-directories-exist *database-name*)
   
   (acquire-database-lock-file)
-
+  
   (unwind-protect
       ;; Do we need to upgrade this database?
       (let* ((stuff (if* (eq if-exists :supersede)
@@ -869,29 +944,42 @@ $ tget --dump-episodes \"James May's Man Lab\"
 	(when (probe-file *database-name*)
 	  ;; Check for the need to backup
 	  (when (and (not backed-up)
+		     restore
+		     (or (eq 't *auto-backup*)
+			 (eq :restore *auto-backup*)))
+	    (backup-database *backup-method* "for an archive restore")
+	    (setq backed-up t))
+	  (when (and (not backed-up)
 		     schema-update
 		     (or (eq 't *auto-backup*)
 			 (eq :schema-update *auto-backup*)))
-	    (backup-database "for schema update")
+	    (backup-database *backup-method* "for schema update")
 	    (setq backed-up t))
 	  (when (and (not backed-up)
 		     program-update
 		     (or (eq 't *auto-backup*)
 			 (eq :program-update *auto-backup*)))
-	    (backup-database "for program update")
+	    (backup-database *backup-method* "for program update")
 	    (setq write-version-file t)
 	    (setq backed-up t))
 	  (when (and (not backed-up)
 		     (eq if-exists :supersede)
 		     (or (eq 't *auto-backup*)
 			 (eq :reset *auto-backup*)))
-	    (backup-database "for database reset")
+	    (backup-database *backup-method* "for database reset")
 	    (setq backed-up t))
 	  (when (and (not backed-up)
 		     (eq :force *auto-backup*))
-	    (backup-database "because requested")
+	    (backup-database *backup-method* "because requested")
 	    (setq backed-up t)))
-    
+
+	(when restore
+	  ;; We do this here instead of in main because 1) we want the database
+	  ;; lock before we start it, and 2) we want to make a backup before we
+	  ;; do this.
+	  (format t ";; Restoring ~a into ~a...~%" restore *database-name*)
+	  (restore-database restore *database-name*))
+	
 	(open-file-database *database-name*
 			    :use :memory
 			    :if-does-not-exist if-does-not-exist
@@ -938,22 +1026,81 @@ $ tget --dump-episodes \"James May's Man Lab\"
       ((not (probe-file backup))
        backup)))
 
-(defun backup-database (reason)
+(defun backup-database (method reason)
   ;; Backup the database given by *database-name*.  We haven't opened it
   ;; yet, so we're safe to copy the files.
   (format t ";; Backing up database ~a.~%" reason)
-  (let* ((backup-directory
-	  ;; Like *database-name*, no trailing slash
-	  (backup-directory *database-name*))
-	 (from (pathname-as-directory *database-name*))
-	 (to (pathname-as-directory backup-directory)))
-    (ensure-directories-exist to)
-    (dolist (file (directory from))
-      (sys:copy-file
-       file
-       (merge-pathnames (enough-pathname file from) to)
-       :preserve-time t))
-    (format t ";;  Copy is in ~a.~%" to)))
+  (when (not (probe-file *database-name*))
+    (error "Database ~a does not exist." *database-name*))
+  (let ((backup-directory
+	 ;; Like *database-name*, no trailing slash
+	 (backup-directory *database-name*)))
+    (cond
+     ((eq :copy method)
+      (let ((from (pathname-as-directory *database-name*))
+	    (to (pathname-as-directory backup-directory)))
+	(ensure-directories-exist to)
+	(dolist (file (directory from))
+	  (sys:copy-file
+	   file
+	   (merge-pathnames (enough-pathname file from) to)
+	   :preserve-time t))
+	(format t ";;  Copy is in ~a.~%" to)))
+     ((eq :save-restore method)
+      ;; Order of operations:
+      ;; 1. rename current db directory to the backup
+      ;; 2. save the database in XML to a temp file
+      ;; 3. restore into the current db directory
+      ;; And, do this all as safely as possible.
+      ;;
+      ;; #1
+      (handler-case
+	  (rename-file-raw *database-name* backup-directory)
+	(error (c)
+	  (error "Error while renaming backup directory, beware! ~a" c)))
+      ;; #2
+      (let ((ok nil)
+	    (temp-file
+	     (sys:make-temp-file-name "dbsave" *tget-data-directory*)))
+	(unwind-protect
+	    (progn
+	      (save-database temp-file
+			     :file backup-directory
+			     :verbose nil)
+	      ;; lastly, tell that unwind-protect cleanup form over there
+	      ;; we're OK and not to do anything rash.
+	      (setq ok t))
+	  (when (not ok)
+	    (when (probe-file temp-file) (delete-file temp-file))
+	    ;; Put the database back where we found it!
+	    (rename-file-raw backup-directory *database-name*)))
+	;; #3
+	(setq ok nil)
+	(unwind-protect
+	    (progn
+	      (restore-database temp-file *database-name*)
+	      (setq ok t))
+	  ;; Regardless of whether ok is t, we need to remove this:
+	  (when (probe-file temp-file) (delete-file temp-file))
+	  (when (not ok)
+	    ;; Need to remove *database-name* and restore backup-directory
+	    ;; to it.
+	    (when (probe-file *database-name*)
+	      (handler-case
+		  (delete-directory-and-files *database-name*)
+		(error (c)
+		  (error "Giving up trying to restore original database: ~a"
+			 c))))
+	    (handler-case
+		(rename-file-raw backup-directory *database-name*)
+	      (error (c)
+		(error
+		 "Could not rename ~a to ~a to restore original database: ~a"
+		 backup-directory *database-name*
+		 c))))))
+      (format t ";;  Original is in ~a.~%" backup-directory)
+      (format t ";;  Restored database is in ~a.~%" *database-name*))
+     (t (error "Bad backup method: ~s." method)))))
 
 (defmethod db-upgrade ((version (eql 2)))
   ;; The change from 2 to 3: added the tget-admin class.  Just need to add
@@ -1487,7 +1634,7 @@ transmission-remote ~a:~a ~
 		  (transmission-trash-torrent-file *transmission-remote*)
 		  (group-download-path group))))
     (cond
-     (*learn*
+     ((or *debug* *learn*)
       (@log "cmd[not executed]: ~a" cmd))
      (t
       (multiple-value-bind (stdout stderr exit-status)
@@ -1684,7 +1831,13 @@ transmission-remote ~a:~a ~
      ...
      (net.rss:item ...))))
   (let* ((lxml (if* url
-		  then (net.rss:read-feed url)
+		  then (when *verbose*
+			 (format t ";; reading feed ~a..." url)
+			 (force-output t))
+		       (prog1 (net.rss:read-feed url)
+			 (when *verbose*
+			   (format t "done.~%")
+			   (force-output t)))
 		elseif file
 		  then (net.rss::parse-feed (file-contents file))
 		  else (assert content)
