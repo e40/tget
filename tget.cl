@@ -57,7 +57,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; acache hackery
 
+#+(version>= 9 0)
+(eval-when (compile eval load) (push :clos-describe-hack *features*))
+
 ;; this should be part of AC!
+#+clos-describe-hack
 (defun describe-persistent-clos-object (object stream)
   (let* ((class (class-of object))
 	 (slotds (mop:class-slots class))
@@ -154,6 +158,7 @@
 	    (quality-codec obj)
 	    (quality-resolution obj)))))
 
+#+clos-describe-hack
 (defmethod describe-object ((object quality) stream)
   (describe-persistent-clos-object object stream))
 
@@ -188,6 +193,7 @@
    (t ;; print it for humans
     (format stream "#<group ~s>" (group-name obj)))))
 
+#+clos-describe-hack
 (defmethod describe-object ((object group) stream)
   (describe-persistent-clos-object object stream))
 
@@ -218,6 +224,7 @@
    (t ;; print it for humans
     (format stream "#<series ~a>" (series-pretty-name obj)))))
 
+#+clos-describe-hack
 (defmethod describe-object ((object series) stream)
   (describe-persistent-clos-object object stream))
 
@@ -301,6 +308,7 @@
 	   (when (slot-boundp ep 'resolution) (episode-resolution ep)))
      else "undefined"))
 
+#+clos-describe-hack
 (defmethod describe-object ((object episode) stream)
   (describe-persistent-clos-object object stream))
 

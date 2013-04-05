@@ -171,6 +171,7 @@
 (defseries "Frontline" :kevin)
 (defseries "Futurama" :adrian+kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
+(defseries "Hannibal" :anh+kevin)
 (defseries "Homeland" :kevin)
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin :delay 0) ;; immediate download
