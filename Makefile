@@ -67,6 +67,10 @@ build: FORCE
 ifdef INSTALL_CONFIG_FILE
 	cp -p $(INSTALL_CONFIG_FILE) tget/config.cl
 endif
+	@if hash flavor &> /dev/null; then \
+	    echo Convert README.md to README.html...; \
+	    flavor README.md > README.html; \
+	fi
 
 test: FORCE
 	rm -f build.tmp

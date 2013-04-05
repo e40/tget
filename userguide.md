@@ -182,32 +182,15 @@ Optional arguments:
 Running from *cron* is the preferred method of operation.  This
 crontab entry will do the job:
 
-    0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron | $HOME/bin/notify.sh tget
+    0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron
 
 It runs every day at 3AM.  Running more often is fine, but you need to
 be careful not to run afoul of the site rules.
 
-The `notify.sh` script is what I use to email the output of the
-program, but only if there is output (no empty emails).  That script
-is:
+If you want the email to go to `username@domain`, then you can specify
+the *crontab* entry like this:
 
-    #! /bin/bash
-    # copy stdin to an email message, but only send one if there's something
-    # on stdin.  Kinda like how cron works.  No output, no email.
-
-    if read line; then
-        (echo $line;
-            while read line; do
-                echo $line
-            done) 2>&1 |
-        Mail -s "${1-$0} $(date '+%Y-%M-%d %T')" username@domain
-    fi
-
-You should change `username@domain` to your email address.  Of course,
-if the email address to which the cron output would go is your desired
-destination, then you need only specify the *crontab* entry like this:
-
-    0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron
+    0 3 * * *  source $HOME/.profile; MAILTO=username@domain /usr/local/bin/tget --cron
 
 I source my `$HOME/.profile` (which is sourced by my `$HOME/.bashrc`)
 to pick up some environment variables used for the Transmission
