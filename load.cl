@@ -13,7 +13,18 @@
 (dolist (file '("rssreader.cl" "tget.cl" "t-tget.cl"))
   (load (compile-file file)))
 
-(defun opendb (&key reset)
+(defun opendb (&key reset copy-db)
+  (setq *transmission-remote* nil)
+  (when db.allegrocache::*allegrocache*
+    (close-tget-database))
+  (when copy-db
+    (when (string= (namestring copy-db) (namestring *database-name*))
+      (error "They're the same database!"))
+    (when (probe-file *database-name*)
+      (delete-directory-and-files *database-name*))
+    (copy-directory (pathname-as-directory copy-db)
+		    (pathname-as-directory *database-name*)
+		    :quiet nil))
   (open-tget-database :if-exists (if* reset
 				    then :supersede
 				    else :open))
@@ -50,6 +61,10 @@
 (pprint
  `(progn
     (opendb :reset t)
-    (load *config-file*)
     (process-groups)))
 
+;; test speed of processing episodes:
+(pprint
+ `(progn
+    (opendb :copy-db "~/.tget.d/db")
+    (prof:with-profiling () (process-groups))))
