@@ -44,8 +44,10 @@
 		     #:rss
 		     #:title
 		     #:version
-		     
+
 		     #:feed-error
+		     
+		     #:*uri-to-package*
 		     ))
 
 
@@ -69,7 +71,9 @@
 	   :net.rss.admin)
      
      (cons  "http://purl.org/rss/1.0/"
-	   :net.rss)))
+	    :net.rss)
+     
+     ))
   
   
 
@@ -97,6 +101,7 @@
     
     (parse-feed content)))
 
+
 (defun parse-feed (content)
   ;;
   ;;* exported
@@ -105,25 +110,21 @@
   ;;
   (let ((body (car 
 	       (let ((*package* (find-package :net.rss)))
-		 (parse-xml content 
-			    ;; the following line requires an
-			    ;; acl patch not yet available??
-;;;;eztv.it feed requires this????
+		 (parse-xml content
+			    ;;The eztv.it feed requires this
 			    :external nil
 			    :uri-to-package *uri-to-package*)))))
-					;(pprint body)
-					;(setq *body* body)
+    ;;(pprint body)
+    ;;(setq *body* body)
     (if* (and (consp (car body))
 	      (eq 'rss (caar body)))
        then `(rss
 	      (version ,(getf (cdar body) 'version))
-	      ,@(process-rss-body (cdr body) nil)
-	      )
+	      ,@(process-rss-body (cdr body) nil))
      elseif (and (consp (car body))
 		 (eq 'net.rss.rdf:RDF (caar body)))
-       then				; rss 1.0
-	    `(rss (version "1.0")
-		  ,@(process-rss-body (cdr body) 'rdf)))))
+       then ;; rss 1.0
+	    `(rss (version "1.0") ,@(process-rss-body (cdr body) 'rdf)))))
 
 
 (defun process-rss-body (body rdfp) 

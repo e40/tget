@@ -16,10 +16,71 @@
      ,@body))
 
 (defun test-tget ()
+  (test-tget-fuzzy-matching)
   (test-tget-feed-reading)
   (test-tget-complete-to)
   (test-tget-processing)
   (+ util.test:*test-errors* util.test:*test-unexpected-failures*))
+
+(defun test-tget-fuzzy-matching ()
+  (let ((things '(("late night with jimmy fallon"
+		   "jimmy fallon"
+		   ;; result:
+		   "late night with jimmy fallon")
+		  ("archer 2009"
+		   "archer (2009)"
+		   "archer (2009)")
+		  ("scandal us"
+		   "scandal (us)"
+		   "scandal (us)")
+		  ("60 minutes"
+		   "60 minutes (us)"
+		   "60 minutes (us)")
+		  ("nattpatruljen (norwegian)"
+		   "nattpatruljen"
+		   "nattpatruljen (norwegian)")
+		  ("the tonight show with jay leno"
+		   "jay leno"
+		   "the tonight show with jay leno")
+		  ("mike & molly"
+		   "mike and molly"
+		   "mike and molly")
+		  ("ncis: los angeles"
+		   "ncis los angeles"
+		   "ncis: los angeles")
+		  ("mr & mrs murder"
+		   "mr and mrs murder"
+		   "mr and mrs murder")
+		  ("law and order: svu"
+		   "law & order svu"
+		   "law and order: svu")
+		  ("dag (norwegian)"
+		   "dag"
+		   "dag (norwegian)")
+		  ("the murdoch mysteries (2008)"
+		   "murdoch mysteries"
+		   "the murdoch mysteries (2008)")
+		  ("pokemon"
+		   "pokemon adventures in unova"
+		   "pokemon adventures in unova")
+		  ("antiques roadshow (uk)"
+		   "antiques roadshow uk"
+		   "antiques roadshow (uk)")
+		  ("diners, drive-ins and dives"
+		   "diners drive-ins & dives"
+		   "diners, drive-ins and dives")
+		  ("r u faster than a redneck?"
+		   "r u faster than a redneck"
+		   "r u faster than a redneck?")
+		  ("foo" "foo" "foo")
+		  ("the biggest loser (au)"
+		   "the biggest loser australia"
+		   "the biggest loser (au)")
+		  )))
+    (dolist (thing things)
+      (test (third thing)
+	    (fuzzy-compare-series-names (first thing) (second thing))
+	    :test #'string=))))
 
 (defun test-db-init ()
   (open-tget-database :if-exists :supersede)
@@ -29,6 +90,7 @@
 (defun test-tget-feed-reading ()
   (with-tget-tests ()
     (dolist (feed '("tget-test-data/btn.xml"
+		    "tget-test-data/eztv.xml"
 		    "tget-test-data/tvt-recent.xml"
 		    "tget-test-data/tvt.xml"))
       (test-db-init)

@@ -18,7 +18,12 @@
 
 (in-package :user)
 
-(defvar *tget-version* "1.16")
+;; For eztv.it's RSS
+(push (cons "http://xmlns.ezrss.it/0.1/"
+	    :net.rss)
+      net.rss:*uri-to-package*)
+
+(defvar *tget-version* "1.17")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1995,7 +2000,7 @@ transmission-remote ~a:~a ~
 	 (source (cadr (find 'net.rss:link channel :key #'car)))
 	 (items (cdr (find 'net.rss:all-items channel :key #'car))))
     (multiple-value-bind (match whole source-name)
-	(match-re "(tvtorrents\\.com|broadcasthe\\.net)" source)
+	(match-re "(tvtorrents\\.com|broadcasthe\\.net|ezrss\\.it)" source)
       (declare (ignore whole))
       (when (not match) (error "don't grok the feed source: ~s." source))
       (setq source (intern source-name *kw-package*)))
@@ -2030,17 +2035,25 @@ transmission-remote ~a:~a ~
 	 ;; we only care about one of them, net.rss::enclosure
 	 ((and (consp element)
 	       (consp (car element))
-	       (symbolp (setq sym (caar element)))
-	       (eq 'net.rss::enclosure sym))
-	  (destructuring-bind (&key ((type type))
-				    ((length length))
-				    ((net.rss::url url)))
-	      (cdar element)
-	    (declare (ignore url))
-	    (push :type constructor)
-	    (push type constructor)
-	    (push :length constructor)
-	    (push length constructor))))))
+	       (symbolp (setq sym (caar element))))
+	  (case sym
+	    (net.rss::enclosure
+	     (destructuring-bind (&key ((type type))
+				       ((length length))
+				       ((net.rss::url url)))
+		 (cdar element)
+	       (declare (ignore url))
+	       (push :type constructor)
+	       (push type constructor)
+	       (push :length constructor)
+	       (push length constructor)))
+	    (net.rss::torrent
+	     (dolist (torrent-element (cdr element))
+	       (when (consp torrent-element)
+		 (case (car torrent-element)
+		   (net.rss::contentLength
+		    (push :length constructor)
+		    (push (second torrent-element) constructor)))))))))))
     res))
 
 (defun maybe-log-rss (items)
@@ -2061,31 +2074,92 @@ transmission-remote ~a:~a ~
   ;; filename and return multiple values.  Return `nil' for any that we
   ;; cannot determine.  In the case of `source', return `:unknown' for XviD
   ;; when we cannot determine the source.
-  (let (series-name season episode repack container source codec resolution
+  (let (series-name season episode container source codec resolution
 	uncut match whole year month day)
     (declare (ignore-if-unused whole))
-    
-    (when (=~ ".*\\.([A-Za-z0-9]+)$" filename)
-      (setq container (intern $1 *kw-package*)))
 
-    (setq source
-      (or (when (or (match-re "(hdtv|720p)" filename :case-fold t)
-		    (match-re "x264" filename :case-fold t))
-	    :hdtv)
-	  (when (match-re "xvid" filename :case-fold t)
-	    :unknown)))
-    
-    (setq codec
-      (or (when (match-re "(divx|xvid)" filename :case-fold t)
-	    ;; always use :xvid... :divx is little used and no reason to
-	    ;; make config files deal with it.
-	    :xvid)
-	  (when (or (match-re "720p.*mkv" filename :case-fold t)
-		    (match-re "\\.mp4" filename :case-fold t)
-		    (match-re "x264" filename :case-fold t)
-		    (match-re "hdtv.*indi" filename :case-fold t))
-	    :x264)))
+;;;; series-name, season, episode
+    ;; Start with the series-name, since if we can't get that then we go
+    ;; home and the other things don't matter.
+    (multiple-value-setq (match whole series-name season episode)
+      (match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
+		:case-fold t))
+    (cond
+     (match
+      (setq season (parse-integer season))
+      (setq episode (parse-integer episode)))
+     (t 
+      ;; Now try The Daily Show style filenames:
+      ;;   YYYYxMM.DD or YYYY.MM.DD
+      (multiple-value-setq (match whole series-name year month day)
+	(match-re "^(.*)\\.(\\d\\d\\d\\d)[.x](\\d\\d)\\.(\\d\\d|all)"
+		  filename :case-fold t))
+      (when (not match)
+	;; we tried... let the info be collected in some other way
+	(return-from extract-episode-info-from-filename nil))
       
+      (setq season (parse-integer year))
+      (setq episode
+	(if* (equalp "all" day)
+	   then :all
+	   else ;; use the ordinal day of the year
+		(date-time-yd-day
+		 (date-time (format nil "~a-~a-~a" year month day)))))))
+
+    (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
+
+    ;; filename-specific series-name canonicalization
+    ;;
+    (multiple-value-bind (match whole sname)
+	(match-re "(.*)\\.$" series-name)
+      (declare (ignore whole))
+      (when match (setq series-name sname)))
+    ;; If the series-name ends in `US' or `YYYY', append
+    ;; " (US)" or " (YYYY)" to the series-name.
+    (multiple-value-bind (match whole sname tail)
+	(match-re "(.*)(US|\\d\\d\\d\\d)$" series-name)
+      (declare (ignore whole))
+      ;; Some series have an `uncut' version, which for the purposes of
+      ;; downloading is a completely different show.  If we don't note it
+      ;; in the series name, then it's just another ep to be downloaded,
+      ;; and we don't want that.
+      (if* match
+	 then (setq series-name
+		(format nil "~a~@[~*(uncut) ~](~a)" sname uncut tail))
+       elseif uncut
+	 then (setq series-name
+		(concatenate 'simple-string series-name " (uncut)"))))
+
+    (setq series-name (canonicalize-series-name series-name))
+
+;;;; container
+    (when (=~ ".*\\.([A-Za-z0-9]+)$" filename)
+      (setq container (intern $1 *kw-package*))
+      (when (eq :torrent container)
+	(setq container nil))
+      (when (and container
+		 (not (member container *valid-containers* :test #'eq)))
+	(@log "ignoring invalid container: ~s" container)
+	(setq container nil)))
+
+;;;; source
+    (setq source
+      (or (and (match-re "(x264|hdtv|720p)" filename :case-fold t)
+	       :hdtv)
+	  (and (match-re "xvid" filename :case-fold t)
+	       :unknown)))
+
+;;;; codec
+    (setq codec
+      (or (and (match-re "(divx|xvid)" filename :case-fold t)
+	       ;; always use :xvid... :divx is little used and no reason to
+	       ;; make config files deal with it.
+	       :xvid)
+	  (and (match-re "(720p.*mkv|\\.mp4|x264|hdtv.*indi)" filename
+			 :case-fold t)
+	       :x264)))
+    
+;;;; resolution
     (setq resolution
       ;; Crude, but the best we can do, it seems
       (if* (match-re "\\.720p\\." filename :case-fold t)
@@ -2094,56 +2168,9 @@ transmission-remote ~a:~a ~
 	 then :1080p
 	 else :sd))
 
-    (multiple-value-setq (match whole series-name season episode)
-      (match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
-		:case-fold t))
-    (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
-    (setq repack (match-re "\\.repack\\." filename :case-fold t))
-    (when match
-      (setq season (parse-integer season))
-      (setq episode (parse-integer episode))
-      
-      ;; cleanup series-name
-      (multiple-value-bind (match whole sname)
-	  (match-re "(.*)\\.$" series-name)
-	(declare (ignore whole))
-	(when match (setq series-name sname)))
-      (setq series-name (replace-re series-name "\\." " "))
-      (multiple-value-bind (match whole sname tail)
-	  (match-re "(.*)(US|\\d\\d\\d\\d)$" series-name)
-	(declare (ignore whole))
-	;; Some series have an `uncut' version, which for the purposes of
-	;; downloading is a completely different show.  If we don't note it
-	;; in the series name, then it's just another ep to be downloaded,
-	;; and we don't want that.
-	(if* match
-	   then (setq series-name
-		  (format nil "~a~@[~*(uncut) ~](~a)" sname uncut tail))
-	 elseif uncut
-	   then (setq series-name
-		  (concatenate 'simple-string series-name " (uncut)")))))
-
-    (when series-name
-      (setq series-name (canonicalize-series-name series-name)))
-    
-    (when (not season)
-      ;; Now try The Daily Show style episodes:
-      ;;   YYYYxMM.DD or YYYY.MM.DD
-      (multiple-value-setq (match whole year month day)
-	(match-re "(\\d\\d\\d\\d)[.x](\\d\\d)\\.(\\d\\d|all)" filename
-		  :case-fold t))
-      (when match
-	(setq season (parse-integer year))
-	
-	(setq episode
-	  (if* (equalp "all" day)
-	     then :all
-	     else ;; use the ordinal day of the year
-		  (date-time-yd-day
-		   (date-time (format nil "~a-~a-~a" year month day)))))))
-
-    (values series-name season episode repack container source codec
-	    resolution)))
+    (values series-name season episode
+	    (match-re "\\.(repack|proper)\\." filename :case-fold t)
+	    container source codec resolution)))
 
 (defmethod convert-rss-to-episode ((type (eql :tvtorrents.com)) rss)
   (let ((des (rss-item-description rss))
@@ -2219,47 +2246,18 @@ transmission-remote ~a:~a ~
       (or repack
 	  ;; See if it's a repack/proper from the title
 	  (setq repack
-	    (match-re "\\((repack|proper)\\)" (rss-item-title rss))))
+	    (match-re "\\((repack|proper)\\)" (rss-item-title rss)
+		      :case-fold t)))
 
-      (when (and des-season season
-		 (/= des-season season))
-	(@log "Description and filename season do not agree (use 2nd): ~s, ~s."
-	      des-season season))
-      (when (or (and (numberp des-episode)
-		     des-episode episode
-		     (/= des-episode episode))
-		(and (symbolp des-episode)
-		     des-episode episode
-		     (not (eq des-episode episode))))
-	(@log "Description and filename episode do not agree (use 2nd): ~s, ~s."
-	      des-episode episode))
+      (multiple-value-setq (series-name season episode)
+	(check-episode-data des-series-name series-name
+			    des-season season
+			    des-episode episode))
       
-      ;; sanity check
-      (when (and des-series-name series-name
-		 (not (equalp des-series-name series-name))
-		 (not (equalp (strip-trailing-year des-series-name)
-			      (strip-trailing-year series-name))))
-	(@log "Description and filename series name do not agree (using ~
-the second one): ~s, ~s."
-	      des-series-name series-name))
-
-      (setq series-name (string-downcase
-			 (or
-			  ;; filename version is more reliable
-			  series-name
-			  des-series-name)))
       (when (null (setq series (query-series-name-to-series series-name)))
 	(return-from convert-rss-to-episode))
+      ;; a series we care about...
       
-      ;; a series we care about
-      
-      (setq season (or season
-		       ;; description version is wrong more often
-		       des-season))
-      (setq episode (or episode
-			;; description version is wrong more often
-			des-episode))
-
       (make-episode
 	:transient t
 	:full-title (rss-item-title rss)
@@ -2285,24 +2283,6 @@ the second one): ~s, ~s."
 	;; for TVT it's always in the filename, but others it's in the title
 	:resolution resolution))))
 
-(defun strip-trailing-year (name)
-  ;; Input:  "the americans (2013)"
-  ;; Output: "the americans"
-  (multiple-value-bind (match whole name-sans-year)
-      (match-re "^(.*) \\(\\d\\d\\d\\d\\)$" name)
-    (declare (ignore whole))
-    (if match name-sans-year name)))
-
-(defun canonicalize-series-name (name)
-  ;; Canonicalize the series name
-  ;;
-  ;; downcase:
-  (setq name (string-downcase name))
-  ;; ...so "Tosh.0" becomes "Tosh 0"
-  (setq name (replace-re name "\\." " "))
-  ;; ...so "James May's Man Lab" becomes "James Mays Man Lab"
-  (replace-re name "[']" ""))
-
 (defmethod convert-rss-to-episode ((type (eql :broadcasthe.net)) rss)
   (let ((rss-des (rss-item-description rss))
 	(rss-title (rss-item-title rss))
@@ -2320,7 +2300,8 @@ the second one): ~s, ~s."
       (when (not found)
 	(error "Couldn't find show name from title: ~s." rss-title))
       ;; Canonicalize the series name, so "Tosh.0" becomes "Tosh 0".
-      (setq series-name (replace-re show-name "\\." " ")))
+      
+      (setq series-name (canonicalize-series-name show-name)))
     
     (setq repack (match-re "\\.repack\\." rss-title :case-fold t))
     
@@ -2373,7 +2354,6 @@ Episode:\\s*(\\d+)?"
 	(@log "BTN: couldn't parse description: ~s." rss-des)
 	(return-from convert-rss-to-episode))
       
-      (setq series-name (string-downcase series-name))
       (when (null (setq series (query-series-name-to-series series-name)))
 	(return-from convert-rss-to-episode))
       
@@ -2402,6 +2382,279 @@ Episode:\\s*(\\d+)?"
        :source source
        :codec codec
        :resolution resolution))))
+
+(defmethod convert-rss-to-episode ((type (eql :ezrss.it)) rss)
+  (let ((des (rss-item-description rss))
+	series uri filename
+	series-name season episode repack container source codec resolution)
+    
+    (multiple-value-bind (match whole
+			  des-series-name des-title
+			  ignore1
+			  des-season des-episode
+			  des-episode-date
+			  des-year des-month des-day)
+	(match-re
+	 #.(concatenate 'simple-string
+	     "Show Name:\\s*([^;]+)\\s*;\\s*"
+	     "Episode Title:\\s*([^;]+)\\s*;\\s*"
+	     "("
+	     "Season:\\s*([0-9]+)\\s*;\\s*"
+	     "Episode:\\s*([0-9]+)"
+	     "|"
+	     "Episode Date:\\s*((\\d{4})-(\\d\\d)-(\\d\\d)|)"
+	     ")"
+	     )
+	 des
+	 :case-fold t)
+      (declare (ignore whole ignore1))
+      (when (not match) (error "couldn't parse rss description: ~s." des))
+      (cond
+       (des-episode-date
+	(when (string= "" des-episode-date)
+	  ;; No season or episode info, so go home
+	  (return-from convert-rss-to-episode))
+	(setq season (parse-integer des-year))
+	(setq episode
+	  (date-time-yd-day
+	   (date-time (format nil "~a-~a-~a" des-year des-month des-day)))))
+       (t
+	(setq des-season (parse-integer des-season))
+	(setq des-episode (parse-integer des-episode))))
+
+      (setq des-series-name (canonicalize-series-name des-series-name))
+
+      ;; Extract the filename from the rss-item-link.  The extension is
+      ;; .torrent, which is useless to us, but it's better than nothing.
+      (setq uri (net.uri:parse-uri
+		 (replace-re (rss-item-link rss) "[\\[\\]]" "")))
+      (setq filename (file-namestring (pathname (net.uri:uri-path uri))))
+	
+      (multiple-value-setq (series-name season episode repack container
+			    source codec resolution)
+	(extract-episode-info-from-filename filename))
+
+      (or repack
+	  ;; See if it's a repack/proper from the title
+	  (setq repack
+	    (match-re " (repack|proper) " (rss-item-title rss)
+		      :case-fold t)))
+
+      (multiple-value-setq (series-name season episode)
+	(check-episode-data des-series-name series-name
+			    des-season season
+			    des-episode episode))
+      
+      (when (null (setq series (query-series-name-to-series series-name)))
+	(return-from convert-rss-to-episode))
+      ;; a series we care about...
+      
+      (make-episode
+       :transient t
+       :full-title (rss-item-title rss)
+       :torrent-url (rss-item-link rss)
+       :pub-date (parse-rss20-date (rss-item-pub-date rss))
+       :type (rss-item-type rss)
+       :length (parse-integer (rss-item-length rss))
+
+       :series series
+       :series-name series-name
+       :title des-title
+       :season season
+       :episode episode
+       
+       ;; container is always nil because the file extension is always
+       ;; .torrent
+       :container container
+       :source source
+       :codec codec
+       :resolution resolution))))
+
+(defun canonicalize-series-name (name)
+  ;; Canonicalize the series name
+  ;;
+  ;; downcase:
+  (setq name (string-downcase name))
+  ;; ...so "Tosh.0" becomes "Tosh 0"
+  (setq name (replace-re name "\\." " "))
+  ;; ...so "James May's Man Lab" becomes "James Mays Man Lab"
+  (replace-re name "[']" ""))
+
+(defun check-episode-data (des-series-name series-name
+			   des-season season
+			   des-episode episode
+			   &aux same fuzzy-series-name)
+  ;; Compare the series name, season and episode data obtained from
+  ;; different parts of the feed.  The "des-" arguments refer to those from
+  ;; the `description' element of the feed, and it is less reliable.
+  ;; We return 3 values: series-name, season and episode.
+  ;; For the series name, we can return a merged version of it that is
+  ;; better than either of the parts.
+
+  (when (and des-season season (/= des-season season))
+    #+ignore ;; mismatches too numerous, filename is always "right"
+    (@log "Description&filename season differ (use 2nd): ~s, ~s."
+	  des-season season))
+  
+  (when (or (and (numberp des-episode)
+		 des-episode
+		 episode
+		 (/= des-episode episode))
+	    (and (symbolp des-episode)
+		 des-episode
+		 episode
+		 (not (eq des-episode episode))))
+    #+ignore ;; mismatches too numerous, filename is always "right"
+    (@log "Description&filename episode differ (use 2nd): ~s, ~s."
+	  des-episode episode))
+
+  ;; fuzzy compare the series names, possibly creating a merged version
+  ;; which is different than both, but more correct
+  (when (and des-series-name series-name)
+    (multiple-value-setq (same fuzzy-series-name)
+      (fuzzy-compare-series-names des-series-name series-name))
+    (when (not same)
+      (@log "Description&filename series name differ (using 2nd): ~s, ~s."
+	    des-series-name series-name)))
+
+  (values (or fuzzy-series-name series-name des-series-name)
+	  (or season des-season)
+	  (or episode des-episode)))
+
+(defun fuzzy-compare-series-names (series-name1 series-name2)
+  ;; Compare SERIES-NAME1 and SERIES-NAME2, with these rules:
+  ;;
+  ;; - leading or trailing whitespace is not significant
+  ;; - "the" at the beginning is not significant, but retain it
+  ;; - a trailing question mark is not significant, but retain it
+  ;; - a trailing "(word)" and "word" are the same, prefer the former
+  ;; - if one ends in (word) then it is not significant, but retain it
+  ;; - "and" and "&" are the same (prefer "and")
+  ;; - colons are not significant (retain them)
+  ;; - commas are not significant (retain them)
+  ;; - if they differ, use the longer one
+  ;;
+  ;; don't really do this, but maybe I should:
+  ;; - if one is a substring of the other, retain the longer one
+
+  (labels
+      ((decompose-series-name (name)
+	 ;; return these values:
+	 ;;  1. t or nil if there was a leading "the"
+	 ;;  2. a list of the intermediate parts of the name
+	 ;;  3. the last word of the name
+	 (let ((parts (split-re "\\s+" name))
+	       last2 the)
+	   ;; remove leading ""
+	   (when (string= "" (car parts))
+	     (setq parts (cdr parts)))
+	   ;; remove trailing ""
+	   (setq last2 (last parts 2))
+	   (when (and (second last2)
+		      (string= "" (second last2)))
+	     (setf (cdr last2) nil))
+	   
+	   (when (string= "the" (car parts))
+	     (setq the t)
+	     (setq parts (cdr parts)))
+
+	   (let ((n (length parts)))
+	     (if* (= 1 n)
+		then (values the parts nil)
+	      elseif (= 2 n)
+		then (values the
+			     (list (first parts))
+			     (second parts))
+		else (values the
+			     (butlast parts)
+			     (car (last parts)))))))
+       (fuzzy= (s1 s2 &aux temp (char-bag '(#\: #\, #\?)))
+	 (if* (string= s1 s2)
+	    then s1
+	  elseif (or (string= "&" s1) (string= "&" s2))
+	    then "and"
+	  elseif (or (member (char (setq temp s1) (1- (length s1)))
+			     char-bag :test #'char=)
+		     (member (char (setq temp s2) (1- (length s2)))
+			     char-bag :test #'char=))
+	    then ;; the one with the colon, comma or question mark wins
+		 temp
+	  elseif (and (or (char= #\( (schar s1 0))
+			  (char= #\( (schar s2 0)))
+		      (setq temp (fuzzy2= s1 s2)))
+	    then temp
+	    else ;; no match
+		 nil))
+       (fuzzy2= (s1 s2)
+	 ;; one of the strings begins with a paren, so compare the text
+	 ;; inside the parens
+	 (cond
+	  ((and (=~ "^\\((.*)\\)$" s1) (string= $1 s2)) s1)
+	  ((and (=~ "^\\((.*)\\)$" s2) (string= $1 s1)) s2))))
+    (let ((new '())
+	  the1 middle1 last1 the2 middle2 last2
+	  m1 m2 e1 e2 temp)
+      (multiple-value-setq (the1 middle1 last1)
+	(decompose-series-name series-name1))
+      (multiple-value-setq (the2 middle2 last2)
+	(decompose-series-name series-name2))
+      (when (or the1 the2) (push "the" new))
+      ;; we need to compare the elements of m1 and m2 and see how
+      ;; similar they are, and if equal enough, then build a new, merged
+      ;; version of them in new
+      (setq m1 middle1 m2 middle2)
+      (loop
+	;; if we run out of one or the other, then we're not done, just
+	;; exit the loop
+	(when (or (null m1) (null m2)) (return))
+	(setq e1 (car m1)
+	      e2 (car m2))
+	(if* (setq temp (fuzzy= e1 e2))
+	   then (push temp new)
+	   else (return))
+	(setq m1 (cdr m1)
+	      m2 (cdr m2)))
+      (cond
+       ((and (eq m1 middle1) (eq m2 middle2))
+	;; nothing matched, so it's possible there would be a subset match
+	;; take the longer one
+	(let ((l1 (length m1))
+	      (l2 (length m2)))
+	  (if* (> l1 l2)
+	     then (dolist (n m1) (push n new))
+		  (push last1 new)
+	     else (dolist (n m2) (push n new))
+		  (push last2 new))))
+       ((and m1 (null m2))
+	;; m2 ran out of stuff to compare, copy the remaining m1 items to `new'
+	(dolist (n m1) (push n new))
+	(push last1 new))
+       ((and (null m1) m2)
+	;; m1 ran out of stuff to compare, copy the remaining m2 items to `new'
+	(dolist (n m2) (push n new))
+	(push last2 new))
+       ((and (null m1) (null m2))
+	;; both matched all the way, now deal with the last
+	(cond
+	 ((and last1 last2)
+	  (let ((winner (fuzzy= last1 last2)))
+	    (if* winner
+	       then (push winner new)
+	     elseif (or (string= "australia" last1)
+			(string= "australia" last2))
+	       then ;; a common mismatch on the last word
+		    (push "(au)" new)
+	       else ;; punt
+		    (setq new nil))))
+	 (last1 (push last1 new))
+	 (last2 (push last2 new))))
+       (t
+	;; m1 and m2 sitting at mismatch
+	;; punt
+	(setq new nil)))
+      
+      (when new
+	(list-to-delimited-string (nreverse new) #\space)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dates -- this will go away when I get string-to-universal-time done and
