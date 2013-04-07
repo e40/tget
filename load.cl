@@ -28,7 +28,7 @@
   (open-tget-database :if-exists (if* reset
 				    then :supersede
 				    else :open))
-  (load *config-file* :verbose nil :print nil))
+  (load *config-file* :verbose t))
 
 (dolist (v '(*tget-version*
 	     *schema-version*

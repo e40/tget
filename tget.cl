@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.18")
+(defvar *tget-version* "1.19")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -464,7 +464,10 @@
     (or (stringp name)
 	(.error "Series name must be a string: ~s." name))
     (if* old
-       then (when (string/= (series-name old) pretty-name)
+       then (when (not (eq group (series-group old)))
+	      (.error "There is a duplicate defseries for ~s."
+		      pretty-name))
+	    (when (string/= (series-name old) pretty-name)
 	      (setf (series-pretty-name old) pretty-name))
 	    (setf (series-group old) group)
 	    (setf (series-delay old) delay)
@@ -2719,9 +2722,15 @@ Episode:\\s*(\\d+)?"
     ;;  	Sun, 06 Nov 1994 08:49:37 GMT
     ;; Some RSS 2.0 feeds use this broken format:
     ;;  	Sun, 06 Nov 1994 08:49:37 +0000
-    (multiple-value-bind (matched whole day month year hour minute second tz)
+    ;;  	Sun, 06 Nov 1994 08:49:37 -0700
+    (multiple-value-bind (matched whole day month year hour minute second tz
+			  tz-sign tz-hour)
 	(match-re 
-	 "[A-Za-z]+, ([0-9]+) ([A-Za-z]+) ([0-9]+) ([0-9]+):([0-9]+):([0-9]+) (GMT|[-+]\\d\\d\\d\\d)"
+	 #.(concatenate 'simple-string
+	     "[A-Za-z]+, "
+	     "([0-9]+) ([A-Za-z]+) ([0-9]+) "
+	     "([0-9]+):([0-9]+):([0-9]+) "
+	     "(GMT|([-+])(\\d\\d)\\d\\d)")
 	 date
 	 :return :index)
       (declare (ignore whole))
@@ -2736,14 +2745,10 @@ Episode:\\s*(\\d+)?"
 	   (cvt date year)
 	   (if* (char= #\G (schar date (car tz)))
 	      then 0
-	      else (compute-tz date (car tz)))))))
+	      else (* (if (char= #\- (schar date (car tz-sign))) -1 1)
+		      (cvt date tz-hour)))))))
     
     (.error "couldn't parse date: ~s." date)))
-
-(defun compute-tz (str start)
-  ;; 4 digis, first two the hour, second two the minute.  Assume last 2 are
-  ;; 0.
-  (parse-integer str :start start :end (+ start 2)))
 
 (defun compute-month (str start)
   ;; return the month number given a 3char rep of the string

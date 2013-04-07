@@ -2,14 +2,10 @@ TODO:
 
 high:
 
-- test date parser to make sure timezone is correct
-
 - For shows like The Daily Show that have their episodes canonicalized,
   I really should save the original episode name when printing, so the
   user doesn't get confused.  That is S2013E86 isn't as recognizable as
   2013.03.28
-
-- series dups not detected at config load time
 
 medium:
 

@@ -16,11 +16,21 @@
      ,@body))
 
 (defun test-tget ()
+  (test-tget-date-parser)
   (test-tget-fuzzy-matching)
   (test-tget-feed-reading)
   (test-tget-complete-to)
   (test-tget-processing)
   (+ util.test:*test-errors* util.test:*test-unexpected-failures*))
+
+(defun test-tget-date-parser ()
+  (test (* 5 3600)
+	(- (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 +0500")
+	   (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 +0000")))
+  (test (* 7 3600)
+	(- (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 +0000")
+	   (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 -0700")))
+  )
 
 (defun test-tget-fuzzy-matching ()
   (let ((things '(("late night with jimmy fallon"
