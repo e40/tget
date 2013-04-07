@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.17")
+(defvar *tget-version* "1.18")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -348,6 +348,15 @@
 
 (defvar *transmission-remote* nil)
 
+(define-condition tget (error) ())
+
+(defun .error (format-string &rest format-arguments)
+  ;; This separates known tget errors from unexpected program errors.  All
+  ;; calls to error in this code should be to this function.  Any calls to
+  ;; error or cerror cause a stack trace.
+  (error 'tget :format-control format-string
+	 :format-arguments format-arguments))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UI Macros
 
@@ -367,7 +376,7 @@
       (setq atom-or-list (list atom-or-list)))
     (dolist (atom atom-or-list)
       (or (member atom allowed-values :test #'eq)
-	  (error "Bad ~a value: ~s." what atom)))
+	  (.error "Bad ~a value: ~s." what atom)))
     atom-or-list))
 
 (defun make-quality (&key name priority container source codec resolution)
@@ -376,7 +385,7 @@
     (or (and (null priority)
 	     (setq priority 1))
 	(numberp priority)
-	(error "Priority must be a number: ~s." priority))
+	(.error "Priority must be a number: ~s." priority))
     (setq container
       (check-atom-or-list container *valid-containers* 'container))
     (setq source (check-atom-or-list source *valid-sources* 'source))
@@ -451,9 +460,9 @@
     (check-quality quality)
 ;;;;TODO: check group
     (or (keywordp group)
-	(error "Bad group: ~s." group))
+	(.error "Bad group: ~s." group))
     (or (stringp name)
-	(error "Series name must be a string: ~s." name))
+	(.error "Series name must be a string: ~s." name))
     (if* old
        then (when (string/= (series-name old) pretty-name)
 	      (setf (series-pretty-name old) pretty-name))
@@ -500,20 +509,24 @@
 (defun make-transmission (&key host port username password add-paused
 			       trash-torrent-file ratio)
   (when *transmission-remote*
-    (error "Multiple deftransmission definitions in config file."))
+    (.error
+	    "Multiple deftransmission definitions in config file."))
   
   (or (stringp host)
-      (error "transmission host is not a string: ~s." host))
+      (.error "transmission host is not a string: ~s." host))
   (or (numberp port)
       (and (stringp port)
 	   (numberp (setq port
 		      (ignore-errors
 		       (parse-integer port :junk-allowed nil)))))
-      (error "transmission port is not a number or string: ~s." port))
+      (.error "transmission port is not a number or string: ~s."
+	      port))
   (or (stringp username)
-      (error "transmission username is not a string: ~s." username))
+      (.error "transmission username is not a string: ~s."
+	      username))
   (or (stringp password)
-      (error "transmission password is not a string: ~s." password))
+      (.error "transmission password is not a string: ~s."
+	      password))
   (check-ratio ratio)
   
   (setq *transmission-remote*
@@ -533,18 +546,18 @@
        (or (symbolp rss-url)
 	   (and (stringp rss-url)
 		(match-re "^http" rss-url))
-	   (error "Bad rss-url: ~s." rss-url))))
+	   (.error "Bad rss-url: ~s." rss-url))))
 
 (defun check-delay (delay)
   (and delay
        (or (numberp delay)
-	   (error "Bad delay, must be a number: ~s." delay))))
+	   (.error "Bad delay, must be a number: ~s." delay))))
 
 (defun check-ratio (ratio)
   (and ratio
        (or (and (stringp ratio)
 		(match-re "^-?[0-9.]+$" ratio))
-	   (error "Bad ratio: ~s." ratio))))
+	   (.error "Bad ratio: ~s." ratio))))
 
 (defun check-quality (quality)
   (and quality
@@ -553,13 +566,14 @@
 		    (keywordp quality)
 		    (eq 't quality)
 		    (symbol-function quality)
-		    (error "Quality ~s does not exist." quality)))
-	   (error "Bad quality: ~s." quality))))
+		    (.error "Quality ~s does not exist."
+			    quality)))
+	   (.error "Bad quality: ~s." quality))))
 
 (defun check-download-path (download-path)
   #+not-yet ;; might be on a different machine?!
   (or (probe-file download-path)
-      (error "download path does not exist: ~a." download-path))
+      (.error "download path does not exist: ~a." download-path))
   (namestring download-path))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -757,7 +771,7 @@ Catch up series to a specific episode:
 	   ((=~ "^%%VALUE:\\s+(.*)\\s*$" line)
 	    (let ((sym (intern $1 *package*)))
 	      (when (not (boundp sym))
-		(error "user::~a does not have a value." $1))
+		(.error "user::~a does not have a value." $1))
 	      (format s "    ~{~s~^, ~}~%" (symbol-value sym))))
 	   (t
 	    (write line :stream s :escape nil)
@@ -820,11 +834,13 @@ Catch up series to a specific episode:
 	   (when help
 	     (format t "~a~&" *usage*)
 	     (exit 0 :quiet t))
-	   (when extra-args (error "extra arguments:~{ ~a~}." extra-args))
+	   (when extra-args
+	     (.error "extra arguments:~{ ~a~}." extra-args))
 	   
 	   (when root
 	     (or (probe-file root)
-		 (error "-root directory does not exist: ~a." root))
+		 (.error
+		  "-root directory does not exist: ~a." root))
 	     (setq *tget-data-directory* (pathname-as-directory root)))
 	   
 	   (setq *database-name*
@@ -845,16 +861,19 @@ Catch up series to a specific episode:
 	   
 	   (if* config-file
 	      then (or (probe-file config-file)
-		       (error "--config file does not exist: ~a." config-file))
+		       (.error "--config file does not exist: ~a."
+			       config-file))
 	    elseif (consp *config-file*)
 	      then (when (dolist (config *config-file* t)
 			   (when (probe-file config)
 			     (setq config-file config)
 			     (return nil)))
-		     (error "None of these config files exists:~{ ~a~}."
-			    *config-file*))
-	      else (error "Internal error: bad *config-file* value: ~s."
-			  *config-file*))
+		     (.error
+		      "None of these config files exists:~{ ~a~}."
+		      *config-file*))
+	      else (.error
+		    "Internal error: bad *config-file* value: ~s."
+		    *config-file*))
 	   
 	   (when database
 	     ;; Remove trailing slash, if there is one
@@ -867,7 +886,7 @@ Catch up series to a specific episode:
 	   
 	   (when feed-interval
 	     (when (not (match-re "^\\d+$" feed-interval))
-	       (error "Bad --feed-interval: ~s." feed-interval))
+	       (.error "Bad --feed-interval: ~s." feed-interval))
 	     (setq *feed-interval* (parse-integer feed-interval)))
 	   
 	   (when auto-backup
@@ -879,25 +898,28 @@ Catch up series to a specific episode:
 		((string= "reset" auto-backup) :reset)
 		((string= "restore" auto-backup) :restore)
 		((string= "schema-update" auto-backup) :schema-update)
-		(t (error "Bad value for --auto-backup: ~a."
-			  auto-backup)))))
+		(t (.error "Bad value for --auto-backup: ~a."
+			   auto-backup)))))
 	   (when backup-method
 	     (setq *backup-method*
 	       (cond ((string= "copy" backup-method) :copy)
 		     ((string= "save-restore" backup-method) :save-restore)
-		     (t (error "Bad value for --backup-method: ~a."
-			       backup-method)))))
+		     (t (.error
+			 "Bad value for --backup-method: ~a."
+			 backup-method)))))
 
 	   (when archive
 	     (when (probe-file archive)
-	       (error "Archive destination file should not exist: ~a."
-		      archive))
+	       (.error
+		"Archive destination file should not exist: ~a."
+		archive))
 	     (format t ";; Archiving database to ~a...~%" archive)
 	     (save-database archive :file *database-name* :verbose nil))
 	   
 	   (when (and restore
 		      (not (probe-file restore)))
-	     (error "Archive restore file does not exist: ~a." restore))
+	     (.error
+	      "Archive restore file does not exist: ~a." restore))
 	   
 	   (handler-case
 	       (open-tget-database :if-exists (if* reset-database
@@ -974,7 +996,8 @@ Catch up series to a specific episode:
 	      then (let* ((series-name (canonicalize-series-name delete-series))
 			  (s (query-series-name-to-series series-name)))
 		     (when (null s)
-		       (error "Could not find series: ~s." delete-series))
+		       (.error "Could not find series: ~s."
+			       delete-series))
 		     (format t "removing ~a~%" s)
 		     (delete-instance s)
 		     (commit))
@@ -985,11 +1008,18 @@ Catch up series to a specific episode:
 	      else (process-groups))
 	   
 	   (exit 0 :quiet t))))
-    (if* *debug* ;; --debug doesn't effect this test!
+
+    (if* *debug* ;; --debug on command line doesn't effect this test!
        then (format t ";;;NOTE: debugging mode is on~%")
 	    (doit)
        else (top-level.debug:with-auto-zoom-and-exit (*standard-output*)
-	      (doit)))))
+	      (handler-case (doit)
+		(tget (c)
+		  ;; 'tget errors don't get a backtrace, since those are
+		  ;; expected or, at least, planned for.  The unexpected
+		  ;; ones get the zoom.
+		  (format t "~&~a~&" c)
+		  (exit 1 :quiet t)))))))
 
 (defun open-log-files (&key truncate)
   (when (and *log-file* (not *log-stream*))
@@ -1033,11 +1063,11 @@ Catch up series to a specific episode:
 		(ut-to-date-time (get-universal-time))))
     (error (c)
       (declare (ignore c))
-      (error "Could not obtain the lock file (~a)." *lock-file*))))
+      (.error "Could not obtain the lock file (~a)." *lock-file*))))
 
 (defun release-database-lock-file ()
   (when (null *lock-file*)
-    (error "Tried to release lock file before it was created."))
+    (.error "Tried to release lock file before it was created."))
   (ignore-errors (delete-file *lock-file*)))
 
 (defun open-tget-database (&key restore
@@ -1060,14 +1090,14 @@ Catch up series to a specific episode:
 		       then (or (ignore-errors
 				 (read-from-string
 				  (file-contents *version-file*)))
-				(error "Schema version file ~a is corrupt."
+				(.error "Schema version file ~a is corrupt."
 				       *version-file*))
 		       else ;; The version prior to having versioning --
 			    ;; rebuilds were necessary from version 1 to 2,
 			    ;; but after that it's automatic.
 			    '(:version 2 :tget-version "0.00")))
 	     (schema (or (ignore-errors (apply #'make-schema stuff))
-			 (error "Schema version data is corrupt: ~s." stuff)))
+			 (.error "Schema version data is corrupt: ~s." stuff)))
 	     (schema-update (< (schema-version schema) *schema-version*))
 	     (program-update (string/= (schema-tget-version schema)
 				       *tget-version*))
@@ -1131,7 +1161,7 @@ Catch up series to a specific episode:
 		  ;; Upgrade each step
 		  (handler-case (db-upgrade v)
 		    (error (c)
-		      (error "Database upgrade to version ~d failed: ~a." v c)))
+		      (.error "Database upgrade to version ~d failed: ~a." v c)))
 		  ;; Update *version-file* to new version
 		  (setf (file-contents *version-file*)
 		    (format nil "(:version ~d :tget-version ~s)~%"
@@ -1164,7 +1194,7 @@ Catch up series to a specific episode:
   ;; yet, so we're safe to copy the files.
   (format t ";; Backing up database ~a.~%" reason)
   (when (not (probe-file *database-name*))
-    (error "Database ~a does not exist." *database-name*))
+    (.error "Database ~a does not exist." *database-name*))
   (let ((backup-directory
 	 ;; Like *database-name*, no trailing slash
 	 (backup-directory *database-name*)))
@@ -1190,7 +1220,7 @@ Catch up series to a specific episode:
       (handler-case
 	  (rename-file-raw *database-name* backup-directory)
 	(error (c)
-	  (error "Error while renaming backup directory, beware! ~a" c)))
+	  (.error "Error while renaming backup directory, beware! ~a" c)))
       ;; #2
       (let ((ok nil)
 	    (temp-file
@@ -1222,18 +1252,18 @@ Catch up series to a specific episode:
 	      (handler-case
 		  (delete-directory-and-files *database-name*)
 		(error (c)
-		  (error "Giving up trying to restore original database: ~a"
+		  (.error "Giving up trying to restore original database: ~a"
 			 c))))
 	    (handler-case
 		(rename-file-raw backup-directory *database-name*)
 	      (error (c)
-		(error
+		(.error
 		 "Could not rename ~a to ~a to restore original database: ~a"
 		 backup-directory *database-name*
 		 c))))))
       (format t ";;  Original is in ~a.~%" backup-directory)
       (format t ";;  Restored database is in ~a.~%" *database-name*))
-     (t (error "Bad backup method: ~s." method)))))
+     (t (.error "Bad backup method: ~s." method)))))
 
 (defmethod db-upgrade ((version (eql 2)))
   ;; The change from 2 to 3: added the tget-admin class.  Just need to add
@@ -1381,12 +1411,12 @@ Catch up series to a specific episode:
       episodes))
    (quality
     (when (null episode)
-      (error "Must have an episode to query for quality."))
+      (.error "Must have an episode to query for quality."))
     (let* ((ep episode)
 	   (q (if* (eq 't quality)
 		 then nil
 		 else (or (retrieve-from-index 'quality 'name quality)
-			  (error "No quality named ~s." quality))))
+			  (.error "No quality named ~s." quality))))
 	   (cursor
 	    (create-expression-cursor
 	     'episode
@@ -1407,7 +1437,7 @@ Catch up series to a specific episode:
 	    ;; items, so can't do that in the express-cursor
 	    (when (quality-match-p e q) (push e episodes)))))
       episodes))
-   (t (error "No keywords for episode selection where given"))))
+   (t (.error "No keywords for episode selection were given"))))
 
 (defun query-group-to-series (group)
   ;; Return a list of all series instances that are in group GROUP-NAME.
@@ -1440,7 +1470,12 @@ Catch up series to a specific episode:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; the meat
 
-(defun process-groups (&aux ep-printer)
+(defvar *http-timeout*
+    ;; If it won't respond in 45 seconds, it won't respond at all
+    120)
+
+(defun process-groups (&aux (*http-timeout* *http-timeout*)
+			    ep-printer)
   (commit)
   (doclass (group (find-class 'group))
     (tagbody
@@ -1462,10 +1497,12 @@ Catch up series to a specific episode:
       ;; errors due to accessing slots of deleted objects.  :(
       ;;
       (handler-case
-	  (mapcar 'rss-to-episode
-		  (maybe-log-rss (fetch-feed group)))
+	  (mapcar 'rss-to-episode (maybe-log-rss (fetch-feed group)))
 	(net.rss:feed-error (c)
-	  (format t "~a~%" c)
+	  (format t "~&~a~%" c)
+	  ;; reduce *http-timeout* dramatically, since we already got an
+	  ;; error
+	  (setq *http-timeout* 30)
 	  (go next-feed)))
       (commit)
     
@@ -1640,7 +1677,7 @@ Catch up series to a specific episode:
   ;; arguments, since QUALITY can be a user-defined function which returns
   ;; a different quality based on time (since EPISODE was published).
   ;;
-  (when (keywordp quality) (error "didn't expect a keyword here: ~s" quality))
+  (when (keywordp quality) (.error "didn't expect a keyword here: ~s" quality))
   
   (when (eq 't quality)
     (@log "  quality-acceptable-p: quality=t, returning")
@@ -1732,7 +1769,7 @@ Catch up series to a specific episode:
        then (< (car n1) n2)
      elseif (consp n2)
        then (< n1 (car n2))
-       else (error "internal error: episode-number<: ~s ~s." n1 n2))))
+       else (.error "internal error: episode-number<: ~s ~s." n1 n2))))
 
 (defun download-episodes (group episodes print-func)
   (dolist (episode episodes)
@@ -1813,11 +1850,11 @@ transmission-remote ~a:~a ~
 		what :case-fold t)
     (declare (ignore whole ignore1 ignore2))
     (when (null match)
-      (error "Could not parse series name and episode info: ~a." what))
+      (.error "Could not parse series name and episode info: ~a." what))
     
     (setq series-name (canonicalize-series-name series-name))
     (let ((series (or (query-series-name-to-series series-name)
-		      (error "Could not find series: ~s." series-name))))
+		      (.error "Could not find series: ~s." series-name))))
       (setq season (parse-integer season))
       (setq epnum
 	(if* epnum
@@ -1833,14 +1870,14 @@ transmission-remote ~a:~a ~
   ;; Note that season/epnum have been seen for purposes of future
   ;; downloading.
   
-  (when (null series) (error "series is nil!"))
-  (when (null season) (error "season is nil!"))
-  (when (null epnum) (error "epnum is nil!"))
+  (when (null series) (.error "series is nil!"))
+  (when (null season) (.error "season is nil!"))
+  (when (null epnum) (.error "epnum is nil!"))
   
   ;; sanity check
   (when (and (null (series-complete-to series))
 	     (series-discontinuous-episodes series))
-    (error "internal error: complete-to empty, but d-e not: ~s."
+    (.error "internal error: complete-to empty, but d-e not: ~s."
 	   (series-discontinuous-episodes series)))
   
   (setq ct (series-complete-to series))
@@ -1954,7 +1991,7 @@ transmission-remote ~a:~a ~
      then (setq url thing)
    elseif (symbolp thing)
      then (setf url (funcall thing *feed-interval*))
-     else (error "Bad url: ~s." thing))
+     else (.error "Bad url: ~s." thing))
   
   (if* (and *cached-feeds*
 	    (setq temp (assoc url *cached-feeds* :test #'string=)))
@@ -1986,9 +2023,10 @@ transmission-remote ~a:~a ~
      (net.rss:item ...))))
   (let* ((lxml (if* url
 		  then (when *verbose*
-			 (format t ";; reading feed ~a..." url)
+			 (format t ";; reading feed from ~a..."
+				 (net.uri:uri-host (net.uri:parse-uri url)))
 			 (force-output t))
-		       (prog1 (net.rss:read-feed url)
+		       (prog1 (net.rss:read-feed url :timeout *http-timeout*)
 			 (when *verbose*
 			   (format t "done.~%")
 			   (force-output t)))
@@ -2002,7 +2040,7 @@ transmission-remote ~a:~a ~
     (multiple-value-bind (match whole source-name)
 	(match-re "(tvtorrents\\.com|broadcasthe\\.net|ezrss\\.it)" source)
       (declare (ignore whole))
-      (when (not match) (error "don't grok the feed source: ~s." source))
+      (when (not match) (.error "don't grok the feed source: ~s." source))
       (setq source (intern source-name *kw-package*)))
     (feed-to-rss-objects-1 source items)))
 
@@ -2230,7 +2268,7 @@ transmission-remote ~a:~a ~
 	   then (if* (=~ "^(\\d\\d)\\.(\\d\\d)$" des-episode)
 		   then (date-time-yd-day
 			 (date-time (format nil "~a-~a-~a" des-season $1 $2)))
-		   else (error "can't parse episode: ~s" des-episode))
+		   else (.error "can't parse episode: ~s" des-episode))
 	   else (parse-integer des-episode)))
 
       (multiple-value-setq (series-name season episode repack container
@@ -2298,7 +2336,7 @@ transmission-remote ~a:~a ~
 	(match-re "^(.*) - " rss-title)
       (declare (ignore whole))
       (when (not found)
-	(error "Couldn't find show name from title: ~s." rss-title))
+	(.error "Couldn't find show name from title: ~s." rss-title))
       ;; Canonicalize the series name, so "Tosh.0" becomes "Tosh 0".
       
       (setq series-name (canonicalize-series-name show-name)))
@@ -2408,7 +2446,7 @@ Episode:\\s*(\\d+)?"
 	 des
 	 :case-fold t)
       (declare (ignore whole ignore1))
-      (when (not match) (error "couldn't parse rss description: ~s." des))
+      (when (not match) (.error "couldn't parse rss description: ~s." des))
       (cond
        (des-episode-date
 	(when (string= "" des-episode-date)
@@ -2694,7 +2732,7 @@ Episode:\\s*(\\d+)?"
 	      then 0
 	      else (compute-tz date (car tz)))))))
     
-    (error "couldn't parse date: ~s." date)))
+    (.error "couldn't parse date: ~s." date)))
 
 (defun compute-tz (str start)
   ;; 4 digis, first two the hour, second two the minute.  Assume last 2 are

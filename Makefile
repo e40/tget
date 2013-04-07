@@ -57,7 +57,8 @@ config.cl: tget-config/config.cl
 	sed -e 's,"\(http.*://[^/]*/\).*","\1...",g' \
 		< tget-config/config.cl > config.cl
 
-all:	clean build test install
+# removed `install' since that's a little dangerous
+all:	clean build test
 
 build: FORCE
 	rm -fr tget build.tmp
