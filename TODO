@@ -1,19 +1,47 @@
 TODO:
 
-- handle filename format "SxEE" (as opposed to SxxExx)
+high:
+
 - test date parser to make sure timezone is correct
-- a test suite for upgrades
+
 - For shows like The Daily Show that have their episodes canonicalized,
   I really should save the original episode name when printing, so the
   user doesn't get confused.  That is S2013E86 isn't as recognizable as
   2013.03.28
-- have a mode where the episodes *not* downloaded (but from the same
-  series) are printed
-- cache the episode to quality lookup -- this happens a lot and could
-  speed things up
-- put a time limit on repacks????
+
 - series dups not detected at config load time
-- for URL fetch errors, only email once after N hours, or make it a
-  config option what to do
+
+medium:
+
+- have reasonable defaults for defquality?  what about the other def*
+  macros?
+
+- for some feeds, don't really need defseries: could have a group
+  option to download all series from the feed -- this would make it
+  easier for people to get started, when they use a `favorites' feed
+
+- a test suite for upgrades -- would love this, but it's hard, since I
+  think I have to keep around older databases somewhere
+
 - command line argument to purge backups?
 
+- put a time limit on repacks????  If I integrate with xbmc's watched
+  status, then this is really "don't download a repack if it's been
+  watched"
+
+low:
+
+- handle filename format "SxEE" (as opposed to SxxExx) -- some feeds
+  have this in the title... not really sure it's needed, since things
+  work as is
+
+- for URL fetch errors, only email once after N hours, or make it a
+  config option what to do
+
+- cache the episode to quality lookup -- this happens a lot and could
+  speed things up -- doubtful, since I've never seen that in the
+  profiles
+
+- have a mode where the episodes *not* downloaded (but from the same
+  series) are printed -- the ep.log shows this, so it's unclear it is
+  needed...

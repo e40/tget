@@ -2038,7 +2038,9 @@ transmission-remote ~a:~a ~
 	 (source (cadr (find 'net.rss:link channel :key #'car)))
 	 (items (cdr (find 'net.rss:all-items channel :key #'car))))
     (multiple-value-bind (match whole source-name)
-	(match-re "(tvtorrents\\.com|broadcasthe\\.net|ezrss\\.it)" source)
+	(match-re
+	 "(tvtorrents\\.com|broadcasthe\\.net|ezrss\\.it|dailytvtorrents\\.org)"
+	 source)
       (declare (ignore whole))
       (when (not match) (.error "don't grok the feed source: ~s." source))
       (setq source (intern source-name *kw-package*)))
@@ -2507,6 +2509,10 @@ Episode:\\s*(\\d+)?"
        :source source
        :codec codec
        :resolution resolution))))
+
+(defmethod convert-rss-to-episode ((type (eql :dailytvtorrents.org)) rss)
+  (error "not done yet")
+  rss)
 
 (defun canonicalize-series-name (name)
   ;; Canonicalize the series name
