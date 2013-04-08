@@ -78,8 +78,7 @@ test: FORCE
 	echo '(load "load.cl")' >> build.tmp
 	echo '(exit (test-tget))' >> build.tmp
 	$(runlisp)
-	./test.sh save-restore
-	./test.sh archive-restore
+	./test.sh compact
 	./test.sh --learn
 
 ifeq ($(FI_APPS_COMMON),t)

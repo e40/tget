@@ -315,17 +315,14 @@ effects:</p>
 
 <ul>
 <li>
-<p><code>--archive file</code></p>
-
-<p>Save the database to <code>file</code>, in XML format for easier archiving.</p>
-</li>
-<li>
 <p><code>--auto-backup {reset|program-update|schema-update|restore|force|never}</code></p>
 
 <p>Perform a backup of the database under specific conditions given by the<br>
 companion argument:</p>
 
 <ul>
+<li>
+<code>compact</code> - when the database is being compacted</li>
 <li>
 <code>force</code> - always</li>
 <li>
@@ -335,18 +332,14 @@ companion argument:</p>
 <li>
 <code>reset</code> - when the database is being reset</li>
 <li>
-<code>restore</code> - when a restore is being requested</li>
-<li>
 <code>schema-update</code> - when the schema changes</li>
 </ul>
 <p>The default is to make backups for all conditions above.</p>
 </li>
 <li>
-<p><code>--backup-method { copy | save-restore }</code></p>
+<p><code>--compact-database</code></p>
 
-<p>Select the backup method, either by copying the files (fast) or<br>
-saving/restoring (slow); save/restore has the benefit of compacting a<br>
-big database; the default is <code>copy</code>.</p>
+<p>This saves and restores the database, compacting it at the same time.</p>
 </li>
 <li>
 <p><code>--config file</code></p>
@@ -401,11 +394,6 @@ from the database.  The default --auto-backup settings will cause a<br>
 backup to be performed before the reset.</p>
 </li>
 <li>
-<p><code>--restore file</code></p>
-
-<p>Restore the database from <code>file</code>, made with the --archive option.</p>
-</li>
-<li>
 <p><code>--root data-directory</code></p>
 
 <p>Change the data directory, the defaults is $HOME/.tget.d/</p>
@@ -446,12 +434,9 @@ $ tget --dump-series "James May's Man Lab"
 <pre><code>$ tget --dump-episodes "James May's Man Lab"
 </code></pre>
 
-<p>Compact the database and compare the result</p>
+<p>Compact the database:</p>
 
-<pre><code>$ tget --auto-backup never --dump-stats --archive archive.before
-$ tget --backup-method save-restore --auto-backup force \
-   --dump-stats --archive archive.after
-$ diff archive.before archive.after
+<pre><code>$ tget --compact-database --dump-stats
 </code></pre>
 
 <p>Catch up series to a specific episode:</p>
@@ -640,7 +625,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Hannibal" :anh+kevin)
 (defseries "Homeland" :kevin)
 (defseries "James May's Man Lab" :adrian+kevin)
-(defseries "Justified" :kevin :delay 0) ;; immediate download
+(defseries "Justified" :kevin)
 (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)

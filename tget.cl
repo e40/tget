@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.19")
+(defvar *tget-version* "1.20")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -34,12 +34,12 @@
     ;; **** changed the name of an unused slot here, didn't need to change
     ;; **** schema based on my testing
     ;; 5 == changed series `last-episode' to `complete-to'
-    ;; 6 == fix `container' and `repack' slots
-    6)
+    ;; 6 == fix `container' and `repack' slots (in episode class)
+    ;; 7 == add `pretty-epnum' to episode class
+    7)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
-(defvar *backup-method* :copy)
 (defvar *database-name* nil)
 (defvar *version-file* nil)
 (defvar *config-file* nil)
@@ -248,7 +248,8 @@
   (season :index :any)
   ;;number or :all
   (episode :index :any)
-  repack					;repack or proper?
+  pretty-epnum				; for human consumption
+  repack				;repack or proper?
   ;; quality from torrent
   (container :index :any)
   (source :index :any)
@@ -279,11 +280,10 @@
 	   then (episode-transient obj)
 	   else "-unbound-")))))
    (t ;; print it for humans
-    (format stream "#<~s~@[, REPACK~*~], ~@[S~2,'0d~]~@[E~2,'0d~] [~a]>"
+    (format stream "#<~s~@[, REPACK~*~], ~a [~a]>"
 	    (episode-series-name obj)
 	    (episode-repack obj)
-	    (episode-season obj)
-	    (episode-episode obj)
+	    (episode-pretty-epnum obj)
 	    (pretty-episode-quality obj)))))
 
 (defun pretty-episode-quality (ep &aux name all-bound)
@@ -643,29 +643,23 @@ The following are arguments controlling primary behavior:
 The following options augment the options above or have the stated side
 effects:
 
-* `--archive file`
-
-  Save the database to `file`, in XML format for easier archiving.
-
 * `--auto-backup {reset|program-update|schema-update|restore|force|never}`
 
   Perform a backup of the database under specific conditions given by the
   companion argument:
 
+  * `compact` - when the database is being compacted
   * `force` - always
   * `never` - never
   * `program-update` - when the program changed since the last db update
   * `reset` - when the database is being reset
-  * `restore` - when a restore is being requested
   * `schema-update` - when the schema changes
 
   The default is to make backups for all conditions above.
 
-* `--backup-method { copy | save-restore }`
+* `--compact-database`
 
-  Select the backup method, either by copying the files (fast) or
-  saving/restoring (slow); save/restore has the benefit of compacting a
-  big database; the default is `copy`.
+  This saves and restores the database, compacting it at the same time.
 
 * `--config file`
 
@@ -708,10 +702,6 @@ effects:
   from the database.  The default --auto-backup settings will cause a
   backup to be performed before the reset.
 
-* `--restore file`
-
-  Restore the database from `file`, made with the --archive option.
-
 * `--root data-directory`
 
   Change the data directory, the defaults is $HOME/.tget.d/
@@ -746,12 +736,9 @@ To see the episodes of the above, you would:
 
     $ tget --dump-episodes \"James May's Man Lab\"
 
-Compact the database and compare the result
+Compact the database:
 
-    $ tget --auto-backup never --dump-stats --archive archive.before
-    $ tget --backup-method save-restore --auto-backup force \\
-	   --dump-stats --archive archive.after
-    $ diff archive.before archive.after
+    $ tget --compact-database --dump-stats
 
 Catch up series to a specific episode:
 
@@ -821,9 +808,8 @@ Catch up series to a specific episode:
 	      ("dump-stats" :long dump-stats)
 
 ;;;; modifiers (change primary behavior)
-	      ("archive" :long archive :required-companion)
 	      ("auto-backup" :long auto-backup :required-companion)
-	      ("backup-method" :long backup-method :required-companion)
+	      ("compact-database" :long compact)
 	      ("config" :long config-file :required-companion)
 	      ("cron" :long cron-mode)
 	      ("db" :long database :required-companion)
@@ -831,7 +817,6 @@ Catch up series to a specific episode:
 	      ("feed-interval" :long feed-interval :required-companion)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
-	      ("restore" :long restore :required-companion)
 	      ("root" :long root :required-companion))
 	     (extra-args :usage *usage*)
 	   (when help
@@ -895,35 +880,15 @@ Catch up series to a specific episode:
 	   (when auto-backup
 	     (setq *auto-backup*
 	       (cond
+		((string= "compact" auto-backup) :compact)
 		((string= "force" auto-backup) :force)
 		((string= "never" auto-backup) nil)
 		((string= "program-update" auto-backup) :program-update)
 		((string= "reset" auto-backup) :reset)
-		((string= "restore" auto-backup) :restore)
 		((string= "schema-update" auto-backup) :schema-update)
 		(t (.error "Bad value for --auto-backup: ~a."
 			   auto-backup)))))
-	   (when backup-method
-	     (setq *backup-method*
-	       (cond ((string= "copy" backup-method) :copy)
-		     ((string= "save-restore" backup-method) :save-restore)
-		     (t (.error
-			 "Bad value for --backup-method: ~a."
-			 backup-method)))))
 
-	   (when archive
-	     (when (probe-file archive)
-	       (.error
-		"Archive destination file should not exist: ~a."
-		archive))
-	     (format t ";; Archiving database to ~a...~%" archive)
-	     (save-database archive :file *database-name* :verbose nil))
-	   
-	   (when (and restore
-		      (not (probe-file restore)))
-	     (.error
-	      "Archive restore file does not exist: ~a." restore))
-	   
 	   (handler-case
 	       (open-tget-database :if-exists (if* reset-database
 						 then :supersede
@@ -936,7 +901,7 @@ Catch up series to a specific episode:
 					    catch-up-mode catch-up-series)
 				      then :error
 				      else :create)
-				   :restore restore)
+				   :compact compact)
 	     (error (c)
 	       ;; no backtrace for this one
 	       (format t "~a~&" c)
@@ -1073,10 +1038,10 @@ Catch up series to a specific episode:
     (.error "Tried to release lock file before it was created."))
   (ignore-errors (delete-file *lock-file*)))
 
-(defun open-tget-database (&key restore
+(defun open-tget-database (&key compact
 				(if-does-not-exist :create)
 				(if-exists :open)
-			   &aux ok)
+			   &aux ok backed-up)
   (when db.allegrocache::*allegrocache*
     (close-tget-database))
 
@@ -1104,48 +1069,35 @@ Catch up series to a specific episode:
 	     (schema-update (< (schema-version schema) *schema-version*))
 	     (program-update (string/= (schema-tget-version schema)
 				       *tget-version*))
-	     write-version-file
-	     backed-up)
+	     write-version-file)
     
 	(when (probe-file *database-name*)
 	  ;; Check for the need to backup
 	  (when (and (not backed-up)
-		     restore
+		     compact
 		     (or (eq 't *auto-backup*)
-			 (eq :restore *auto-backup*)))
-	    (backup-database *backup-method* "for an archive restore")
-	    (setq backed-up t))
+			 (eq :compact *auto-backup*)))
+	    (setq backed-up (backup-database "for an archive restore")))
 	  (when (and (not backed-up)
 		     schema-update
 		     (or (eq 't *auto-backup*)
 			 (eq :schema-update *auto-backup*)))
-	    (backup-database *backup-method* "for schema update")
-	    (setq backed-up t))
+	    (setq backed-up (backup-database "for schema update")))
 	  (when (and (not backed-up)
 		     program-update
 		     (or (eq 't *auto-backup*)
 			 (eq :program-update *auto-backup*)))
-	    (backup-database *backup-method* "for program update")
-	    (setq write-version-file t)
-	    (setq backed-up t))
+	    (setq backed-up (backup-database "for program update"))
+	    (setq write-version-file t))
 	  (when (and (not backed-up)
 		     (eq if-exists :supersede)
 		     (or (eq 't *auto-backup*)
 			 (eq :reset *auto-backup*)))
-	    (backup-database *backup-method* "for database reset")
-	    (setq backed-up t))
+	    (setq backed-up (backup-database "for database reset")))
 	  (when (and (not backed-up)
 		     (eq :force *auto-backup*))
-	    (backup-database *backup-method* "because requested")
-	    (setq backed-up t)))
+	    (setq backed-up (backup-database "because requested"))))
 
-	(when restore
-	  ;; We do this here instead of in main because 1) we want the database
-	  ;; lock before we start it, and 2) we want to make a backup before we
-	  ;; do this.
-	  (format t ";; Restoring ~a into ~a...~%" restore *database-name*)
-	  (restore-database restore *database-name*))
-	
 	(open-file-database *database-name*
 			    :use :memory
 			    :if-does-not-exist if-does-not-exist
@@ -1164,7 +1116,8 @@ Catch up series to a specific episode:
 		  ;; Upgrade each step
 		  (handler-case (db-upgrade v)
 		    (error (c)
-		      (.error "Database upgrade to version ~d failed: ~a." v c)))
+		      (.error "Database upgrade to version ~d failed: ~a."
+			      v c)))
 		  ;; Update *version-file* to new version
 		  (setf (file-contents *version-file*)
 		    (format nil "(:version ~d :tget-version ~s)~%"
@@ -1174,10 +1127,31 @@ Catch up series to a specific episode:
 	   then (setf (file-contents *version-file*)
 		  (format nil "(:version ~d :tget-version ~s)~%"
 			  *schema-version* *tget-version*)))
+	
+	(when compact
+	  ;; To compact the database we close, save, restore and reopen
+	  ;; it.
+	  (close-database)
+	  (let ((xml-file (sys:make-temp-file-name "tgetcompact"))
+		(version-file (sys:make-temp-file-name "tgetversion")))
+	    (format t ";; Saving database to temp file (~a)..." xml-file)
+	    (force-output t)
+	    (save-database xml-file :file *database-name* :verbose nil)
+	    (sys:copy-file *version-file* version-file)
+	    (format t "done.~%")
+	    ;; this already prints what it does:
+	    (restore-database xml-file *database-name*)
+	    (sys:copy-file version-file *version-file*)
+	    (delete-file xml-file)
+	    (delete-file version-file))
+	  (open-file-database *database-name* :use :memory :read-only nil))
 
 	(setq ok t))
     ;; In the event of an error, make sure we release the lock:
     (when (not ok)
+      (when backed-up
+	(format t ";; Error during database open, copy is here: ~a.~%"
+		backed-up))
       (if* db.allegrocache::*allegrocache*
 	 then (close-tget-database)
 	 else ;; error before the database was opened, but the lock file
@@ -1192,81 +1166,23 @@ Catch up series to a specific episode:
       ((not (probe-file backup))
        backup)))
 
-(defun backup-database (method reason)
+(defun backup-database (reason)
   ;; Backup the database given by *database-name*.  We haven't opened it
   ;; yet, so we're safe to copy the files.
   (format t ";; Backing up database ~a.~%" reason)
   (when (not (probe-file *database-name*))
     (.error "Database ~a does not exist." *database-name*))
-  (let ((backup-directory
-	 ;; Like *database-name*, no trailing slash
-	 (backup-directory *database-name*)))
-    (cond
-     ((eq :copy method)
-      (let ((from (pathname-as-directory *database-name*))
-	    (to (pathname-as-directory backup-directory)))
-	(ensure-directories-exist to)
-	(dolist (file (directory from))
-	  (sys:copy-file
-	   file
-	   (merge-pathnames (enough-pathname file from) to)
-	   :preserve-time t))
-	(format t ";;  Copy is in ~a.~%" to)))
-     ((eq :save-restore method)
-      ;; Order of operations:
-      ;; 1. rename current db directory to the backup
-      ;; 2. save the database in XML to a temp file
-      ;; 3. restore into the current db directory
-      ;; And, do this all as safely as possible.
-      ;;
-      ;; #1
-      (handler-case
-	  (rename-file-raw *database-name* backup-directory)
-	(error (c)
-	  (.error "Error while renaming backup directory, beware! ~a" c)))
-      ;; #2
-      (let ((ok nil)
-	    (temp-file
-	     (sys:make-temp-file-name "dbsave" *tget-data-directory*)))
-	(unwind-protect
-	    (progn
-	      (save-database temp-file
-			     :file backup-directory
-			     :verbose nil)
-	      ;; lastly, tell that unwind-protect cleanup form over there
-	      ;; we're OK and not to do anything rash.
-	      (setq ok t))
-	  (when (not ok)
-	    (when (probe-file temp-file) (delete-file temp-file))
-	    ;; Put the database back where we found it!
-	    (rename-file-raw backup-directory *database-name*)))
-	;; #3
-	(setq ok nil)
-	(unwind-protect
-	    (progn
-	      (restore-database temp-file *database-name*)
-	      (setq ok t))
-	  ;; Regardless of whether ok is t, we need to remove this:
-	  (when (probe-file temp-file) (delete-file temp-file))
-	  (when (not ok)
-	    ;; Need to remove *database-name* and restore backup-directory
-	    ;; to it.
-	    (when (probe-file *database-name*)
-	      (handler-case
-		  (delete-directory-and-files *database-name*)
-		(error (c)
-		  (.error "Giving up trying to restore original database: ~a"
-			 c))))
-	    (handler-case
-		(rename-file-raw backup-directory *database-name*)
-	      (error (c)
-		(.error
-		 "Could not rename ~a to ~a to restore original database: ~a"
-		 backup-directory *database-name*
-		 c))))))
-      (format t ";;  Original is in ~a.~%" backup-directory)
-      (format t ";;  Restored database is in ~a.~%" *database-name*))
-     (t (.error "Bad backup method: ~s." method)))))
+  (let* ((backup-directory (backup-directory *database-name*))
+	 (from (pathname-as-directory *database-name*))
+	 (to (pathname-as-directory backup-directory)))
+    (ensure-directories-exist to)
+    (dolist (file (directory from))
+      (sys:copy-file file
+		     (merge-pathnames (enough-pathname file from) to)
+		     :preserve-time t))
+    (format t ";;  Copy is in ~a.~%" to)
+    ;; Like *database-name*, no trailing slash
+    backup-directory))
 
 (defmethod db-upgrade ((version (eql 2)))
   ;; The change from 2 to 3: added the tget-admin class.  Just need to add
@@ -1307,9 +1223,25 @@ Catch up series to a specific episode:
       (setf (episode-repack ep) nil)))
   (commit))
 
+(defmethod db-upgrade ((version (eql 6)))
+  ;; The change from 6 to 7: added pretty-epnum, so need to initialize it
+  ;; here.
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (format t ";;   Update pretty-epnum for each episode.~%")
+  (doclass (ep (find-class 'episode))
+    (when (not (slot-boundp ep 'pretty-epnum))
+      (let ((new (season-and-episode-to-pretty-epnum (episode-season ep)
+						     (episode-episode ep))))
+	#+ignore ;; debugging only
+	(format t "pretty-epnum => ~10a (for ~s)~%"
+		new (series-pretty-name (episode-series ep)))
+	(setf (episode-pretty-epnum ep) new))))
+  (commit))
+
 (defun close-tget-database ()
-  (when *verbose* (format t ";; closing database...~%"))
   (when db.allegrocache::*allegrocache*
+    (when *verbose* (format t ";; closing database...~%"))
     (commit) ;; is this needed?
     (close-database)
     (setq db.allegrocache::*allegrocache* nil)
@@ -1331,6 +1263,7 @@ Catch up series to a specific episode:
 			  title
 			  season
 			  episode
+			  pretty-epnum
 			  repack
 			  filename
 			  container
@@ -1366,6 +1299,7 @@ Catch up series to a specific episode:
 	   :title title
 	   :season season
 	   :episode episode
+	   :pretty-epnum pretty-epnum
 	   :repack repack
 	   :filename filename
 	   :container container
@@ -2217,8 +2151,8 @@ transmission-remote ~a:~a ~
 
 (defmethod convert-rss-to-episode ((type (eql :tvtorrents.com)) rss)
   (let ((des (rss-item-description rss))
-	series series-name season episode repack container source codec
-	resolution uncut)
+	series series-name season episode pretty-epnum repack container
+	source codec resolution uncut)
     (multiple-value-bind (match whole des-series-name title des-season
 			  des-episode filename)
 	(match-re
@@ -2292,7 +2226,7 @@ transmission-remote ~a:~a ~
 	    (match-re "\\((repack|proper)\\)" (rss-item-title rss)
 		      :case-fold t)))
 
-      (multiple-value-setq (series-name season episode)
+      (multiple-value-setq (series-name season episode pretty-epnum)
 	(check-episode-data des-series-name series-name
 			    des-season season
 			    des-episode episode))
@@ -2314,6 +2248,7 @@ transmission-remote ~a:~a ~
 	:title title
 	:season season
 	:episode episode
+	:pretty-epnum pretty-epnum
 	:repack repack
 	:filename filename
 	:container container
@@ -2329,7 +2264,8 @@ transmission-remote ~a:~a ~
 (defmethod convert-rss-to-episode ((type (eql :broadcasthe.net)) rss)
   (let ((rss-des (rss-item-description rss))
 	(rss-title (rss-item-title rss))
-	series series-name repack container source codec resolution)
+	series series-name pretty-epnum repack container
+	source codec resolution)
     
     (when (not rss-des)
       ;; some sporting events have no description and only a title.  Ignore
@@ -2397,10 +2333,20 @@ Episode:\\s*(\\d+)?"
 	(@log "BTN: couldn't parse description: ~s." rss-des)
 	(return-from convert-rss-to-episode))
       
-      (when (null (setq series (query-series-name-to-series series-name)))
+      (when (and season (string/= "" season))
+	(setq season (parse-integer season)))
+
+      (when (or (null (setq series (query-series-name-to-series series-name)))
+		(not (numberp season)))
 	(return-from convert-rss-to-episode))
       
       ;; a series we care about
+
+      (setq episode (or (and episode (string/= "" episode)
+			     (parse-integer episode))
+			*max-epnum*))
+      
+      (setq pretty-epnum (season-and-episode-to-pretty-epnum season episode))
 
       (make-episode
        :transient t
@@ -2416,9 +2362,9 @@ Episode:\\s*(\\d+)?"
        :series series
        :series-name series-name
        :title des-title
-       :season (when (and season (string/= "" season)) (parse-integer season))
-       :episode (when (and episode (string/= "" episode))
-		  (parse-integer episode))
+       :season season
+       :episode episode
+       :pretty-epnum pretty-epnum
        :repack repack
        ;; no :filename in BTN feed!
        :container container
@@ -2429,7 +2375,8 @@ Episode:\\s*(\\d+)?"
 (defmethod convert-rss-to-episode ((type (eql :ezrss.it)) rss)
   (let ((des (rss-item-description rss))
 	series uri filename
-	series-name season episode repack container source codec resolution)
+	series-name season episode pretty-epnum repack container source
+	codec resolution)
     
     (multiple-value-bind (match whole
 			  des-series-name des-title
@@ -2483,7 +2430,7 @@ Episode:\\s*(\\d+)?"
 	    (match-re " (repack|proper) " (rss-item-title rss)
 		      :case-fold t)))
 
-      (multiple-value-setq (series-name season episode)
+      (multiple-value-setq (series-name season episode pretty-epnum)
 	(check-episode-data des-series-name series-name
 			    des-season season
 			    des-episode episode))
@@ -2505,6 +2452,7 @@ Episode:\\s*(\\d+)?"
        :title des-title
        :season season
        :episode episode
+       :pretty-epnum pretty-epnum
        
        ;; container is always nil because the file extension is always
        ;; .torrent
@@ -2564,9 +2512,30 @@ Episode:\\s*(\\d+)?"
       (@log "Description&filename series name differ (using 2nd): ~s, ~s."
 	    des-series-name series-name)))
 
+  (setq season (or season des-season)
+	episode (or episode des-episode))
+  
   (values (or fuzzy-series-name series-name des-series-name)
-	  (or season des-season)
-	  (or episode des-episode)))
+	  season
+	  episode
+	  (season-and-episode-to-pretty-epnum season episode)))
+
+(defun season-and-episode-to-pretty-epnum (season epnum)
+  (when (eq :all epnum) (setq epnum *max-epnum*))
+  (if* (not (numberp epnum))
+     then (format nil "~d.~a" season epnum)
+   elseif (> season 999)
+     then ;; 4 digit year
+	  (let ((dt (date-time (format nil "~d-~3,'0d" season epnum))))
+	    (format nil "~d.~2,'0d.~2,'0d"
+		    season
+		    (date-time-ymd-month dt)
+		    (date-time-ymd-day dt)))
+   elseif (= *max-epnum* epnum)
+     then ;; All of that season
+	  (format nil "S~2,'0d" season)
+     else ;; easy, just SnnEmm
+	  (format nil "S~2,'0dE~2,'0d" season epnum)))
 
 (defun fuzzy-compare-series-names (series-name1 series-name2)
   ;; Compare SERIES-NAME1 and SERIES-NAME2, with these rules:

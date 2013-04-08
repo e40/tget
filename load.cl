@@ -13,7 +13,7 @@
 (dolist (file '("rssreader.cl" "tget.cl" "t-tget.cl"))
   (load (compile-file file)))
 
-(defun opendb (&key reset copy-db)
+(defun opendb (&key reset copy-db restore)
   (setq *transmission-remote* nil)
   (when db.allegrocache::*allegrocache*
     (close-tget-database))
@@ -25,7 +25,8 @@
     (copy-directory (pathname-as-directory copy-db)
 		    (pathname-as-directory *database-name*)
 		    :quiet nil))
-  (open-tget-database :if-exists (if* reset
+  (open-tget-database :restore restore
+		      :if-exists (if* reset
 				    then :supersede
 				    else :open))
   (load *config-file* :verbose t))
@@ -69,3 +70,11 @@
  `(progn
     (opendb :copy-db "~/.tget.d/db")
     (prof:with-profiling () (process-groups))))
+
+(pprint
+ `(progn
+    (excl.osi:command-output "./test.sh copy")
+    (save-database "archive.before" :file "test.db")
+    (sys:copy-file "test.db/version.cl" "archive.before.schema"
+		   :force t)
+    (opendb :restore "archive.before")))

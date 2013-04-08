@@ -17,9 +17,8 @@ key=${1---learn}
 [ $# -ge 1 ] && shift
 
 case $key in
-    archive-restore) ;;
     copy)            ;;
-    save-restore)    ;;
+    compact)         ;;
     --dump-all)      ;;
     --catch-up)      ;;
     --learn)         ;;
@@ -38,20 +37,8 @@ cp -rp ~/.tget.d/db test.db
 case $key in
     --*)  $tget $key ${*-}
 	;;
-    archive-restore)
-	rm -f archive.before archive.after
-	# get a before/after snapshot of the amount of data:
-	$tget --auto-backup never --dump-stats --archive archive.before
-	$tget --restore archive.before --dump-stats
-	$tget --archive archive.after --dump-stats
-	diff archive.before archive.after || true
-	;;
-    save-restore)
-	rm -f archive.before archive.after
-	# get a before/after snapshot of the amount of data:
-	$tget --auto-backup never --dump-stats --archive archive.before
-	$tget --backup-method save-restore --auto-backup force \
-	    --dump-stats --archive archive.after
-	diff archive.before archive.after || true
+    compact)
+	$tget --compact-database --dump-stats
+	$tget --learn
 	;;
 esac

@@ -174,7 +174,7 @@
 (defseries "Hannibal" :anh+kevin)
 (defseries "Homeland" :kevin)
 (defseries "James May's Man Lab" :adrian+kevin)
-(defseries "Justified" :kevin :delay 0) ;; immediate download
+(defseries "Justified" :kevin)
 (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)

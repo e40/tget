@@ -258,29 +258,23 @@ The following are arguments controlling primary behavior:
 The following options augment the options above or have the stated side
 effects:
 
-* `--archive file`
-
-  Save the database to `file`, in XML format for easier archiving.
-
 * `--auto-backup {reset|program-update|schema-update|restore|force|never}`
 
   Perform a backup of the database under specific conditions given by the
   companion argument:
 
+  * `compact` - when the database is being compacted
   * `force` - always
   * `never` - never
   * `program-update` - when the program changed since the last db update
   * `reset` - when the database is being reset
-  * `restore` - when a restore is being requested
   * `schema-update` - when the schema changes
 
   The default is to make backups for all conditions above.
 
-* `--backup-method { copy | save-restore }`
+* `--compact-database`
 
-  Select the backup method, either by copying the files (fast) or
-  saving/restoring (slow); save/restore has the benefit of compacting a
-  big database; the default is `copy`.
+  This saves and restores the database, compacting it at the same time.
 
 * `--config file`
 
@@ -323,10 +317,6 @@ effects:
   from the database.  The default --auto-backup settings will cause a
   backup to be performed before the reset.
 
-* `--restore file`
-
-  Restore the database from `file`, made with the --archive option.
-
 * `--root data-directory`
 
   Change the data directory, the defaults is $HOME/.tget.d/
@@ -361,12 +351,9 @@ To see the episodes of the above, you would:
 
     $ tget --dump-episodes "James May's Man Lab"
 
-Compact the database and compare the result
+Compact the database:
 
-    $ tget --auto-backup never --dump-stats --archive archive.before
-    $ tget --backup-method save-restore --auto-backup force \
-	   --dump-stats --archive archive.after
-    $ diff archive.before archive.after
+    $ tget --compact-database --dump-stats
 
 Catch up series to a specific episode:
 
@@ -553,7 +540,7 @@ Catch up series to a specific episode:
     (defseries "Hannibal" :anh+kevin)
     (defseries "Homeland" :kevin)
     (defseries "James May's Man Lab" :adrian+kevin)
-    (defseries "Justified" :kevin :delay 0) ;; immediate download
+    (defseries "Justified" :kevin)
     (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
     (defseries "Longmire" :kevin)
     (defseries "Louis Theroux Documentaries" :kevin)

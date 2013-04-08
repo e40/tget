@@ -2,12 +2,12 @@ TODO:
 
 high:
 
-- For shows like The Daily Show that have their episodes canonicalized,
-  I really should save the original episode name when printing, so the
-  user doesn't get confused.  That is S2013E86 isn't as recognizable as
-  2013.03.28
+none at this time
 
 medium:
+
+- really should refactor the code that parses episode #'s into one
+  place... currently have 3 of them  :(
 
 - have reasonable defaults for defquality?  what about the other def*
   macros?
