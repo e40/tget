@@ -17,6 +17,7 @@
 
 (defun test-tget ()
   (test-tget-date-parser)
+  (test-tget-epnum-comparisions)
   (test-tget-fuzzy-matching)
   (test-tget-feed-reading)
   (test-tget-complete-to)
@@ -29,8 +30,16 @@
 	   (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 +0000")))
   (test (* 7 3600)
 	(- (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 +0000")
-	   (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 -0700")))
-  )
+	   (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 -0700"))))
+
+(defun test-tget-epnum-comparisions ()
+  (test t   (epnum< 1 2))
+  (test nil (epnum< 1 1))
+  (test t   (epnum< 1 10))
+  (test t   (epnum< 1 '(2 . 3)))
+  (test t   (epnum< '(1 . 2) 3))
+  (test nil (epnum< '(2 . 3) 1))
+  (test nil (epnum< 3 '(1 . 2))))
 
 (defun test-tget-fuzzy-matching ()
   (let ((things '(("late night with jimmy fallon"
@@ -249,6 +258,8 @@
 		    :pub-date pub-date
 		    :season season
 		    :episode episode
+		    :pretty-epnum
+		    (season-and-episode-to-pretty-epnum season episode)
 		    :repack repack
 		    :container container
 		    :source source
@@ -308,6 +319,21 @@
 	      :fail-info "test 5.2")
 	(test :sd (episode-resolution (car downloaded-episodes))
 	      :fail-info "test 5.3"))
+      
+      
+      (make-eps
+       '("Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4" :hours 7 :transient t))
+      (when (test 1 (length downloaded-episodes)
+		  :fail-info "test 6")
+	(let ((ep (car downloaded-episodes)))
+	  (test t (episode-repack ep)
+		:fail-info "test 6.2")
+	  (test :sd (episode-resolution ep)
+		:fail-info "test 6.3")
+	  (test "S06E01-E02" (episode-pretty-epnum ep)
+		:test #'string=)
+	  (test '(6 . 2) (series-complete-to (episode-series ep))
+		:test #'equal)))
 
       )))
 

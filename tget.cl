@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.20")
+(defvar *tget-version* "1.21")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -36,7 +36,9 @@
     ;; 5 == changed series `last-episode' to `complete-to'
     ;; 6 == fix `container' and `repack' slots (in episode class)
     ;; 7 == add `pretty-epnum' to episode class
-    7)
+    ;; 8 == Fix `episode' & `pretty-epnum' for range episodes like for
+    ;;      "Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
+    8)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -270,11 +272,10 @@
      (lambda (obj)
        (format
 	nil
-	"~a~@[, REPACK~*~]~@[ S~2,'0d~]~@[E~2,'0d~]~@[; quality=~a~]; transient=~s"
+	"~a~@[, REPACK~*~]~@[~a~]~@[; quality=~a~]; transient=~s"
 	(when (slot-boundp obj 'series-name) (episode-series-name obj))
 	(when (slot-boundp obj 'repack) (episode-repack obj))
-	(when (slot-boundp obj 'season) (episode-season obj))
-	(when (slot-boundp obj 'episode) (episode-episode obj))
+	(when (slot-boundp obj 'pretty-epnum) (episode-pretty-epnum obj))
 	(pretty-episode-quality obj)
 	(if* (slot-boundp obj 'transient)
 	   then (episode-transient obj)
@@ -1114,10 +1115,13 @@ Catch up series to a specific episode:
 		(do* ((v (schema-version schema) (1+ v)))
 		    ((= v *schema-version*))
 		  ;; Upgrade each step
-		  (handler-case (db-upgrade v)
-		    (error (c)
-		      (.error "Database upgrade to version ~d failed: ~a."
-			      v c)))
+		  (if* *debug*
+		     then (db-upgrade v)
+		     else (handler-case (db-upgrade v)
+			    (error (c)
+			      (.error
+			       "Database upgrade to version ~d failed: ~a."
+			       v c))))
 		  ;; Update *version-file* to new version
 		  (setf (file-contents *version-file*)
 		    (format nil "(:version ~d :tget-version ~s)~%"
@@ -1237,6 +1241,36 @@ Catch up series to a specific episode:
 	(format t "pretty-epnum => ~10a (for ~s)~%"
 		new (series-pretty-name (episode-series ep)))
 	(setf (episode-pretty-epnum ep) new))))
+  (commit))
+
+(defmethod db-upgrade ((version (eql 7)))
+  ;; The change from 7 to 8: no change, but fix episode and pretty-epnum
+  ;; for range episodes, like that for
+  ;;    Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (format t ";;   Update episode/pretty-epnum for range episodes.~%")
+  (doclass (ep (find-class 'episode))
+    (when (episode-filename ep)
+      (let ((new-episode (nth-value 2
+				    (extract-episode-info-from-filename
+				     (episode-filename ep))))
+	    new-pretty-epnum)
+	(when (not (equal new-episode (episode-episode ep)))
+	  (format t ";; Fix episode ~a~%" ep)
+	  (format t ";;   new epnum = ~a~%" new-episode)
+	  (setf (episode-episode ep) new-episode)
+	  (setq new-pretty-epnum
+	    (season-and-episode-to-pretty-epnum (episode-season ep)
+						new-episode))
+	  (format t ";;   new pretty-epnum = ~a~%" new-pretty-epnum)
+	  (setf (episode-pretty-epnum ep) new-pretty-epnum)
+	  
+	  (update-complete-to (episode-series ep)
+			      (episode-season ep)
+			      new-episode)
+	  (format t ";;   complete-to is now ~a...~%"
+		  (series-complete-to (episode-series ep)))))))
   (commit))
 
 (defun close-tget-database ()
@@ -1674,7 +1708,8 @@ Catch up series to a specific episode:
 				      (p2 (or (episode-quality e2 :priority t)
 					      1)))
 				  (> p1 p2))
-			   else (episode-number< e1 e2))
+			   else (epnum< (episode-episode e1)
+					(episode-episode e2)))
 		   else (< (episode-season e1)
 			   (episode-season e2)))))
 	     (cdr eps))
@@ -1693,20 +1728,18 @@ Catch up series to a specific episode:
 (defun episode-number= (e1 e2)
   (equal (episode-episode e1) (episode-episode e2)))
 
-(defun episode-number< (e1 e2)
-  (let ((n1 (episode-episode e1))
-	(n2 (episode-episode e2)))
-    (if* (and (numberp n1) (numberp n2))
-       then (< n1 n2)
-     elseif (and (consp n1) (consp n2))
-       then (let ((start1 (car n1))
-		  (start2 (car n2)))
-	      (< start1 start2))
-     elseif (consp n1)
-       then (< (car n1) n2)
-     elseif (consp n2)
-       then (< n1 (car n2))
-       else (.error "internal error: episode-number<: ~s ~s." n1 n2))))
+(defun epnum< (n1 n2)
+  (if* (and (numberp n1) (numberp n2))
+     then (< n1 n2)
+   elseif (and (consp n1) (consp n2))
+     then (let ((start1 (car n1))
+		(start2 (car n2)))
+	    (< start1 start2))
+   elseif (consp n1)
+     then (< (car n1) n2)
+   elseif (consp n2)
+     then (< n1 (car n2))
+     else (.error "internal error: epnum<: ~s ~s." n1 n2)))
 
 (defun download-episodes (group episodes print-func)
   (dolist (episode episodes)
@@ -1803,6 +1836,8 @@ transmission-remote ~a:~a ~
 
 (defun update-complete-to (series season epnum
 			   &aux ct
+				;; For a range, just select the end epnum
+				(epnum (if (consp epnum) (cdr epnum) epnum))
 				(new-ct (cons season epnum)))
   ;; Note that season/epnum have been seen for purposes of future
   ;; downloading.
@@ -1904,9 +1939,15 @@ transmission-remote ~a:~a ~
   (cond
    ((null (series-complete-to series)) t)
    (t
-    (or (> (episode-season ep) (car (series-complete-to series)))
-	(and (= (episode-season ep) (car (series-complete-to series)))
-	     (> (episode-episode ep) (cdr (series-complete-to series))))))))
+    (let ((epnum
+	   (if* (consp (episode-episode ep))
+	      then ;; Use the first epnum of the range, for the purposes of
+		   ;; the calculations below
+		   (car (episode-episode ep))
+	      else (episode-episode ep))))
+      (or (> (episode-season ep) (car (series-complete-to series)))
+	  (and (= (episode-season ep) (car (series-complete-to series)))
+	       (> epnum (cdr (series-complete-to series)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Feed processing
@@ -2052,17 +2093,24 @@ transmission-remote ~a:~a ~
   ;; cannot determine.  In the case of `source', return `:unknown' for XviD
   ;; when we cannot determine the source.
   (let (series-name season episode container source codec resolution
-	uncut match whole year month day)
+	uncut match whole year month day
+	epnum-start epnum-end)
     (declare (ignore-if-unused whole))
 
 ;;;; series-name, season, episode
     ;; Start with the series-name, since if we can't get that then we go
     ;; home and the other things don't matter.
-    (multiple-value-setq (match whole series-name season episode)
-      (match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
-		:case-fold t))
     (cond
-     (match
+     ((multiple-value-setq (match whole series-name season epnum-start
+			    epnum-end)
+	(match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})-e([0-9]{2,3})"
+		  filename :case-fold t))
+      (setq season (parse-integer season))
+      (setq episode (cons (parse-integer epnum-start)
+			  (parse-integer epnum-end))))
+     ((multiple-value-setq (match whole series-name season episode)
+	(match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
+		  :case-fold t))
       (setq season (parse-integer season))
       (setq episode (parse-integer episode)))
      (t 
@@ -2487,9 +2535,11 @@ Episode:\\s*(\\d+)?"
   ;; better than either of the parts.
 
   (when (and des-season season (/= des-season season))
-    #+ignore ;; mismatches too numerous, filename is always "right"
-    (@log "Description&filename season differ (use 2nd): ~s, ~s."
-	  des-season season))
+    (when *debug*
+      ;; mismatches too numerous for regular logging, but I want to see
+      ;; them during debugging (ie, test output)
+      (@log "Desc & fn season differ for ~s: ~s, ~s."
+	    des-series-name des-season season)))
   
   (when (or (and (numberp des-episode)
 		 des-episode
@@ -2499,9 +2549,11 @@ Episode:\\s*(\\d+)?"
 		 des-episode
 		 episode
 		 (not (eq des-episode episode))))
-    #+ignore ;; mismatches too numerous, filename is always "right"
-    (@log "Description&filename episode differ (use 2nd): ~s, ~s."
-	  des-episode episode))
+    (when *debug*
+      ;; mismatches too numerous for regular logging, but I want to see
+      ;; them during debugging (ie, test output)
+      (@log "Desc & fn episode differ for ~s: ~s, ~s."
+	    des-series-name des-episode episode)))
 
   ;; fuzzy compare the series names, possibly creating a merged version
   ;; which is different than both, but more correct
@@ -2509,7 +2561,7 @@ Episode:\\s*(\\d+)?"
     (multiple-value-setq (same fuzzy-series-name)
       (fuzzy-compare-series-names des-series-name series-name))
     (when (not same)
-      (@log "Description&filename series name differ (using 2nd): ~s, ~s."
+      (@log "Desc & fn series name differ (using 2nd): ~s, ~s."
 	    des-series-name series-name)))
 
   (setq season (or season des-season)
@@ -2522,7 +2574,10 @@ Episode:\\s*(\\d+)?"
 
 (defun season-and-episode-to-pretty-epnum (season epnum)
   (when (eq :all epnum) (setq epnum *max-epnum*))
-  (if* (not (numberp epnum))
+  (if* (consp epnum)
+     then (format nil "S~2,'0dE~2,'0d-E~2,'0d" season
+		  (car epnum) (cdr epnum))
+   elseif (not (numberp epnum))
      then (format nil "~d.~a" season epnum)
    elseif (> season 999)
      then ;; 4 digit year

@@ -73,11 +73,15 @@ endif
 	    flavor README.md > README.html; \
 	fi
 
-test: FORCE
+test: test-lisp test-other
+
+test-lisp: FORCE
 	rm -f build.tmp
 	echo '(load "load.cl")' >> build.tmp
 	echo '(exit (test-tget))' >> build.tmp
 	$(runlisp)
+
+test-other: FORCE
 	./test.sh compact
 	./test.sh --learn
 
