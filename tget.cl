@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.21")
+(defvar *tget-version* "1.22")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -272,7 +272,7 @@
      (lambda (obj)
        (format
 	nil
-	"~a~@[, REPACK~*~]~@[~a~]~@[; quality=~a~]; transient=~s"
+	"~a~@[, REPACK~*~]~@[ ~a~]~@[; quality=~a~]; transient=~s"
 	(when (slot-boundp obj 'series-name) (episode-series-name obj))
 	(when (slot-boundp obj 'repack) (episode-repack obj))
 	(when (slot-boundp obj 'pretty-epnum) (episode-pretty-epnum obj))
@@ -2526,7 +2526,7 @@ Episode:\\s*(\\d+)?"
 (defun check-episode-data (des-series-name series-name
 			   des-season season
 			   des-episode episode
-			   &aux same fuzzy-series-name)
+			   &aux fuzzy-series-name)
   ;; Compare the series name, season and episode data obtained from
   ;; different parts of the feed.  The "des-" arguments refer to those from
   ;; the `description' element of the feed, and it is less reliable.
@@ -2558,9 +2558,9 @@ Episode:\\s*(\\d+)?"
   ;; fuzzy compare the series names, possibly creating a merged version
   ;; which is different than both, but more correct
   (when (and des-series-name series-name)
-    (multiple-value-setq (same fuzzy-series-name)
+    (setq fuzzy-series-name
       (fuzzy-compare-series-names des-series-name series-name))
-    (when (not same)
+    (when (not fuzzy-series-name)
       (@log "Desc & fn series name differ (using 2nd): ~s, ~s."
 	    des-series-name series-name)))
 

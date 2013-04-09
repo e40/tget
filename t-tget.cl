@@ -95,7 +95,9 @@
 		  ("the biggest loser (au)"
 		   "the biggest loser australia"
 		   "the biggest loser (au)")
-		  )))
+		  ("the daily show with jon stewart"
+		   "the daily show"
+		   "the daily show with jon stewart"))))
     (dolist (thing things)
       (test (third thing)
 	    (fuzzy-compare-series-names (first thing) (second thing))
