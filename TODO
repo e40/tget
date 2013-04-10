@@ -2,7 +2,9 @@ TODO:
 
 high:
 
-none at this time
+- for feeds that don't have a filename: fuzzy heuristic to get better
+  series name: is there some other element we can use to do this for
+  those feeds?
 
 medium:
 

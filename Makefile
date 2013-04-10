@@ -73,6 +73,7 @@ endif
 	    flavor README.md > README.html; \
 	fi
 
+.PHONY: test
 test: test-lisp test-other
 
 test-lisp: FORCE

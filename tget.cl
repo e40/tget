@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.22")
+(defvar *tget-version* "1.23")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1556,7 +1556,8 @@ Catch up series to a specific episode:
 	(eps episodes (cdr eps))
 	(ep (car eps) (car eps))
 	(res '())
-	temp)
+	temp
+	hours)
       ((null eps) res)
     (@log "matching: ~a" ep)
     (when (and
@@ -1613,6 +1614,10 @@ Catch up series to a specific episode:
 			   nil)
 	      else (@log "  don't have ep")
 		   t)
+	   
+	   (progn
+	     (setq hours (hours-available ep))
+	     t)
 
 	   (if* (series-quality series)
 	      then ;; We have a series quality override.  Only accept that.
@@ -1623,16 +1628,15 @@ Catch up series to a specific episode:
 			   nil)
 	    elseif (quality-acceptable-p ep quality)
 	      then (@log "  quality is good")
-	      else (@log "  ignore: quality not good")
+	      else (@log "  ignore: quality not good (hours avail=~d)" hours)
 		   nil)
 	   
 	   ;; Check that we don't have a delay for this series or group.
 	   (let ((delay (or (series-delay series)
-			    (group-delay group)))
-		 hours)
+			    (group-delay group))))
 	     (if* (or (null delay) (= 0 delay))
 		then (@log "  no delay")
-	      elseif (>= (setq hours (hours-available ep)) delay)
+	      elseif (>= hours delay)
 		then (@log "  hours available (~d) >= delay (~d)" hours delay)
 		else (@log "  ignore: hours available (~d) < delay (~d) "
 			   hours delay)
@@ -2103,7 +2107,7 @@ transmission-remote ~a:~a ~
     (cond
      ((multiple-value-setq (match whole series-name season epnum-start
 			    epnum-end)
-	(match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})-e([0-9]{2,3})"
+	(match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3}).?e([0-9]{2,3})"
 		  filename :case-fold t))
       (setq season (parse-integer season))
       (setq episode (cons (parse-integer epnum-start)

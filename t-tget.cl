@@ -274,7 +274,7 @@
 	   (process-transient-objects (retrieve-from-index 'group
 							   'name :kevin)
 				      #'select-episode)))
-
+      
 ;;;; should wait longer for :sd ep
       (make-eps
        '("vikings.s01e01.repack.hdtv.x264-2hd.mp4" :hours 5.5 :transient t)
@@ -321,21 +321,22 @@
 	      :fail-info "test 5.2")
 	(test :sd (episode-resolution (car downloaded-episodes))
 	      :fail-info "test 5.3"))
-      
-      
-      (make-eps
-       '("Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4" :hours 7 :transient t))
-      (when (test 1 (length downloaded-episodes)
-		  :fail-info "test 6")
-	(let ((ep (car downloaded-episodes)))
-	  (test t (episode-repack ep)
-		:fail-info "test 6.2")
-	  (test :sd (episode-resolution ep)
-		:fail-info "test 6.3")
-	  (test "S06E01-E02" (episode-pretty-epnum ep)
-		:test #'string=)
-	  (test '(6 . 2) (series-complete-to (episode-series ep))
-		:test #'equal)))
 
+      (dolist (name '("Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
+		      "Mad.Men.S06E01E02.PROPER.HDTV.x264-2HD.mp4"
+		      "mad.men.s06e01e02.repack.hdtv.x264-2hd.mp4"))
+	(make-eps (list name :hours 7 :transient t))
+	(when (test 1 (length downloaded-episodes)
+		    :fail-info "test 6.1")
+	  (let ((ep (car downloaded-episodes)))
+	    (test t (episode-repack ep)
+		  :fail-info "test 6.2")
+	    (test :sd (episode-resolution ep)
+		  :fail-info "test 6.3")
+	    (test "S06E01-E02" (episode-pretty-epnum ep)
+		  :test #'string=
+		  :fail-info "test 6.4")
+	    (test '(6 . 2) (series-complete-to (episode-series ep))
+		  :test #'equal
+		  :fail-info "test 6.5"))))
       )))
-

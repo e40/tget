@@ -40,5 +40,6 @@ case $key in
     compact)
 	$tget --compact-database --dump-stats
 	$tget --learn
+	du -sh test.db*
 	;;
 esac
