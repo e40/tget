@@ -2227,7 +2227,7 @@ transmission-remote ~a:~a ~
 	 :case-fold t)
       (declare (ignore whole))
       (when (not match)
-	(warn "TVT: couldn't parse rss description: ~s." des)
+	(@log "TVT: couldn't parse rss description: ~s." des)
 	(return-from convert-rss-to-episode nil))
       
       ;; ".UNCUT." is in the "Filename" but not the "Show Name", but
