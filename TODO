@@ -6,6 +6,16 @@ high:
   series name: is there some other element we can use to do this for
   those feeds?
 
+- episode numbering: see the tvt-big.xml feed:
+  - eps like "13b" and "01b" in description
+  - filenames with just S01 and no Enn
+  - crazy things like "09 (7)" for ep# 7!
+  - 00.special
+  - 03 + 04
+  - 12.01-25
+  - 1xAll
+  - 2.17
+
 medium:
 
 - really should refactor the code that parses episode #'s into one
