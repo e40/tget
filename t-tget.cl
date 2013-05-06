@@ -275,6 +275,13 @@
 							   'name :kevin)
 				      #'select-episode)))
       
+;;;; weird naming:
+      (make-eps
+       '("Vikings.S22E11E12.720p.HDTV.X264-DIMENSION.mkv" :hours 1
+	 :transient t))
+      (test 0 (length downloaded-episodes)
+	    :fail-info "test 0")
+
 ;;;; should wait longer for :sd ep
       (make-eps
        '("vikings.s01e01.repack.hdtv.x264-2hd.mp4" :hours 5.5 :transient t)

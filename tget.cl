@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.23")
+(defvar *tget-version* "1.24")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -2545,9 +2545,10 @@ Episode:\\s*(\\d+)?"
       (@log "Desc & fn season differ for ~s: ~s, ~s."
 	    des-series-name des-season season)))
   
-  (when (or (and (numberp des-episode)
-		 des-episode
+  (when (or (and des-episode
+		 (numberp des-episode)
 		 episode
+		 (numberp episode)
 		 (/= des-episode episode))
 	    (and (symbolp des-episode)
 		 des-episode
