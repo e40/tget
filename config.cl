@@ -154,6 +154,7 @@
 
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
+(defseries "Archer" :kevin)
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Boardwalk Empire" :kevin)
 (defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
@@ -183,6 +184,7 @@
 (defseries "Louie" :kevin)
 (defseries "Luther" :kevin)
 (defseries "Mad Men" :kevin)
+(defseries "Maron" :kevin)
 (defseries "Midsomer Murders" :anh)
 (defseries "Misfits" :kevin)
 (defseries "Modern Family" :adrian+kevin)
