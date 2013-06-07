@@ -23,7 +23,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.24")
+(defvar *tget-version* "1.25")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -2318,7 +2318,7 @@ transmission-remote ~a:~a ~
 	(rss-title (rss-item-title rss))
 	series series-name pretty-epnum repack container
 	source codec resolution)
-    
+
     (when (not rss-des)
       ;; some sporting events have no description and only a title.  Ignore
       ;; these.
@@ -2383,9 +2383,20 @@ Episode:\\s*(\\d+)?"
 	;; Log it and move on.
 	#+ignore ;; too many to log.  :(
 	(@log "BTN: couldn't parse description: ~s." rss-des)
-	(return-from convert-rss-to-episode))
+	
+	;; Try the title.  Some Regular Show's don't have a description,
+	;; but have all the info in the title.
+	(if* (=~ "\\[\\s+([^\\]]+)\\s+\\]\\s+$" rss-title)
+	   then (multiple-value-bind (tit-series-name tit-season tit-episode)
+		    (extract-episode-info-from-filename $1)
+		  (when (not tit-series-name)
+		    (return-from convert-rss-to-episode))
+		  (setq des-title tit-series-name)
+		  (setq season tit-season)
+		  (setq episode tit-episode))
+	   else (return-from convert-rss-to-episode)))
       
-      (when (and season (string/= "" season))
+      (when (and (stringp season) (string/= "" season))
 	(setq season (parse-integer season)))
 
       (when (or (null (setq series (query-series-name-to-series series-name)))
@@ -2394,8 +2405,11 @@ Episode:\\s*(\\d+)?"
       
       ;; a series we care about
 
-      (setq episode (or (and episode (string/= "" episode)
-			     (parse-integer episode))
+      (setq episode (or (and episode
+			     (if* (stringp episode)
+				then (and (string/= "" episode)
+					  (parse-integer episode))
+				else episode))
 			*max-epnum*))
       
       (setq pretty-epnum (season-and-episode-to-pretty-epnum season episode))
