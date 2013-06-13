@@ -8,6 +8,7 @@
   (require :rssreader)
   (require :datetime)
   (require :shell)
+  (require :aserve)
   (require :acache "acache-2.1.22.fasl")
   (require :autozoom))
 
@@ -23,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.25")
+(defvar *tget-version* "1.26")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -287,7 +288,7 @@
 	    (episode-pretty-epnum obj)
 	    (pretty-episode-quality obj)))))
 
-(defun pretty-episode-quality (ep &aux name all-bound)
+(defun pretty-episode-quality (ep &key (separator #\,) &aux name all-bound)
   ;; Ignore priority of quality.
   (if* (and (slot-boundp ep 'container)
 	    (slot-boundp ep 'source)
@@ -306,12 +307,14 @@
 	      (slot-boundp ep 'source)
 	      (slot-boundp ep 'codec)
 	      (slot-boundp ep 'resolution))
-     then (format
-	   nil "~@[~a,~]~a,~a,~a"
-	   (when (slot-boundp ep 'container) (episode-container ep))
-	   (when (slot-boundp ep 'source) (episode-source ep))
-	   (when (slot-boundp ep 'codec) (episode-codec ep))
-	   (when (slot-boundp ep 'resolution) (episode-resolution ep)))
+     then (list-to-delimited-string
+	   (append (when (slot-boundp ep 'container)
+		     (list (episode-container ep)))
+		   (when (slot-boundp ep 'source) (list (episode-source ep)))
+		   (when (slot-boundp ep 'codec) (list (episode-codec ep)))
+		   (when (slot-boundp ep 'resolution)
+		     (list (episode-resolution ep))))
+	   separator)
      else "undefined"))
 
 #+clos-describe-hack
@@ -347,7 +350,7 @@
   trash-torrent-file
   ratio)
 
-(defvar *transmission-remote* nil)
+(defvar *torrent-handler* nil)
 
 (define-condition tget (error) ())
 
@@ -501,21 +504,18 @@
 	    (,g-add-paused ,add-paused)
 	    (,g-trash-torrent-file ,trash-torrent-file)
 	    (,g-ratio ,ratio))
-       (make-transmission
-	:host ,g-host
-	:port ,g-port
-	:username ,g-username
-	:password ,g-password
-	:add-paused ,g-add-paused
-	:trash-torrent-file ,g-trash-torrent-file
-	:ratio ,g-ratio))))
+       (set-torrent-handler
+	(make-transmission-remote
+	 :host ,g-host
+	 :port ,g-port
+	 :username ,g-username
+	 :password ,g-password
+	 :add-paused ,g-add-paused
+	 :trash-torrent-file ,g-trash-torrent-file
+	 :ratio ,g-ratio)))))
 
-(defun make-transmission (&key host port username password add-paused
-			       trash-torrent-file ratio)
-  (when *transmission-remote*
-    (.error
-	    "Multiple deftransmission definitions in config file."))
-  
+(defun make-transmission-remote (&key host port username password add-paused
+				      trash-torrent-file ratio)
   (or (stringp host)
       (.error "transmission host is not a string: ~s." host))
   (or (numberp port)
@@ -533,15 +533,29 @@
 	      password))
   (check-ratio ratio)
   
-  (setq *transmission-remote*
-    (.make-transmission
-     :host host
-     :port port
-     :username username
-     :password password
-     :add-paused add-paused
-     :trash-torrent-file trash-torrent-file
-     :ratio ratio)))
+  (.make-transmission
+   :host host
+   :port port
+   :username username
+   :password password
+   :add-paused add-paused
+   :trash-torrent-file trash-torrent-file
+   :ratio ratio))
+
+(defun set-torrent-handler (thing)
+  (when *torrent-handler*
+    (.error "There are multiple calls to set-torrent-handler in config file."))
+
+  (cond
+   ((transmission-p thing)
+    ;; checking is in make-transmission-remote
+    )
+   ((pathnamep thing)
+    (when (not (probe-file thing))
+      (.error "torrent handler points to non-existent directory: ~a."
+	      thing)))
+   (t (.error "unknown torrent handler: ~s." thing)))
+  (setq *torrent-handler* thing))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -908,6 +922,8 @@ Catch up series to a specific episode:
 	       (format t "~a~&" c)
 	       (exit 1 :quiet t)))
 	   (load config-file :verbose *verbose*)
+	   (when (not *torrent-handler*)
+	     (.error "*torrent-handler* is not defined in config file."))
 	   (open-log-files)
 
 	   (if* dump-all
@@ -1753,10 +1769,10 @@ Catch up series to a specific episode:
     (update-complete-to (episode-series episode)
 			(episode-season episode)
 			(episode-episode episode))
-    (transmission-remote-download episode group))
+    (torrent-handler *torrent-handler* episode group))
   (commit))
 
-(defun transmission-remote-download (episode group)
+(defmethod torrent-handler ((obj transmission) episode group)
   (let* ((cmd
 	  (format nil "~
 transmission-remote ~a:~a ~
@@ -1765,17 +1781,16 @@ transmission-remote ~a:~a ~
   ~a ~
   -sr ~a ~@[--trash-torrent~*~] ~
   --download-dir '~a'"
-		  (transmission-host *transmission-remote*)
-		  (transmission-port *transmission-remote*)
-		  (transmission-username *transmission-remote*)
-		  (transmission-password *transmission-remote*)
+		  (transmission-host obj)
+		  (transmission-port obj)
+		  (transmission-username obj)
+		  (transmission-password obj)
 		  (episode-torrent-url episode)
-		  (if* (transmission-add-paused *transmission-remote*)
+		  (if* (transmission-add-paused obj)
 		     then "--start-paused"
 		     else "--no-start-paused")
-		  (or (group-ratio group)
-		      (transmission-ratio *transmission-remote*))
-		  (transmission-trash-torrent-file *transmission-remote*)
+		  (or (group-ratio group) (transmission-ratio obj))
+		  (transmission-trash-torrent-file obj)
 		  (group-download-path group))))
     (cond
      ((or *debug* *learn*)
@@ -1788,6 +1803,39 @@ transmission-remote ~a:~a ~
 	(when (/= 0 exit-status)
 	  (@log "  stdout: ~a" stdout)
 	  (@log "  stderr: ~a" stderr)))))))
+
+(defmethod torrent-handler ((obj pathname) episode group)
+  (declare (ignore group))
+  ;; Download the torrent file from
+  ;;   (episode-torrent-url episode)
+  ;; and store it into pathname given by obj.
+  ;; Download to a temporary file and rename it, so whatever program
+  ;; watching the directory doesn't get confused by a partial torrent
+  ;; file.
+  (let ((url (episode-torrent-url episode))
+	(temp-file (merge-pathnames
+		    (system:make-temp-file-name "tortmp" obj)
+		    obj))
+	(pretty-name (episode-to-pretty-file-name ".torrent")))
+    (cond
+     ((or *debug* *learn*)
+      (@log "torrent[not downloaded]: ~a" url))
+     (t
+      (@log "torrent[downloaded]: ~a" url)
+      (handler-case (net.aserve.client:http-copy-file url temp-file)
+	(error (c)
+	  (@log "  http-copy-file failed")
+	  (warn "failed (~a) to download torrent file: ~a" c url)))
+      (handler-case (rename-file-raw temp-file pretty-name)
+	(error (c)
+	  (@log "  rename failed")
+	  (warn "Could not rename ~a to ~a: ~a" temp-file pretty-name c)))))))
+
+(defun episode-to-pretty-file-name (ep suffix)
+  (format nil "~a~a~a"
+	  (substitute #\_ #\space (episode-series-name ep))
+	  (pretty-episode-quality ep :separator #\.)
+	  suffix))
 
 (defun pretty-season-and-episode (season epnum)
   (format nil "S~2,'0dE~2,'0d" season epnum))

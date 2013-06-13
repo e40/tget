@@ -105,7 +105,7 @@
 
 (defun test-db-init ()
   (open-tget-database :if-exists :supersede)
-  (setq *transmission-remote* nil)
+  (setq *torrent-handler* nil)
   (load "tget-config/config.cl" :verbose t))
 
 (defun test-tget-feed-reading ()

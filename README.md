@@ -377,6 +377,27 @@ Catch up series to a specific episode:
     ;; A good resource to see why something is or isn't downloading
     (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
     
+    (set-torrent-handler
+    ;;;;Choose one of the following
+     
+     ;; Use transmission-remote to tell your torrent client to download the
+     ;; episode:
+     (make-transmission-remote
+      :host (sys:getenv "TRANSMISSION_HOST")
+      :port (sys:getenv "TRANSMISSION_PORT")
+      :username (sys:getenv "TRANSMISSION_USER")
+      :password (sys:getenv "TRANSMISSION_PASS")
+      :add-paused nil
+      :trash-torrent-file t
+      :ratio "1.04")
+    
+     ;; Specify a directory into which the .torrent files are downloaded, so
+     ;; your torrent client can pick them up from there:
+     #+ignore
+     (pathname "~/Downloads/"))
+    
+    ;; The old style, deprecated.  However, it still works.
+    #+ignore
     (deftransmission ()
         :host (sys:getenv "TRANSMISSION_HOST")
         :port (sys:getenv "TRANSMISSION_PORT")
@@ -385,6 +406,7 @@ Catch up series to a specific episode:
         :add-paused nil
         :trash-torrent-file t
         :ratio "1.04")
+    
     
     (setq *download-root* "/me/layer/videos/")
     
@@ -520,6 +542,7 @@ Catch up series to a specific episode:
     
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
+    (defseries "Archer" :kevin)
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Boardwalk Empire" :kevin)
     (defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
@@ -549,6 +572,7 @@ Catch up series to a specific episode:
     (defseries "Louie" :kevin)
     (defseries "Luther" :kevin)
     (defseries "Mad Men" :kevin)
+    (defseries "Maron" :kevin)
     (defseries "Midsomer Murders" :anh)
     (defseries "Misfits" :kevin)
     (defseries "Modern Family" :adrian+kevin)

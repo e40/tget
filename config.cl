@@ -11,6 +11,27 @@
 ;; A good resource to see why something is or isn't downloading
 (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
 
+(set-torrent-handler
+;;;;Choose one of the following
+ 
+ ;; Use transmission-remote to tell your torrent client to download the
+ ;; episode:
+ (make-transmission-remote
+  :host (sys:getenv "TRANSMISSION_HOST")
+  :port (sys:getenv "TRANSMISSION_PORT")
+  :username (sys:getenv "TRANSMISSION_USER")
+  :password (sys:getenv "TRANSMISSION_PASS")
+  :add-paused nil
+  :trash-torrent-file t
+  :ratio "1.04")
+
+ ;; Specify a directory into which the .torrent files are downloaded, so
+ ;; your torrent client can pick them up from there:
+ #+ignore
+ (pathname "~/Downloads/"))
+
+;; The old style, deprecated.  However, it still works.
+#+ignore
 (deftransmission ()
     :host (sys:getenv "TRANSMISSION_HOST")
     :port (sys:getenv "TRANSMISSION_PORT")
@@ -19,6 +40,7 @@
     :add-paused nil
     :trash-torrent-file t
     :ratio "1.04")
+
 
 (setq *download-root* "/me/layer/videos/")
 

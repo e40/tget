@@ -16,7 +16,8 @@
 (defun opendb (&key reset copy-db compact)
   (setq *transmission-remote* nil)
   (when db.allegrocache::*allegrocache*
-    (close-tget-database))
+    (close-tget-database)
+    (setq *torrent-handler* nil))
   (when copy-db
     (when (string= (namestring copy-db) (namestring *database-name*))
       (error "They're the same database!"))
