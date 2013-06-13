@@ -24,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.26")
+(defvar *tget-version* "1.27")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -296,7 +296,7 @@
 	    (slot-boundp ep 'resolution)
 	    (setq all-bound t)
 	    (setq name (episode-quality ep)))
-     then (format nil "~s" name)
+     then (princ-to-string name)
    elseif (and all-bound
 	       (null (episode-container ep))
 	       (null (episode-source ep))
@@ -308,12 +308,15 @@
 	      (slot-boundp ep 'codec)
 	      (slot-boundp ep 'resolution))
      then (list-to-delimited-string
-	   (append (when (slot-boundp ep 'container)
-		     (list (episode-container ep)))
-		   (when (slot-boundp ep 'source) (list (episode-source ep)))
-		   (when (slot-boundp ep 'codec) (list (episode-codec ep)))
-		   (when (slot-boundp ep 'resolution)
-		     (list (episode-resolution ep))))
+	   (append
+	    (when (slot-boundp ep 'container)
+	      (list (princ-to-string (episode-container ep))))
+	    (when (slot-boundp ep 'source)
+	      (list (princ-to-string (episode-source ep))))
+	    (when (slot-boundp ep 'codec)
+	      (list (princ-to-string (episode-codec ep))))
+	    (when (slot-boundp ep 'resolution)
+	      (list (princ-to-string (episode-resolution ep)))))
 	   separator)
      else "undefined"))
 
@@ -1816,7 +1819,9 @@ transmission-remote ~a:~a ~
 	(temp-file (merge-pathnames
 		    (system:make-temp-file-name "tortmp" obj)
 		    obj))
-	(pretty-name (episode-to-pretty-file-name ".torrent")))
+	(pretty-name (merge-pathnames
+		      (episode-to-pretty-file-name episode ".torrent")
+		      obj)))
     (cond
      ((or *debug* *learn*)
       (@log "torrent[not downloaded]: ~a" url))
@@ -1825,15 +1830,18 @@ transmission-remote ~a:~a ~
       (handler-case (net.aserve.client:http-copy-file url temp-file)
 	(error (c)
 	  (@log "  http-copy-file failed")
-	  (warn "failed (~a) to download torrent file: ~a" c url)))
+	  (warn "failed (~a) to download torrent file: ~a" c url)
+	  (when (probe-file temp-file) (delete-file temp-file))))
       (handler-case (rename-file-raw temp-file pretty-name)
 	(error (c)
 	  (@log "  rename failed")
-	  (warn "Could not rename ~a to ~a: ~a" temp-file pretty-name c)))))))
+	  (warn "Could not rename ~a to ~a: ~a" temp-file pretty-name c)
+	  (when (probe-file temp-file) (delete-file temp-file))))))))
 
 (defun episode-to-pretty-file-name (ep suffix)
-  (format nil "~a~a~a"
+  (format nil "~a_~a_~a~a"
 	  (substitute #\_ #\space (episode-series-name ep))
+	  (episode-pretty-epnum ep)
 	  (pretty-episode-quality ep :separator #\.)
 	  suffix))
 
