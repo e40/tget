@@ -144,8 +144,9 @@
 		    :discontinuous-episodes nil)
 	(update-complete-to series 1 3)
 	(test '(1 . 3) (series-complete-to series)
-	      :test #'equal)
-	(test nil (series-discontinuous-episodes series)))
+	      :test #'equal :fail-info "test 1a")
+	(test nil (series-discontinuous-episodes series)
+	       :fail-info "test 1b"))
       
       (with-series (series
 		    :name "vikings"
@@ -153,8 +154,8 @@
 		    :discontinuous-episodes nil)
 	(update-complete-to series 1 3)
 	(test '(1 . 3) (series-complete-to series)
-	      :test #'equal)
-	(test nil (series-discontinuous-episodes series)))
+	      :test #'equal :fail-info "test 2a")
+	(test nil (series-discontinuous-episodes series) :fail-info "test 2b"))
       
       (with-series (series
 		    :name "vikings"
@@ -162,8 +163,8 @@
 		    :discontinuous-episodes nil)
 	(update-complete-to series 1 1)
 	(test '(1 . 2) (series-complete-to series)
-	      :test #'equal)
-	(test nil (series-discontinuous-episodes series)))
+	      :test #'equal :fail-info "test 3a")
+	(test nil (series-discontinuous-episodes series) :fail-info "test 3b"))
       
       (with-series (series
 		    :name "vikings"
@@ -171,9 +172,9 @@
 		    :discontinuous-episodes nil)
 	(update-complete-to series 1 4)
 	(test '(1 . 2) (series-complete-to series)
-	      :test #'equal)
+	      :test #'equal :fail-info "test 4a")
 	(test '((1 . 4)) (series-discontinuous-episodes series)
-	      :test #'equal))
+	      :test #'equal :fail-info "test 4b"))
       
       (with-series (series
 		    :name "vikings"
@@ -181,8 +182,8 @@
 		    :discontinuous-episodes '((1 . 4)))
 	(update-complete-to series 1 3)
 	(test '(1 . 4) (series-complete-to series)
-	      :test #'equal)
-	(test nil (series-discontinuous-episodes series)))
+	      :test #'equal :fail-info "test 5a")
+	(test nil (series-discontinuous-episodes series) :fail-info "test 5b"))
       
       (with-series (series
 		    :name "vikings"
@@ -191,19 +192,19 @@
 					      (1 . 7) (1 . 8)))
 	(update-complete-to series 1 3)
 	(test '(1 . 5) (series-complete-to series)
-	      :test #'equal)
+	      :test #'equal :fail-info "test 6a")
 	(test '((1 . 7) (1 . 8)) (series-discontinuous-episodes series)
-	      :test #'equal))
+	      :test #'equal :fail-info "test 6b"))
       
       (with-series (series
 		    :name "vikings"
 		    :complete-to '(1 . 2)
 		    :discontinuous-episodes '((1 . 6)))
 	(update-complete-to series 1 4)
-	(test '(1 . 2) (series-complete-to series)
-	      :test #'equal)
-	(test '((1 . 4) (1 . 6)) (series-discontinuous-episodes series)
-	      :test #'equal))
+	(test '(1 . 4) (series-complete-to series)
+	      :test #'equal :fail-info "test 7a")
+	(test '((1 . 6)) (series-discontinuous-episodes series)
+	      :test #'equal :fail-info "test 7b"))
       
       
       (with-series (series
@@ -212,9 +213,9 @@
 		    :discontinuous-episodes nil)
 	(update-complete-to series 2 1)
 	(test '(2 . 1) (series-complete-to series)
-	      :test #'equal)
+	      :test #'equal :fail-info "test 8a")
 	(test nil (series-discontinuous-episodes series)
-	      :test #'equal))
+	      :test #'equal :fail-info "test 8b"))
       
       ;; This should never happen, in practice, but you never know:
       (with-series (series
@@ -223,10 +224,50 @@
 		    :discontinuous-episodes nil)
 	(update-complete-to series 2 2)
 	(test '(1 . 10) (series-complete-to series)
-	      :test #'equal)
+	      :test #'equal :fail-info "test 9a")
 	(test '((2 . 2)) (series-discontinuous-episodes series)
-	      :test #'equal))
+	      :test #'equal :fail-info "test 9b"))
       
+      (with-series (series
+		    :name "vikings"
+		    :complete-to '(28 . 11)
+		    :discontinuous-episodes '((28 . 14)))
+	(update-complete-to series 28 11)
+	(test '(28 . 11) (series-complete-to series) :test #'equal
+	      :fail-info "test 10a")
+	(test '((28 . 14)) (series-discontinuous-episodes series)
+	      :test #'equal :fail-info "test 10b"))
+      
+      (with-series (series
+		    :name "vikings"
+		    :complete-to '(28 . 11)
+		    :discontinuous-episodes '((28 . 14)))
+	(update-complete-to series 28 9999)
+	(test '(28 . 9999) (series-complete-to series) :test #'equal
+	      :fail-info "test 11a")
+	(test nil (series-discontinuous-episodes series)
+	      :test #'equal :fail-info "test 11b"))
+      
+      (with-series (series
+		    :name "vikings"
+		    :complete-to '(28 . 11)
+		    :discontinuous-episodes '((28 . 14) (28 . 16) (28 . 20)))
+	(update-complete-to series 28 9999)
+	(test '(28 . 9999) (series-complete-to series) :test #'equal
+	      :fail-info "test 11c")
+	(test nil (series-discontinuous-episodes series)
+	      :test #'equal :fail-info "test 11d"))
+      
+      (with-series (series
+		    :name "vikings"
+		    :complete-to '(28 . 11)
+		    :discontinuous-episodes '((28 . 14) (28 . 16) (28 . 20)
+					      (29 . 1)))
+	(update-complete-to series 28 9999)
+	(test '(29 . 1) (series-complete-to series) :test #'equal
+	      :fail-info "test 12a")
+	(test nil (series-discontinuous-episodes series)
+	      :test #'equal :fail-info "test 12b"))
       )))
 
 (defun test-tget-processing (&aux downloaded-episodes)

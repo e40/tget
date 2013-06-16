@@ -58,7 +58,7 @@ config.cl: tget-config/config.cl
 		< tget-config/config.cl > config.cl
 
 # removed `install' since that's a little dangerous
-all:	clean build $(build_config) test
+all:	default test
 
 build: FORCE
 	rm -fr tget build.tmp

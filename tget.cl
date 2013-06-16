@@ -24,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.27")
+(defvar *tget-version* "1.28")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -846,7 +846,7 @@ Catch up series to a specific episode:
 	   (when root
 	     (or (probe-file root)
 		 (.error
-		  "-root directory does not exist: ~a." root))
+		  "--root directory does not exist: ~a." root))
 	     (setq *tget-data-directory* (pathname-as-directory root)))
 	   
 	   (setq *database-name*
@@ -1930,22 +1930,41 @@ transmission-remote ~a:~a ~
 	       (= 1 (cdr ct2)))))
        (canonicalize-discontinuous-episodes (series)
 	 ;; Check for newly contiguous episodes in the head of the
-	 ;; discontinuous-episodes list.
-	 ;; If the d-le list is '((1 . 3) (1 . 4)), then the
-	 ;; series-complete-to would be set to '(1 . 4) and the d-e slot to
-	 ;; nil.
+	 ;; discontinuous-episodes list, OR for any elements in the d-e
+	 ;; list which are older than the series-complete-to.
+	 ;; See the test suite (test-tget-complete-to) for many examples,
+	 ;; but here are a few to illusrate what we do:
+	 ;;  IN:  c-t = (1 . 2)  d-e = ((1 . 3) (1 . 4))
+	 ;;  OUT: c-t = (1 . 4)  d-e = nil
+	 ;; and
+	 ;;  IN:  c-t = (28 . 9999)  d-e = ((28 . 14) (28 . 16))
+	 ;;  OUT: c-t = (28 . 9999)  d-e = nil
+	 ;; and and very special case:
+	 ;;  IN:  c-t = (28 . 9999)  d-e = ((28 . 14) (28 . 16) (29 . 1))
+	 ;;  OUT: c-t = (29 . 1)     d-e = nil
 	 (loop
 	   (when (not (and
 		       ;; make sure we didn't already exhaust it:
 		       (series-discontinuous-episodes series)
-		       (contiguous-episodes
-			(series-complete-to series)
-			(car (series-discontinuous-episodes series)))))
+		       (or
+			(older-p
+			 (car (series-discontinuous-episodes series))
+			 (series-complete-to series))
+			(contiguous-episodes
+			 (series-complete-to series)
+			 (car (series-discontinuous-episodes series))))))
 	     (return))
-	   (setf (series-complete-to series) 
-	     (car (series-discontinuous-episodes series)))
-	   (setf (series-discontinuous-episodes series)
-	     (cdr (series-discontinuous-episodes series)))))
+	   (if* (older-p (car (series-discontinuous-episodes series))
+			 (series-complete-to series))
+	      then ;; Need to toss this d-e, since it's before our
+		   ;; complete-to
+		   (setf (series-discontinuous-episodes series)
+		     (cdr (series-discontinuous-episodes series)))
+	      else ;; move the first d-e to the complete-to
+		   (setf (series-complete-to series) 
+		     (car (series-discontinuous-episodes series)))
+		   (setf (series-discontinuous-episodes series)
+		     (cdr (series-discontinuous-episodes series))))))
        (sorted-insert (new-ct ct-list)
 	 ;; CT is a new complete-to list we need to insert into CT-LIST,
 	 ;; but keeping CT-LIST sorted.
@@ -1968,6 +1987,10 @@ transmission-remote ~a:~a ~
       ;; No complete-to, so just save it
       (setf (series-complete-to series) new-ct))
      
+     ((equalp ct new-ct)
+      ;; ignore, the same
+      )
+     
      ((older-p new-ct ct)
       ;; ignore this, since NEW-CT is older than CT
       )
@@ -1983,17 +2006,19 @@ transmission-remote ~a:~a ~
 		(list new-ct))))
      
      (t
-      ;; We have discontinuous episodes.  Need to carefully manage things.
-      (if* (contiguous-episodes ct new-ct)
+      ;; We have current discontinuous episodes.  Need to carefully manage
+      ;; things.
+      (if* (or (contiguous-episodes ct new-ct)
+	       (older-p ct new-ct))
 	 then (setf (series-complete-to series) new-ct)
 	      ;; Normalize discontinuous-episodes, since there
 	      ;; might be new contiguous episodes in that list now
 	      (canonicalize-discontinuous-episodes series)
 	 else ;; Episodes are not contiguous, so merge NEW-CT into the list
 	      ;; of discontiguous-episodes, but keep it sorted
-	      (setf (series-discontinuous-episodes series)
-		(sorted-insert new-ct
-			       (series-discontinuous-episodes series))))))))
+	      (let ((v (sorted-insert new-ct
+				      (series-discontinuous-episodes series))))
+		(setf (series-discontinuous-episodes series) v)))))))
 
 (defun episode-after-complete-to (ep series)
   (cond
