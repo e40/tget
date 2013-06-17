@@ -24,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.28")
+(defvar *tget-version* "1.29")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot

@@ -106,7 +106,10 @@
 		   :format-control "Accessing url ~s gave http response code ~s"
 		   :format-arguments (list url code)))
     
-    (parse-feed content)))
+    (parse-feed
+     ;; WTF?  Control chars in feeds?  Cripes, what'll they think of next?
+     (remove-if (lambda (c) (< (char-code c) 26))
+		content))))
 
 
 (defun parse-feed (content)
