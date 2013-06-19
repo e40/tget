@@ -5,7 +5,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General options
 
-#+ignore ;; Not really using this and it's a lot of data
+;; This is now reset once per run, so it's not too much data to save,
+;; and it's good for debugging feed issues.
 (setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
 
 ;; A good resource to see why something is or isn't downloading
@@ -192,7 +193,7 @@
 (defseries "Elementary" :kevin)
 (defseries "Family Tree" :kevin)
 (defseries "Falling Skies" :kevin)
-(defseries "Frontline" :kevin)
+(defseries "Frontline (US)" :kevin)
 (defseries "Futurama" :adrian+kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
 (defseries "Hannibal" :anh+kevin)

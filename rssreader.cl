@@ -108,7 +108,7 @@
     
     (parse-feed
      ;; WTF?  Control chars in feeds?  Cripes, what'll they think of next?
-     (remove-if (lambda (c) (< (char-code c) 26))
+     (remove-if (lambda (c) (<= (char-code c) #.(char-code #\^z)))
 		content))))
 
 

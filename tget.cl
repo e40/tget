@@ -24,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.29")
+(defvar *tget-version* "1.30")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -1022,7 +1022,8 @@ Catch up series to a specific episode:
     (and *verbose* (format t ";; Opening ~a rss log file...~%" *log-rss*))
     (setq *log-rss-stream*
       (open *log-rss* :direction :output
-	    :if-exists (if truncate :supersede :append)
+	    ;; rss feed is too large to append
+	    :if-exists :supersede ;;(if truncate :supersede :append)
 	    :if-does-not-exist :create))))
 
 (defun close-log-files ()
@@ -1487,7 +1488,7 @@ Catch up series to a specific episode:
       ;; errors due to accessing slots of deleted objects.  :(
       ;;
       (handler-case
-	  (mapcar 'rss-to-episode (maybe-log-rss (fetch-feed group)))
+	  (mapcar 'rss-to-episode (fetch-feed group))
 	(net.rss:feed-error (c)
 	  (format t "~&~a~%" c)
 	  ;; reduce *http-timeout* dramatically, since we already got an
@@ -2069,7 +2070,8 @@ transmission-remote ~a:~a ~
 		    else (@log "read feed for ~a" url)
 			 (feed-to-rss-objects :url url))))
 	    (push (cons url res) *cached-feeds*)
-	    res)))
+	    ;; Log here, so we don't log the cached version, too
+	    (maybe-log-rss res))))
 
 (defun feed-to-rss-objects (&key url content file)
   #+ignore
