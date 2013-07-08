@@ -192,13 +192,11 @@
 (defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin)
 (defseries "Family Tree" :kevin)
-(defseries "Falling Skies" :kevin)
 (defseries "Frontline (US)" :kevin)
 (defseries "Futurama" :adrian+kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
 (defseries "Hannibal" :anh+kevin)
 (defseries "Homeland" :kevin)
-(defseries "Inside Amy Schumer" :kevin)
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin)
 (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
@@ -223,7 +221,6 @@
 (defseries "Ridiculousness" :adrian+kevin)
 (defseries "Shark Tank" :adrian+kevin)
 (defseries "Sherlock" :kevin)
-(defseries "Southland" :kevin)
 (defseries "Strike Back" :kevin)
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Colbert Report" :kevin)
@@ -247,6 +244,11 @@
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
+
+;; removed:
+(defseries "Falling Skies" :kevin :remove t)
+(defseries "Inside Amy Schumer" :kevin :remove t)
+(defseries "Southland" :kevin :remove t) ;; canceled!
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BTN

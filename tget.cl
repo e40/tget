@@ -24,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.30")
+(defvar *tget-version* "1.31")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -452,12 +452,23 @@
 	      :quality quality
 	      :download-path download-path))))
 
-(defmacro defseries (name group &key delay quality)
-  `(make-series
-    :name ,name
-    :group ,group
-    ,@(when delay `(:delay ,delay))
-    ,@(when quality `(:quality ,quality))))
+(defmacro defseries (name group &key delay quality remove)
+  (if* remove
+     then `(forget-series ,name :noisy nil)
+     else `(make-series
+	    :name ,name
+	    :group ,group
+	    ,@(when delay `(:delay ,delay))
+	    ,@(when quality `(:quality ,quality)))))
+
+(defun forget-series (name &key (noisy t))
+  (let* ((series-name (canonicalize-series-name name))
+	 (s (query-series-name-to-series series-name)))
+    (if* s
+       then (format t "removing series ~a~%" s)
+	    (delete-instance s)
+	    (commit)
+       else (warn "Could not find series: ~s." name))))
 
 (defun make-series (&key name group delay quality)
   (let* ((pretty-name name)
@@ -981,14 +992,7 @@ Catch up series to a specific episode:
 		     (delete-instance ep))
 		   (commit)
 	    elseif delete-series
-	      then (let* ((series-name (canonicalize-series-name delete-series))
-			  (s (query-series-name-to-series series-name)))
-		     (when (null s)
-		       (.error "Could not find series: ~s."
-			       delete-series))
-		     (format t "removing ~a~%" s)
-		     (delete-instance s)
-		     (commit))
+	      then (forget-series delete-series)
 	    elseif catch-up-mode
 	      then (catch-up)
 	    elseif catch-up-series
