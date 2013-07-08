@@ -28,7 +28,7 @@ LISP ?= mlisp
 
 runlisp = $(LISP) -q -batch -L build.tmp -kill
 
-version := $(shell grep 'tget-version' tget.cl | sed -e 's,.*"\(.*\)".*,\1,')
+version := $(shell fgrep 'defvar *tget-version* ' tget.cl | sed -e 's,.*"\(.*\)".*,\1,')
 
 ifeq ($(FI_APPS_COMMON),t)
 release ?= $(shell . fi-apps-common/rpm-utils.sh && \
