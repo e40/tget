@@ -3,10 +3,13 @@
 *.lxml
 *.out
 /*.xml
+/BUILD/
+/Makefile.local
+/RPMS/
+/SRPMS/
 /archive.after
 /archive.before
 /build.tmp
-/Makefile.local
 /test.db*
 /tget-config/
 /tget-test-data/

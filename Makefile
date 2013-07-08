@@ -118,7 +118,7 @@ clean: FORCE
 
 tarball: FORCE
 	mkdir $(tardir)
-	cp Makefile *.cl $(tardir)
+	cp -p Makefile *.cl *.md $(tardir)
 	tar zcf $(tarball) $(tardir)
 	rm -fr $(tardir)
 
