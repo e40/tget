@@ -468,7 +468,8 @@
        then (format t "removing series ~a~%" s)
 	    (delete-instance s)
 	    (commit)
-       else (warn "Could not find series: ~s." name))))
+     elseif noisy
+       then (warn "Could not find series: ~s." name))))
 
 (defun make-series (&key name group delay quality)
   (let* ((pretty-name name)
