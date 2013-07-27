@@ -71,12 +71,3 @@
  `(progn
     (opendb :copy-db "~/.tget.d/db")
     (prof:with-profiling () (process-groups))))
-
-#+ignore
-(pprint
- `(progn
-    (excl.osi:command-output "./test.sh copy")
-    (save-database "archive.before" :file "test.db")
-    (sys:copy-file "test.db/version.cl" "archive.before.schema"
-		   :force t)
-    (opendb :restore "archive.before")))
