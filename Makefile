@@ -75,6 +75,7 @@ endif
 
 .PHONY: test
 test: test-lisp test-other
+	rm -fr test.db*
 
 test-lisp: FORCE
 	rm -f build.tmp
