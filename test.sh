@@ -20,12 +20,13 @@ rm -fr test.db*
 
 cp -rp ~/.tget.d/db test.db
 du -sh test.db*
-tget --compact-database --dump-stats
+tget --compact-database
 du -sh test.db*
 
-######### test #1
+######### test #2
 # start from a fresh database and learn
-tget --reset --learn
+
+tget --run --reset --learn
 
 tget --cron --dump-complete-to > test.complete-to
 if ! diff tget-test-data/reference.complete-to test.complete-to; then

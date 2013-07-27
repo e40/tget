@@ -1,50 +1,103 @@
-# tget - t0rrent get
+# tget 1.34 - torrent get
 
-tget grew out of my dissatisfaction with flexget's behavior and
-configuration.  Don't get me wrong, flexget is an amazing program in
+_tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
+configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
 its own right, but there were some things I couldn't get it to do.
 And configuration is clumsy, at best.  Coming from the Lisp world,
-YAML just sucks.  Go ahead and compare tget's example configuration
-file to that of flexget.  The power and flexibility of Lisp make the
-comparison a shutout.  Of course, that assumes tget does what you want
+YAML just sucks.  Go ahead and compare _tget_'s example configuration
+file to that of [FlexGet][2].  The power and flexibility of Lisp make the
+comparison a shutout.  Of course, that assumes _tget_ does what you want
 it to do.
 
-The main limitation I wanted to overcome by writing tget, though, was
+The main limitation I wanted to overcome by writing _tget_, though, was
 to set the download quality based on time: wait 6 hours (from
 publication date), then download the x264 SD version, but if after 12
 hours after that a version isn't available, then download the x264
 720p version, and if either of those aren't available for 2 days then
 download the XviD SD version.  The latter is really my last choice,
 because the quality can be pretty crappy.  What I just described is
-not possible in flexget.  tget makes this pretty easy.
+not possible in [FlexGet][2].  _tget_ makes this pretty easy.
 
-tget isn't nearly as functional as flexget, though, and the feed
+_tget_ isn't nearly as functional as [FlexGet][2], though, and the feed
 parsing only works (currently) with two sites (TVT, BTN).  I'm looking
 at adding more.
 
 ### Table of Contents
+**[How it works](#how-it-works)**  
 **[Installation](#installation)**  
+**[Getting started](#getting-started)**  
 **[Configuration](#configuration)**  
-**[Putting it into service](#putting-it-into-service)**  
 **[Maintenance tasks](#maintenance-tasks)**  
 **[Usage](#usage)**  
 **[Example configuration file](#example-configuration-file)**  
 
+## How it works
+
+_tget_ has these basic phases:
+
+* parsing the configuration file,
+
+* fetching the RSS feeds defined by the configuration file, and
+
+* downloading torrent files for episodes never seen before, which meet
+  the criteria defined by the configuration file.
+
+To accomplish the above, _tget_ maintains a database of series and
+episodes, with various data about them.
+
+Here are some details about the above phases:
+
+* The configuration file defines which series to monitor.  When the
+  configuration file is read, entries are created in the database for
+  each series.  You can examine this stored information with command
+  line arguments to _tget_.
+
+* When an RSS feed is fetched, any episodes related to series defined
+  by the configuration file, and thus in the database, are stored in
+  the database, but marked as _not downloaded_.
+
+* Each series in the database has a `complete-to` slot.  This tells
+  _tget_ what episode number the series is completed to, and _tget_ will
+  never download anything at or before this episode.
+
+  Say you've downloaded all the episodes of _Breaking Bad_ up to
+  S05E08.  Any episodes which appear in the RSS feed at or before this
+  episode will be ignored and never downloaded.
+
+  There are command line arguments, which start with `--catch-up`,
+  which can be used to manipulate the `complete-to` slot of a series.
+
+* Episodes are sometimes downloaded out of order.  You will not miss
+  an episode of a series if it appears in the RSS feed out of order.
+
+  Say the `complete-to` for a series is S05E08, and episode S05E10
+  appears on one invocation of _tget_ and S05E09 appears in a later
+  invocation.  Both episodes will be downloaded and the `complete-to`
+  will not be updated to S05E10 until after episode S05E09 is
+  downloaded.
+
+* When the torrent file is downloaded, the resulting file is given to
+  _transmission-remote_ for processing.  _transmission-remote_ is a
+  command line tool used to control [Transmission][1], the cross-platform
+  BitTorrent client.  See the example configuration file for
+  information on how to use that. 
+
 ## Installation
 
-I run tget on Linux.  It should run fine on Mac OS X, as well.
+_tget_ has been tested on Linux and Mac OS X and depends on two other
+software packages:
 
-tget depends on two other software packages:
+_transmission-remote_ -- a program that can communicate to a local or
+remote instance of Transmission.  _tget_ uses it to download the actual
+episodes .  I run [Transmission][1] on Mac OS X, on the same local
+area network.  _transmission-remote_ makes this easy.  On CentOS and
+Fedora, install the `transmission-common` rpm.  On a Mac, I suggest
+looking to [MacPorts][3].
 
-*transmission-remote* -- a program that can communicate to a local
-or remote instance of Transmission.  tget uses it to do the work of
-download the files.  I run Transmission on Mac OS X, on the same
-local area network.  *transmission-remote* makes this easy.
-
-*Allegro Common Lisp* -- For now, at least, no binary packages of tget
+_Allegro Common Lisp_ -- For now, at least, no binary packages of _tget_
 are available and you need Allegro Common Lisp to build it.
 
-After cloning the repo, do this to build tget:
+After cloning the repo, build _tget_:
 
     $ make
 
@@ -55,33 +108,62 @@ That should produce a directory `tget/`, which can be installed with:
 You can make a `Makefile.local` to override features of the GNU Make
 file.
 
+## Getting started
+
+After installing the software, the next thing you need is a
+configuration file.  See the next section for information on
+configuration, and the section at the end for an example configuration
+file, which you can edit for your needs.
+
+The database used by _tget_ is stored in `$HOME/.tget.d`.  You can
+change this location with the `--root` command line argument.
+
+Next, you probably want to create a new database which has everything
+you care about marked as _already downloaded_.  The following command 
+will start from scratch and, assuming the RSS feed you are using
+supports it, mark 6 months of episodes as already downloaded:
+
+    $ tget --reset --learn --feed-interval 180
+
+Next, you'll want to set up _cron_ to periodically run _tget_, perhaps
+every day at 3AM:
+
+    0 3 * * *  source $HOME/.bashrc; MAILTO=username@domain /usr/local/bin/tget --cron
+
+Running more often is fine, but you need to be careful not to run
+afoul of the site rules for how often you can download their RSS feed.
+You can use the `MAILTO` environment variable to change the user that
+receives the output of _tget_.  `$HOME/.bashrc` is sourced to pick up
+some environment variables used by the example configuration file.
+You can omit this part if you do not need any environment variables.
+
 ## Configuration
 
 At the highest level, the configuration file defines these entities:
 
-* *transmission-remote settings* - in the config example below I pull
+* _transmission-remote settings_ - in the config example below I pull
   items from the environment, mainly because I don't want to share
   that private information in this documentation.  You can store yours
   in the configuration file directly.
 
-* *RSS feeds* - this is where tget gets the information on what is
+* _RSS feeds_ - this is where _tget_ gets the information on what is
   available to download.  Each feed is site specific and possibly user
   specific.
 
-* *quality settings* - these define the quality of the files you want
+* _quality settings_ - these define the quality of the files you want
   to download.  It's a very important aspect of the configuration, as
   it will directly affect your viewing pleasure.
 
-* *download groups* - if you have multiple people that are watching
+* _download groups_ - if you have multiple people that are watching
   episodes, or multiple sites from which you are downloading, then you
   likely will want to use different groups with differing options for
   each group.  Each group might, for example, have different download
   locations.
 
-* *TV shows you care about* - the `defseries` macro defines the shows
+* _TV shows you care about_ - the `defseries` macro defines the shows
   you want to download.  A series is associated with a group, at a
   minimum, and can override the quality of what you want to download.
-  For example, you may want to download *720p* versions of *Top Gear*,
+  For example, you may want to download _720p_ versions of _Top Gear_,
   but would accept a lower resolution of other shows.
 
 That's the big picture.  There is an example configuration file below.
@@ -89,48 +171,48 @@ It is fully annotated and is a good place to start.
 
 ### `deftransmission &key ...keywords...`
 
-The values for each keyword option (the names after *&key*, given in
+The values for each keyword option (the names after _&key_, given in
 the following table) have direct correspondence to
-*transmission-remote* command line arguments:
+_transmission-remote_ command line arguments:
 
-| tget keyword | *transmission-remote* argument |
+| _tget_ keyword | _transmission-remote_ argument |
 | :----------: | :----------------------------: |
-| `:host` & `:port` | *host:port* |
-| `:username` & `:password` | `--auth` *username:password* |
+| `:host` & `:port` | _host:port_ |
+| `:username` & `:password` | `--auth` _username:password_ |
 | `:add-paused t` | `--start-paused` |
 | `:add-paused nil` | `--no-start-paused` |
 | `:trash-torrent-file t` | `--trash-torrent` |
-| `:ratio` | `-sr` *ratio* |
-| `:download-path` | `--download-dir` *path* |
+| `:ratio` | `-sr` _ratio_ |
+| `:download-path` | `--download-dir` _path_ |
 
 You can use `(sys:getenv "ENV_VAR")` to grab values from the
 environment.
 
 ### `defquality &key priority container source codec resolution`
 
-The valid values for each keyword option (the names after *&key*) are:
+The valid values for each keyword option (the names after _&key_) are:
 
 `:priority` -- any positive integer from 1 to 100.  The higher the
 number the higher the priority the that has this quality will be given
 if there are multiple matching episodes.
 
 `:container` -- the acceptable containers for the quality.  A container
-is, essentially, the file type of the downloaded file (e.g. *mp4*).
+is, essentially, the file type of the downloaded file (e.g. _mp4_).
 Valid values:
 
     :avi, :mkv, :vob, :mpeg, :mp4, :iso, :wmv, :ts, :m4v, :m2ts
 
 `:source` -- the acceptable source for the quality.  The source is where
-the stream originated.  *:hdtv* is a common source.  Valid values:
+the stream originated.  _:hdtv_ is a common source.  Valid values:
 
     :pdtv, :hdtv, :dsr, :dvdrip, :tvrip, :vhsrip, :bluray, :bdrip, :brrip, :dvd5, :dvd9, :hddvd, :web-dl
 
-`:codec` -- the codec used to encode the original source (e.g. *XviD* or
-*x264*, aka *h.264*).  Valid values:
+`:codec` -- the codec used to encode the original source (e.g. _XviD_ or
+_x264_, aka _h.264_).  Valid values:
 
     :x264, :h.264, :xvid, :mpeg2, :divx, :dvdr, :vc-1, :wmv, :bd
 
-`:resolution` -- the resolution of the encoded image (e.g. *720p*).
+`:resolution` -- the resolution of the encoded image (e.g. _720p_).
 Valid values:
 
     :sd, :720p, :1080p, :1080i
@@ -158,7 +240,7 @@ forever.
 
 `:quality` -- a user-defined quality symbol.  See `defquality`.
 
-`:download-path` -- The path used by *transmission-remote* to store
+`:download-path` -- The path used by _transmission-remote_ to store
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
@@ -177,35 +259,28 @@ Optional arguments:
 
 `:quality` -- this allows the group quality to be overriden.
 
-## Putting it into service
-
-Running from *cron* is the preferred method of operation.  This
-crontab entry will do the job:
-
-    0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron
-
-It runs every day at 3AM.  Running more often is fine, but you need to
-be careful not to run afoul of the site rules.
-
-If you want the email to go to `username@domain`, then you can specify
-the *crontab* entry like this:
-
-    0 3 * * *  source $HOME/.profile; MAILTO=username@domain /usr/local/bin/tget --cron
-
-I source my `$HOME/.profile` (which is sourced by my `$HOME/.bashrc`)
-to pick up some environment variables used for the Transmission
-interface.
-
 ## Maintenance tasks
 
-coming soon
+After some time, _tget_ can slow down due to the database growing.  It
+has to do with how _tget_ operates, temporarily storing episodes while
+it is deciding what to download.  These temporarily-stored episodes
+are deleted almost immediately, but they leave _holes_ in the
+database.  To clean them out, you can
+
+    $ tget --compact-database
+
+This will backup the current database and then compact it to make it
+more efficient.  It will usually dramatically decrease the size of the
+database, if it's been in use for a month or more.
 
 ## Usage
 
-Primary behavior determining arguments:
+Primary behavior determining arguments (one of these must be given):
 
+    --run
     --catch-up   
     --catch-up-series series-episode-name
+    --compact-database
     --delete-episodes series-name
     --delete-series series-name
     --dump-all
@@ -214,19 +289,11 @@ Primary behavior determining arguments:
     --dump-series
     --dump-stats
 
-If none of the above are given, tget goes into *download* mode.
-In download mode, tget will download torrent files that match the given
-configuration.
-
-If one of the above arguments are given, tget will not do any downloading.
-
 Behavior modifying arguments:
 
     --auto-backup condition
-    --compact-database
     --config file
     --cron
-    --quiet
     --db database-name
     --debug
     --feed-interval ndays
@@ -238,13 +305,19 @@ Behavior modifying arguments:
 
 The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
-case.
+case.  However, the series names presented to you will be stored in their
+original form.
 
 * `--help`
 
-  Print this help text and exit.
+  Print full help text and exit.
 
 The following are arguments controlling primary behavior:
+
+* `--run`
+
+  The primary mode of operation, whereby RSS feeds are retrieved, searched
+  for new episodes and those episode torrents downloaded.
 
 * `--catch-up`
 
@@ -257,6 +330,10 @@ The following are arguments controlling primary behavior:
 
   Catch series up to the episode given in the companion argument.
   See examples below.
+
+* `--compact-database`
+
+  This saves and restores the database, compacting it at the same time.
 
 * `--delete-episodes series-name`
 
@@ -306,10 +383,6 @@ effects:
 
   The default is to make backups for all conditions above.
 
-* `--compact-database`
-
-  This saves and restores the database, compacting it at the same time.
-
 * `--config file`
 
   Load `file` as the configuration file instead of one of the built-in
@@ -331,7 +404,9 @@ effects:
 
 * `--debug`
 
-  Run in debug mode.  This is recommended for developers only.
+  Run in debug mode.  In this mode, torrents are not downloaded and the
+  debug feed defined by the configuration file is used.  Also, the program
+  is more verbose.
 
 * `--feed-interval ndays`
 
@@ -341,9 +416,8 @@ effects:
 
 * `--learn`
 
-  Don't download anything--useful in conjunction with reset to wipe the
-  database and start over, or when starting to use tget for the first
-  time.  See the examples below.
+  Mark episodes which match the configuration as _downloaded_.  This is
+  useful when using tget for the first time.  See the examples below.
 
 * `--reset`
 
@@ -366,10 +440,6 @@ Same, but to a `temp' database in the current directory:
 
     $ tget --reset --learn --feed-interval 180 --root $PWD --db test.db
 
-Usage from Cron:
-
-    $ tget --cron
-
 Let's see what the series object for "Regular Show" looks like.
 The series name is not case sensitive:
 
@@ -381,13 +451,14 @@ These all refer to the same series:
     $ tget --dump-series "James Mays Man Lab"
     $ tget --dump-series "James May's Man Lab"
 
-To see the episodes of the above, you would:
+To see the episodes of the above, you could use any of the variations on
+the names given, for example:
 
     $ tget --dump-episodes "James May's Man Lab"
 
 Compact the database:
 
-    $ tget --compact-database --dump-stats
+    $ tget --compact-database
 
 Catch up series to a specific episode:
 
@@ -697,3 +768,7 @@ Catch up series to a specific episode:
     (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
     (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
     (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
+
+[1]: http://www.transmissionbt.com/   "Transmission"
+[2]: http://flexget.com/              "FlexGet"
+[3]: http://www.macports.org/         "MacPorts"

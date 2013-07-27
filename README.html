@@ -10,51 +10,102 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget---t0rrent-get" class="anchor" href="#tget---t0rrent-get"><span class="octicon octicon-link"></span></a>tget - t0rrent get</h1>
+<a name="tget-134---torrent-get" class="anchor" href="#tget-134---torrent-get"><span class="octicon octicon-link"></span></a>tget 1.34 - torrent get</h1>
 
-<p>tget grew out of my dissatisfaction with flexget's behavior and
-configuration.  Don't get me wrong, flexget is an amazing program in
+<p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
+configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
 its own right, but there were some things I couldn't get it to do.
 And configuration is clumsy, at best.  Coming from the Lisp world,
-YAML just sucks.  Go ahead and compare tget's example configuration
-file to that of flexget.  The power and flexibility of Lisp make the
-comparison a shutout.  Of course, that assumes tget does what you want
+YAML just sucks.  Go ahead and compare <em>tget</em>'s example configuration
+file to that of <a href="http://flexget.com/" title="FlexGet">FlexGet</a>.  The power and flexibility of Lisp make the
+comparison a shutout.  Of course, that assumes <em>tget</em> does what you want
 it to do.</p>
 
-<p>The main limitation I wanted to overcome by writing tget, though, was
+<p>The main limitation I wanted to overcome by writing <em>tget</em>, though, was
 to set the download quality based on time: wait 6 hours (from
 publication date), then download the x264 SD version, but if after 12
 hours after that a version isn't available, then download the x264
 720p version, and if either of those aren't available for 2 days then
 download the XviD SD version.  The latter is really my last choice,
 because the quality can be pretty crappy.  What I just described is
-not possible in flexget.  tget makes this pretty easy.</p>
+not possible in <a href="http://flexget.com/" title="FlexGet">FlexGet</a>.  <em>tget</em> makes this pretty easy.</p>
 
-<p>tget isn't nearly as functional as flexget, though, and the feed
+<p><em>tget</em> isn't nearly as functional as <a href="http://flexget.com/" title="FlexGet">FlexGet</a>, though, and the feed
 parsing only works (currently) with two sites (TVT, BTN).  I'm looking
 at adding more.</p>
 
 <h3>
 <a name="table-of-contents" class="anchor" href="#table-of-contents"><span class="octicon octicon-link"></span></a>Table of Contents</h3>
 
-<p><strong><a href="#installation">Installation</a></strong><br><strong><a href="#configuration">Configuration</a></strong><br><strong><a href="#putting-it-into-service">Putting it into service</a></strong><br><strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br><strong><a href="#usage">Usage</a></strong><br><strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
+<p><strong><a href="#how-it-works">How it works</a></strong><br><strong><a href="#installation">Installation</a></strong><br><strong><a href="#getting-started">Getting started</a></strong><br><strong><a href="#configuration">Configuration</a></strong><br><strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br><strong><a href="#usage">Usage</a></strong><br><strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
 
 <h2>
+<a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works</h2>
+
+<p><em>tget</em> has these basic phases:</p>
+
+<ul>
+<li><p>parsing the configuration file,</p></li>
+<li><p>fetching the RSS feeds defined by the configuration file, and</p></li>
+<li><p>downloading torrent files for episodes never seen before, which meet
+the criteria defined by the configuration file.</p></li>
+</ul><p>To accomplish the above, <em>tget</em> maintains a database of series and
+episodes, with various data about them.</p>
+
+<p>Here are some details about the above phases:</p>
+
+<ul>
+<li><p>The configuration file defines which series to monitor.  When the
+configuration file is read, entries are created in the database for
+each series.  You can examine this stored information with command
+line arguments to <em>tget</em>.</p></li>
+<li><p>When an RSS feed is fetched, any episodes related to series defined
+by the configuration file, and thus in the database, are stored in
+the database, but marked as <em>not downloaded</em>.</p></li>
+<li>
+<p>Each series in the database has a <code>complete-to</code> slot.  This tells
+<em>tget</em> what episode number the series is completed to, and <em>tget</em> will
+never download anything at or before this episode.</p>
+
+<p>Say you've downloaded all the episodes of <em>Breaking Bad</em> up to
+S05E08.  Any episodes which appear in the RSS feed at or before this
+episode will be ignored and never downloaded.</p>
+
+<p>There are command line arguments, which start with <code>--catch-up</code>,
+which can be used to manipulate the <code>complete-to</code> slot of a series.</p>
+</li>
+<li>
+<p>Episodes are sometimes downloaded out of order.  You will not miss
+an episode of a series if it appears in the RSS feed out of order.</p>
+
+<p>Say the <code>complete-to</code> for a series is S05E08, and episode S05E10
+appears on one invocation of <em>tget</em> and S05E09 appears in a later
+invocation.  Both episodes will be downloaded and the <code>complete-to</code>
+will not be updated to S05E10 until after episode S05E09 is
+downloaded.</p>
+</li>
+<li><p>When the torrent file is downloaded, the resulting file is given to
+<em>transmission-remote</em> for processing.  <em>transmission-remote</em> is a
+command line tool used to control <a href="http://www.transmissionbt.com/" title="Transmission">Transmission</a>, the cross-platform
+BitTorrent client.  See the example configuration file for
+information on how to use that. </p></li>
+</ul><h2>
 <a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
 
-<p>I run tget on Linux.  It should run fine on Mac OS X, as well.</p>
+<p><em>tget</em> has been tested on Linux and Mac OS X and depends on two other
+software packages:</p>
 
-<p>tget depends on two other software packages:</p>
+<p><em>transmission-remote</em> -- a program that can communicate to a local or
+remote instance of Transmission.  <em>tget</em> uses it to download the actual
+episodes .  I run <a href="http://www.transmissionbt.com/" title="Transmission">Transmission</a> on Mac OS X, on the same local
+area network.  <em>transmission-remote</em> makes this easy.  On CentOS and
+Fedora, install the <code>transmission-common</code> rpm.  On a Mac, I suggest
+looking to <a href="http://www.macports.org/" title="MacPorts">MacPorts</a>.</p>
 
-<p><em>transmission-remote</em> -- a program that can communicate to a local
-or remote instance of Transmission.  tget uses it to do the work of
-download the files.  I run Transmission on Mac OS X, on the same
-local area network.  <em>transmission-remote</em> makes this easy.</p>
-
-<p><em>Allegro Common Lisp</em> -- For now, at least, no binary packages of tget
+<p><em>Allegro Common Lisp</em> -- For now, at least, no binary packages of <em>tget</em>
 are available and you need Allegro Common Lisp to build it.</p>
 
-<p>After cloning the repo, do this to build tget:</p>
+<p>After cloning the repo, build <em>tget</em>:</p>
 
 <pre><code>$ make
 </code></pre>
@@ -68,6 +119,38 @@ are available and you need Allegro Common Lisp to build it.</p>
 file.</p>
 
 <h2>
+<a name="getting-started" class="anchor" href="#getting-started"><span class="octicon octicon-link"></span></a>Getting started</h2>
+
+<p>After installing the software, the next thing you need is a
+configuration file.  See the next section for information on
+configuration, and the section at the end for an example configuration
+file, which you can edit for your needs.</p>
+
+<p>The database used by <em>tget</em> is stored in <code>$HOME/.tget.d</code>.  You can
+change this location with the <code>--root</code> command line argument.</p>
+
+<p>Next, you probably want to create a new database which has everything
+you care about marked as <em>already downloaded</em>.  The following command 
+will start from scratch and, assuming the RSS feed you are using
+supports it, mark 6 months of episodes as already downloaded:</p>
+
+<pre><code>$ tget --reset --learn --feed-interval 180
+</code></pre>
+
+<p>Next, you'll want to set up <em>cron</em> to periodically run <em>tget</em>, perhaps
+every day at 3AM:</p>
+
+<pre><code>0 3 * * *  source $HOME/.bashrc; MAILTO=username@domain /usr/local/bin/tget --cron
+</code></pre>
+
+<p>Running more often is fine, but you need to be careful not to run
+afoul of the site rules for how often you can download their RSS feed.
+You can use the <code>MAILTO</code> environment variable to change the user that
+receives the output of <em>tget</em>.  <code>$HOME/.bashrc</code> is sourced to pick up
+some environment variables used by the example configuration file.
+You can omit this part if you do not need any environment variables.</p>
+
+<h2>
 <a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
 
 <p>At the highest level, the configuration file defines these entities:</p>
@@ -77,7 +160,7 @@ file.</p>
 items from the environment, mainly because I don't want to share
 that private information in this documentation.  You can store yours
 in the configuration file directly.</p></li>
-<li><p><em>RSS feeds</em> - this is where tget gets the information on what is
+<li><p><em>RSS feeds</em> - this is where <em>tget</em> gets the information on what is
 available to download.  Each feed is site specific and possibly user
 specific.</p></li>
 <li><p><em>quality settings</em> - these define the quality of the files you want
@@ -106,7 +189,8 @@ the following table) have direct correspondence to
 
 <table>
 <thead><tr>
-<th align="center">tget keyword</th>
+<th align="center">
+<em>tget</em> keyword</th>
 <th align="center">
 <em>transmission-remote</em> argument</th>
 </tr></thead>
@@ -235,39 +319,30 @@ quotes are removed in parsing.</p>
 <p><code>:quality</code> -- this allows the group quality to be overriden.</p>
 
 <h2>
-<a name="putting-it-into-service" class="anchor" href="#putting-it-into-service"><span class="octicon octicon-link"></span></a>Putting it into service</h2>
-
-<p>Running from <em>cron</em> is the preferred method of operation.  This
-crontab entry will do the job:</p>
-
-<pre><code>0 3 * * *  source $HOME/.profile; /usr/local/bin/tget --cron
-</code></pre>
-
-<p>It runs every day at 3AM.  Running more often is fine, but you need to
-be careful not to run afoul of the site rules.</p>
-
-<p>If you want the email to go to <code>username@domain</code>, then you can specify
-the <em>crontab</em> entry like this:</p>
-
-<pre><code>0 3 * * *  source $HOME/.profile; MAILTO=username@domain /usr/local/bin/tget --cron
-</code></pre>
-
-<p>I source my <code>$HOME/.profile</code> (which is sourced by my <code>$HOME/.bashrc</code>)
-to pick up some environment variables used for the Transmission
-interface.</p>
-
-<h2>
 <a name="maintenance-tasks" class="anchor" href="#maintenance-tasks"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>
 
-<p>coming soon</p>
+<p>After some time, <em>tget</em> can slow down due to the database growing.  It
+has to do with how <em>tget</em> operates, temporarily storing episodes while
+it is deciding what to download.  These temporarily-stored episodes
+are deleted almost immediately, but they leave <em>holes</em> in the
+database.  To clean them out, you can</p>
+
+<pre><code>$ tget --compact-database
+</code></pre>
+
+<p>This will backup the current database and then compact it to make it
+more efficient.  It will usually dramatically decrease the size of the
+database, if it's been in use for a month or more.</p>
 
 <h2>
 <a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
 
-<p>Primary behavior determining arguments:</p>
+<p>Primary behavior determining arguments (one of these must be given):</p>
 
-<pre><code>--catch-up   
+<pre><code>--run
+--catch-up   
 --catch-up-series series-episode-name
+--compact-database
 --delete-episodes series-name
 --delete-series series-name
 --dump-all
@@ -277,19 +352,11 @@ interface.</p>
 --dump-stats
 </code></pre>
 
-<p>If none of the above are given, tget goes into <em>download</em> mode.
-In download mode, tget will download torrent files that match the given
-configuration.</p>
-
-<p>If one of the above arguments are given, tget will not do any downloading.</p>
-
 <p>Behavior modifying arguments:</p>
 
 <pre><code>--auto-backup condition
---compact-database
 --config file
 --cron
---quiet
 --db database-name
 --debug
 --feed-interval ndays
@@ -303,17 +370,24 @@ configuration.</p>
 
 <p>The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
-case.</p>
+case.  However, the series names presented to you will be stored in their
+original form.</p>
 
 <ul>
 <li>
 <p><code>--help</code></p>
 
-<p>Print this help text and exit.</p>
+<p>Print full help text and exit.</p>
 </li>
 </ul><p>The following are arguments controlling primary behavior:</p>
 
 <ul>
+<li>
+<p><code>--run</code></p>
+
+<p>The primary mode of operation, whereby RSS feeds are retrieved, searched
+for new episodes and those episode torrents downloaded.</p>
+</li>
 <li>
 <p><code>--catch-up</code></p>
 
@@ -327,6 +401,11 @@ downloaded.</p>
 
 <p>Catch series up to the episode given in the companion argument.
 See examples below.</p>
+</li>
+<li>
+<p><code>--compact-database</code></p>
+
+<p>This saves and restores the database, compacting it at the same time.</p>
 </li>
 <li>
 <p><code>--delete-episodes series-name</code></p>
@@ -393,11 +472,6 @@ companion argument:</p>
 <p>The default is to make backups for all conditions above.</p>
 </li>
 <li>
-<p><code>--compact-database</code></p>
-
-<p>This saves and restores the database, compacting it at the same time.</p>
-</li>
-<li>
 <p><code>--config file</code></p>
 
 <p>Load <code>file</code> as the configuration file instead of one of the built-in
@@ -426,7 +500,9 @@ directory (see the --root).  This name will itself become a directory.</p>
 <li>
 <p><code>--debug</code></p>
 
-<p>Run in debug mode.  This is recommended for developers only.</p>
+<p>Run in debug mode.  In this mode, torrents are not downloaded and the
+debug feed defined by the configuration file is used.  Also, the program
+is more verbose.</p>
 </li>
 <li>
 <p><code>--feed-interval ndays</code></p>
@@ -438,9 +514,8 @@ See the example config file.</p>
 <li>
 <p><code>--learn</code></p>
 
-<p>Don't download anything--useful in conjunction with reset to wipe the
-database and start over, or when starting to use tget for the first
-time.  See the examples below.</p>
+<p>Mark episodes which match the configuration as <em>downloaded</em>.  This is
+useful when using tget for the first time.  See the examples below.</p>
 </li>
 <li>
 <p><code>--reset</code></p>
@@ -467,11 +542,6 @@ marking them all as `downloaded'</p>
 <pre><code>$ tget --reset --learn --feed-interval 180 --root $PWD --db test.db
 </code></pre>
 
-<p>Usage from Cron:</p>
-
-<pre><code>$ tget --cron
-</code></pre>
-
 <p>Let's see what the series object for "Regular Show" looks like.
 The series name is not case sensitive:</p>
 
@@ -485,14 +555,15 @@ $ tget --dump-series "James Mays Man Lab"
 $ tget --dump-series "James May's Man Lab"
 </code></pre>
 
-<p>To see the episodes of the above, you would:</p>
+<p>To see the episodes of the above, you could use any of the variations on
+the names given, for example:</p>
 
 <pre><code>$ tget --dump-episodes "James May's Man Lab"
 </code></pre>
 
 <p>Compact the database:</p>
 
-<pre><code>$ tget --compact-database --dump-stats
+<pre><code>$ tget --compact-database
 </code></pre>
 
 <p>Catch up series to a specific episode:</p>

@@ -24,7 +24,9 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.32")
+(eval-when (compile eval load)
+(defvar *tget-version* "1.34")
+)
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -467,7 +469,7 @@
     (if* s
        then (format t "removing series ~a~%" s)
 	    (delete-instance s)
-	    (commit)
+	    (tget-commit)
      elseif noisy
        then (warn "Could not find series: ~s." name))))
 
@@ -617,10 +619,12 @@
     "
 ## Usage
 
-Primary behavior determining arguments:
+Primary behavior determining arguments (one of these must be given):
 
+    --run
     --catch-up   
     --catch-up-series series-episode-name
+    --compact-database
     --delete-episodes series-name
     --delete-series series-name
     --dump-all
@@ -629,37 +633,38 @@ Primary behavior determining arguments:
     --dump-series
     --dump-stats
 
-If none of the above are given, tget goes into *download* mode.
-In download mode, tget will download torrent files that match the given
-configuration.
-
-If one of the above arguments are given, tget will not do any downloading.
-
 Behavior modifying arguments:
 
     --auto-backup condition
-    --compact-database
     --config file
     --cron
-    --quiet
     --db database-name
     --debug
     --feed-interval ndays
     --learn
     --reset
     --root data-directory
+")
 
+(defvar *help*
+    "
 ### Usage details
 
 The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
-case.
+case.  However, the series names presented to you will be stored in their
+original form.
 
 * `--help`
 
-  Print this help text and exit.
+  Print full help text and exit.
 
 The following are arguments controlling primary behavior:
+
+* `--run`
+
+  The primary mode of operation, whereby RSS feeds are retrieved, searched
+  for new episodes and those episode torrents downloaded.
 
 * `--catch-up`
 
@@ -672,6 +677,10 @@ The following are arguments controlling primary behavior:
 
   Catch series up to the episode given in the companion argument.
   See examples below.
+
+* `--compact-database`
+
+  This saves and restores the database, compacting it at the same time.
 
 * `--delete-episodes series-name`
 
@@ -721,10 +730,6 @@ effects:
 
   The default is to make backups for all conditions above.
 
-* `--compact-database`
-
-  This saves and restores the database, compacting it at the same time.
-
 * `--config file`
 
   Load `file` as the configuration file instead of one of the built-in
@@ -746,7 +751,9 @@ effects:
 
 * `--debug`
 
-  Run in debug mode.  This is recommended for developers only.
+  Run in debug mode.  In this mode, torrents are not downloaded and the
+  debug feed defined by the configuration file is used.  Also, the program
+  is more verbose.
 
 * `--feed-interval ndays`
 
@@ -756,9 +763,8 @@ effects:
 
 * `--learn`
 
-  Don't download anything--useful in conjunction with reset to wipe the
-  database and start over, or when starting to use tget for the first
-  time.  See the examples below.
+  Mark episodes which match the configuration as _downloaded_.  This is
+  useful when using tget for the first time.  See the examples below.
 
 * `--reset`
 
@@ -781,10 +787,6 @@ Same, but to a `temp' database in the current directory:
 
     $ tget --reset --learn --feed-interval 180 --root $PWD --db test.db
 
-Usage from Cron:
-
-    $ tget --cron
-
 Let's see what the series object for \"Regular Show\" looks like.
 The series name is not case sensitive:
 
@@ -796,13 +798,14 @@ These all refer to the same series:
     $ tget --dump-series \"James Mays Man Lab\"
     $ tget --dump-series \"James May's Man Lab\"
 
-To see the episodes of the above, you would:
+To see the episodes of the above, you could use any of the variations on
+the names given, for example:
 
     $ tget --dump-episodes \"James May's Man Lab\"
 
 Compact the database:
 
-    $ tget --compact-database --dump-stats
+    $ tget --compact-database
 
 Catch up series to a specific episode:
 
@@ -827,16 +830,22 @@ Catch up series to a specific episode:
 		  (setq line (read-line ug nil ug))
 		  (when (eq line ug) (return))
 		  (cond
+		   ((=~ "^(.*)(?:\\$\\{([^}]+)\\})(.*)$" line)
+		    (let ((sym (intern $2 *package*)))
+		      (when (not (boundp sym))
+			(error "user::~a does not have a value." $2))
+		      (format s "~a~a~a~%" $1 (symbol-value sym) $3)))
 		   ((=~ "^%%VALUE:\\s+(.*)\\s*$" line)
 		    (let ((sym (intern $1 *package*)))
 		      (when (not (boundp sym))
-			(.error "user::~a does not have a value." $1))
+			(error "user::~a does not have a value." $1))
 		      (format s "    ~{~s~^, ~}~%" (symbol-value sym))))
 		   (t
 		    (write line :stream s :escape nil)
 		    (terpri s))))))
       
 	    (format s *usage*)
+	    (format s *help*)
     
 	    (with-open-file (cfg "config.cl" :direction :input)
 	      (format s "~%## Example configuration file~%~%")
@@ -846,7 +855,9 @@ Catch up series to a specific episode:
 		  (when (eq line cfg) (return))
 		  (write "    " :stream s :escape nil)
 		  (write line :stream s :escape nil)
-		  (terpri s)))))
+		  (terpri s))))
+	    
+	    (sys:copy-file "userguide_refs.md" s))
 	  (when (not (excl::compare-files temp-file readme-md))
 	    (format t ";; Updating ~a...~%" readme-md)
 	    (delete-file readme-md)
@@ -863,16 +874,30 @@ Catch up series to a specific episode:
 
 (defvar *kw-package* (find-package :keyword))
 
+(defun usage (format-string &rest format-arguments)
+  ;; This separates known tget errors from unexpected program errors.  All
+  ;; calls to error in this code should be to this function.  Any calls to
+  ;; error or cerror cause a stack trace.
+  (error 'tget
+	 :format-control (concatenate 'simple-string
+			   "Error: "
+			   format-string
+			   "~%~a~%")
+	 :format-arguments (nconc format-arguments (list *usage*))))
+
 (defun main ()
   (setq *global-gc-behavior* :auto)
-  (flet
-      ((doit ()
+  (labels
+      ((done () (exit 0 :quiet t))
+       (doit ()
 	 (system:with-command-line-arguments
 	     (("help" :long help)
 	      
 ;;;; primary arguments (determine behavior)
+	      ("run" :long run-mode)
 	      ("catch-up" :long catch-up-mode)
 	      ("catch-up-series" :long catch-up-series :required-companion)
+	      ("compact-database" :long compact)
 	      ("delete-episodes" :long delete-episodes :required-companion)
 	      ("delete-series" :long delete-series :required-companion)
 	      ("dump-all" :long dump-all)
@@ -883,7 +908,6 @@ Catch up series to a specific episode:
 
 ;;;; modifiers (change primary behavior)
 	      ("auto-backup" :long auto-backup :required-companion)
-	      ("compact-database" :long compact)
 	      ("config" :long config-file :required-companion)
 	      ("cron" :long quiet)
 	      ("db" :long database :required-companion)
@@ -895,14 +919,14 @@ Catch up series to a specific episode:
 	     (extra-args :usage *usage*)
 	   (when help
 	     (format t "~a~&" *usage*)
-	     (exit 0 :quiet t))
+	     (format t "~a~&" *help*)
+	     (done))
 	   (when extra-args
-	     (.error "extra arguments:~{ ~a~}." extra-args))
+	     (usage "extra arguments:~{ ~a~}." extra-args))
 	   
 	   (when root
 	     (or (probe-file root)
-		 (.error
-		  "--root directory does not exist: ~a." root))
+		 (usage "--root directory does not exist: ~a." root))
 	     (setq *tget-data-directory* (pathname-as-directory root)))
 	   
 	   (setq *database-name*
@@ -917,25 +941,22 @@ Catch up series to a specific episode:
 		   "~/.tget.cl"
 		   (merge-pathnames "config.cl" *tget-data-directory*)))
 	   
-	   (when debug-mode (setq *debug* t))
+	   (setq *debug* debug-mode)
 	   (setq *verbose* (not quiet))
 	   (setq *learn* learn-mode)
 	   
 	   (if* config-file
 	      then (or (probe-file config-file)
-		       (.error "--config file does not exist: ~a."
-			       config-file))
+		       (usage "--config file does not exist: ~a." config-file))
 	    elseif (consp *config-file*)
 	      then (when (dolist (config *config-file* t)
 			   (when (probe-file config)
 			     (setq config-file config)
 			     (return nil)))
-		     (.error
-		      "None of these config files exists:~{ ~a~}."
-		      *config-file*))
-	      else (.error
-		    "Internal error: bad *config-file* value: ~s."
-		    *config-file*))
+		     (usage "None of these config files exists:~{ ~a~}."
+			    *config-file*))
+	      else (usage "Internal error: bad *config-file* value: ~s."
+			  *config-file*))
 	   
 	   (when database
 	     ;; Remove trailing slash, if there is one
@@ -948,7 +969,7 @@ Catch up series to a specific episode:
 	   
 	   (when feed-interval
 	     (when (not (match-re "^\\d+$" feed-interval))
-	       (.error "Bad --feed-interval: ~s." feed-interval))
+	       (usage "Bad --feed-interval: ~s." feed-interval))
 	     (setq *feed-interval* (parse-integer feed-interval)))
 	   
 	   (when auto-backup
@@ -960,8 +981,7 @@ Catch up series to a specific episode:
 		((string= "program-update" auto-backup) :program-update)
 		((string= "reset" auto-backup) :reset)
 		((string= "schema-update" auto-backup) :schema-update)
-		(t (.error "Bad value for --auto-backup: ~a."
-			   auto-backup)))))
+		(t (usage "Bad value for --auto-backup: ~a." auto-backup)))))
 
 	   (handler-case
 	       (open-tget-database :if-exists (if* reset-database
@@ -982,7 +1002,7 @@ Catch up series to a specific episode:
 	       (exit 1 :quiet t)))
 	   (load config-file :verbose *verbose*)
 	   (when (not *torrent-handler*)
-	     (.error "*torrent-handler* is not defined in config file."))
+	     (usage "*torrent-handler* is not defined in config file."))
 	   (open-log-files)
 
 	   (if* dump-all
@@ -990,6 +1010,7 @@ Catch up series to a specific episode:
 		     (if* *verbose*
 			then (describe ep)
 			else (format t "~a~%" ep)))
+		   (done)
 	    elseif dump-complete-to
 	      then (let ((res '()))
 		     (doclass (series (find-class 'series))
@@ -1004,6 +1025,7 @@ Catch up series to a specific episode:
 			res))
 		     (setq res (sort res #'string<))
 		     (dolist (line res) (write line :escape nil)))
+		   (done)
 	    elseif dump-stats
 	      then (let ((series 0)
 			 (groups 0)
@@ -1020,33 +1042,45 @@ Catch up series to a specific episode:
 ;; episodes: ~d
 "
 			     series groups qualities episodes))
+		   (done)
 	    elseif dump-series
 	      then (let* ((series-name (canonicalize-series-name dump-series))
 			  (series (query-series-name-to-series series-name)))
 		     (if* series
 			then (describe series)
 			else (format t "No series named ~s.~%" dump-series)))
+		   (done)
 	    elseif dump-episodes
 	      then (dolist (ep (query-episode
 				:series-name
 				(canonicalize-series-name dump-episodes)))
 		     (describe ep))
+		   (done)
 	    elseif delete-episodes
 	      then (dolist (ep (query-episode
 				:series-name
 				(canonicalize-series-name delete-episodes)))
 		     (format t "removing ~a~%" ep)
 		     (delete-instance ep))
-		   (commit)
+		   (tget-commit)
+		   (done)
 	    elseif delete-series
 	      then (forget-series delete-series)
+		   (done)
 	    elseif catch-up-mode
 	      then (catch-up)
+		   (done)
 	    elseif catch-up-series
 	      then (catch-up-series catch-up-series)
-	      else (process-groups))
+		   (done)
+	    elseif compact
+	      then ;; already did that, just exit
+		   (done)
+	    elseif run-mode
+	      then (process-groups)
+	      else (usage "no primary arguments given."))
 	   
-	   (exit 0 :quiet t))))
+	   (done))))
 
     (if* *debug* ;; --debug on command line doesn't effect this test!
        then (format t ";;;NOTE: debugging mode is on~%")
@@ -1282,7 +1316,7 @@ Catch up series to a specific episode:
     (format t ";; updating ~a...~%" series)
     (setf (series-complete-to series) nil)
     (setf (series-discontinuous-episodes series) nil))
-  (commit))
+  (tget-commit))
 
 (defmethod db-upgrade ((version (eql 5)))
   ;; The change from 5 to 6: series slot name change, `last-episode' to
@@ -1296,7 +1330,7 @@ Catch up series to a specific episode:
       (setf (episode-container ep) nil))
     (when (not (slot-boundp ep 'repack))
       (setf (episode-repack ep) nil)))
-  (commit))
+  (tget-commit))
 
 (defmethod db-upgrade ((version (eql 6)))
   ;; The change from 6 to 7: added pretty-epnum, so need to initialize it
@@ -1312,7 +1346,7 @@ Catch up series to a specific episode:
 	(format t "pretty-epnum => ~10a (for ~s)~%"
 		new (series-pretty-name (episode-series ep)))
 	(setf (episode-pretty-epnum ep) new))))
-  (commit))
+  (tget-commit))
 
 (defmethod db-upgrade ((version (eql 7)))
   ;; The change from 7 to 8: no change, but fix episode and pretty-epnum
@@ -1342,12 +1376,15 @@ Catch up series to a specific episode:
 			      new-episode)
 	  (format t ";;   complete-to is now ~a...~%"
 		  (series-complete-to (episode-series ep)))))))
+  (tget-commit))
+
+(defun tget-commit ()
   (commit))
 
 (defun close-tget-database ()
   (when db.allegrocache::*allegrocache*
     (when *verbose* (format t ";; closing database...~%"))
-    (commit) ;; is this needed?
+    (commit)
     (close-database)
     (setq db.allegrocache::*allegrocache* nil)
     (release-database-lock-file)))
@@ -1518,7 +1555,7 @@ Catch up series to a specific episode:
 
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
 			    ep-printer)
-  (commit)
+  (tget-commit)
   (doclass (group (find-class 'group))
     (tagbody
       ;; Setup the printer for this group.  The idea is to have no output
@@ -1546,7 +1583,7 @@ Catch up series to a specific episode:
 	  ;; error
 	  (setq *http-timeout* 30)
 	  (go next-feed)))
-      (commit)
+      (tget-commit)
     
       ;; Now, the newly added objects in the database have their transient
       ;; slot set to `t'.  We can query against them, to see if we
@@ -1558,7 +1595,7 @@ Catch up series to a specific episode:
       ;; Remove the remaining transient episodes
       (dolist (ep (retrieve-from-index 'episode 'transient t :all t))
 	(delete-instance ep))
-      (commit)
+      (tget-commit)
      next-feed
       )))
 
@@ -1609,7 +1646,7 @@ Catch up series to a specific episode:
 		 matching-episodes
 	    else (select-episodes matching-episodes))
 	 ep-printer))))
-  (commit))
+  (tget-commit))
 
 (defun matching-episodes (group series episodes quality)
   ;; Return a list of episodes, from the EPISODES list, which are transient
@@ -1825,7 +1862,7 @@ Catch up series to a specific episode:
 			(episode-season episode)
 			(episode-episode episode))
     (torrent-handler *torrent-handler* episode group))
-  (commit))
+  (tget-commit))
 
 (defmethod torrent-handler ((obj transmission) episode group)
   (let* ((cmd
@@ -1923,7 +1960,7 @@ transmission-remote ~a:~a ~
 		     (car (series-complete-to series))
 		     (cdr (series-complete-to series))))
        else (format t "--~%")))
-  (commit))
+  (tget-commit))
 
 (defun catch-up-series (what)
   ;; The episode descriptor is at the end of the series.
