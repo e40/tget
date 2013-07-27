@@ -25,7 +25,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "1.34")
+(defvar *tget-version* "1.35")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -522,7 +522,7 @@
 	    (,g-trash-torrent-file ,trash-torrent-file)
 	    (,g-ratio ,ratio))
        (set-torrent-handler
-	(make-transmission-remote
+	(make-transmission-remote-handler
 	 :host ,g-host
 	 :port ,g-port
 	 :username ,g-username
@@ -531,8 +531,8 @@
 	 :trash-torrent-file ,g-trash-torrent-file
 	 :ratio ,g-ratio)))))
 
-(defun make-transmission-remote (&key host port username password add-paused
-				      trash-torrent-file ratio)
+(defun make-transmission-remote-handler
+    (&key host port username password add-paused trash-torrent-file ratio)
   (or (stringp host)
       (.error "transmission host is not a string: ~s." host))
   (or (numberp port)
@@ -559,13 +559,17 @@
    :trash-torrent-file trash-torrent-file
    :ratio ratio))
 
+;; for compatibility
+(setf (symbol-function 'make-transmission-remote)
+  (symbol-function 'make-transmission-remote-handler))
+
 (defun set-torrent-handler (thing)
   (when *torrent-handler*
     (.error "There are multiple calls to set-torrent-handler in config file."))
 
   (cond
    ((transmission-p thing)
-    ;; checking is in make-transmission-remote
+    ;; checking is in make-transmission-remote-handler
     )
    ((pathnamep thing)
     (when (not (probe-file thing))

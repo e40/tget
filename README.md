@@ -1,4 +1,4 @@
-# tget 1.34 - torrent get
+# tget 1.35 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -76,18 +76,19 @@ Here are some details about the above phases:
   will not be updated to S05E10 until after episode S05E09 is
   downloaded.
 
-* When the torrent file is downloaded, the resulting file is given to
-  _transmission-remote_ for processing.  _transmission-remote_ is a
-  command line tool used to control [Transmission][1], the cross-platform
-  BitTorrent client.  See the example configuration file for
-  information on how to use that. 
+* When the torrent file is downloaded, the resulting file can be given
+  to _transmission-remote_ for processing (_transmission-remote_ is a
+  command line tool used to control [Transmission][1], the
+  cross-platform BitTorrent client) or put in a specific directory
+  watched by your BitTorrent client.  See the example configuration
+  file for information on how to use either of these methods.
 
 ## Installation
 
 _tget_ has been tested on Linux and Mac OS X and depends on two other
 software packages:
 
-_transmission-remote_ -- a program that can communicate to a local or
+_transmission-remote_ -- [OPTIONAL] a program that can communicate to a local or
 remote instance of Transmission.  _tget_ uses it to download the actual
 episodes .  I run [Transmission][1] on Mac OS X, on the same local
 area network.  _transmission-remote_ makes this easy.  On CentOS and
@@ -169,24 +170,56 @@ At the highest level, the configuration file defines these entities:
 That's the big picture.  There is an example configuration file below.
 It is fully annotated and is a good place to start.
 
-### `deftransmission &key ...keywords...`
+### `set-torrent-handler handler`
 
-The values for each keyword option (the names after _&key_, given in
-the following table) have direct correspondence to
-_transmission-remote_ command line arguments:
+Define how _.torrent_ files will be handled.  There are two choices:
+have _transmission-remote_ handle them or define a directory in which
+the _.torrent_ files are placed.  For the latter, the configuration
+file option would be:
 
-| _tget_ keyword | _transmission-remote_ argument |
-| :----------: | :----------------------------: |
-| `:host` & `:port` | _host:port_ |
-| `:username` & `:password` | `--auth` _username:password_ |
-| `:add-paused t` | `--start-paused` |
-| `:add-paused nil` | `--no-start-paused` |
-| `:trash-torrent-file t` | `--trash-torrent` |
-| `:ratio` | `-sr` _ratio_ |
-| `:download-path` | `--download-dir` _path_ |
+    (set-torrent-handler (pathname "~/Downloads/"))
 
-You can use `(sys:getenv "ENV_VAR")` to grab values from the
-environment.
+This would cause _tget_ to store all downloaded _.torrent_ files in
+the directory `~/Downloads/`.
+
+The second choice is to use `make-tranmission-remote-handler` to
+define how to communicate with _transmission-remote_.
+
+### `make-transmission-remote-handler ...options...`
+
+The values for each option have direct correspondence to
+_transmission-remote_ command line arguments, given by the table
+below.  Each _keyword_ given in the table must be paired with a value,
+like this:
+
+    :host "download.example.com"
+
+The `:host` part must come before the value.
+
+| keyword(s)                | _transmission-remote_ argument |
+| :-----------------------: | :----------------------------: |
+| `:host` & `:port`         | _host:port_                    |
+| `:username` & `:password` | `--auth` _username:password_   |
+| `:add-paused t`           | `--start-paused`               |
+| `:add-paused nil`         | `--no-start-paused`            |
+| `:trash-torrent-file t`   | `--trash-torrent`              |
+| `:ratio`                  | `-sr` _ratio_                  |
+| `:download-path`          | `--download-dir` _path_        |
+
+For example:
+
+    (set-torrent-handler
+     (make-transmission-remote-handler
+      :host (sys:getenv "TRANSMISSION_HOST")
+      :port (sys:getenv "TRANSMISSION_PORT")
+      :username (sys:getenv "TRANSMISSION_USER")
+      :password (sys:getenv "TRANSMISSION_PASS")
+      :add-paused nil
+      :trash-torrent-file t
+      :ratio "1.04"))
+
+In this example, the values for `:host` and other options are being
+pulled from the environment with `sys:getenv`.
 
 ### `defquality &key priority container source codec resolution`
 
@@ -483,35 +516,22 @@ Catch up series to a specific episode:
     ;; A good resource to see why something is or isn't downloading
     (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
     
+    ;; Use transmission-remote to tell your torrent client to download the
+    ;; episode:
     (set-torrent-handler
-    ;;;;Choose one of the following
-     
-     ;; Use transmission-remote to tell your torrent client to download the
-     ;; episode:
-     (make-transmission-remote
+     (make-transmission-remote-handler
       :host (sys:getenv "TRANSMISSION_HOST")
       :port (sys:getenv "TRANSMISSION_PORT")
       :username (sys:getenv "TRANSMISSION_USER")
       :password (sys:getenv "TRANSMISSION_PASS")
       :add-paused nil
       :trash-torrent-file t
-      :ratio "1.04")
+      :ratio "1.04"))
     
-     ;; Specify a directory into which the .torrent files are downloaded, so
-     ;; your torrent client can pick them up from there:
-     #+ignore
-     (pathname "~/Downloads/"))
-    
-    ;; The old style, deprecated.  However, it still works.
+    ;; An alternate method for downloading .torrent files: put them into a
+    ;; specific directory, where your torrent client will see them.
     #+ignore
-    (deftransmission ()
-        :host (sys:getenv "TRANSMISSION_HOST")
-        :port (sys:getenv "TRANSMISSION_PORT")
-        :username (sys:getenv "TRANSMISSION_USER")
-        :password (sys:getenv "TRANSMISSION_PASS")
-        :add-paused nil
-        :trash-torrent-file t
-        :ratio "1.04")
+    (set-torrent-handler (pathname "~/Downloads/"))
     
     
     (setq *download-root* "/me/layer/videos/")
