@@ -202,6 +202,40 @@ coming soon
 
 ## Usage
 
+Primary behavior determining arguments:
+
+    --catch-up   
+    --catch-up-series series-episode-name
+    --delete-episodes series-name
+    --delete-series series-name
+    --dump-all
+    --dump-complete-to
+    --dump-episodes series-name
+    --dump-series
+    --dump-stats
+
+If none of the above are given, tget goes into *download* mode.
+In download mode, tget will download torrent files that match the given
+configuration.
+
+If one of the above arguments are given, tget will not do any downloading.
+
+Behavior modifying arguments:
+
+    --auto-backup condition
+    --compact-database
+    --config file
+    --cron
+    --quiet
+    --db database-name
+    --debug
+    --feed-interval ndays
+    --learn
+    --reset
+    --root data-directory
+
+### Usage details
+
 The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
 case.
@@ -224,14 +258,14 @@ The following are arguments controlling primary behavior:
   Catch series up to the episode given in the companion argument.
   See examples below.
 
-* `--delete-episodes name`
+* `--delete-episodes series-name`
 
-  Delete episodes with series name matching `name`.  This is permanant!
+  Delete episodes with series name matching `series-name`.  This is permanant!
   Using this option with --auto-backup force is recommended.
 
-* `--delete-series name`
+* `--delete-series series-name`
 
-  Delete series with series name matching `name`.  This is permanant!
+  Delete series with series name matching `series-name`.  This is permanant!
   Using this option with --auto-backup force is recommended.
 
 * `--dump-all`
@@ -243,13 +277,13 @@ The following are arguments controlling primary behavior:
   Dump a table of series and last downloaded information for all series in
   the database to stdout.  See --catch-up-series.
 
-* `--dump-episodes name`
+* `--dump-episodes series-name`
 
-  Dump all episode objects matching series name `name` to stdout.
+  Dump all episode objects matching series name `series-name` to stdout.
 
-* `--dump-series name`
+* `--dump-series series-name`
 
-  Dump all series objects matching series name `name` to stdout.
+  Dump all series objects matching series name `series-name` to stdout.
 
 * `--dump-stats`
 
@@ -411,6 +445,10 @@ Catch up series to a specific episode:
     
     (setq *download-root* "/me/layer/videos/")
     
+    (defvar *codec-x264*
+        ;; It goes by two different names:
+        '(:x264 :h.264))
+    
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; TVT
     
@@ -449,7 +487,7 @@ Catch up series to a specific episode:
     ;; When --debug is given on the command line, the debug version is used,
     ;; and that's what this is.  No need to bombard the RSS server with
     ;; requests while debugging.
-    (defvar *tvt-debug-feed* "tget-test-data/tvt-recent.xml")
+    (defvar *tvt-debug-feed* "tget-test-data/tvt.xml")
     
     ;; This is how you define names for qualities you care about.
     ;;
@@ -463,13 +501,13 @@ Catch up series to a specific episode:
     ;;;; The documentation for these options is in the README.md file.
         :priority 50
         :source :hdtv
-        :codec :x264 
+        :codec *codec-x264* 
         :resolution :sd)
     
     (defquality :high
         :priority 40
         :source :hdtv
-        :codec :x264 
+        :codec *codec-x264* 
         :resolution :720p)
     
     (defquality :low
@@ -580,6 +618,7 @@ Catch up series to a specific episode:
     (defseries "NCIS" :adrian+kevin)
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :adrian+kevin)
+    (defseries "NTSF:SD:SUV" :kevin)
     (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
     (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
@@ -589,6 +628,7 @@ Catch up series to a specific episode:
     (defseries "Sherlock" :kevin)
     (defseries "Strike Back" :kevin)
     (defseries "The Americans (2013)" :kevin)
+    (defseries "The Burn" :kevin)
     (defseries "The Colbert Report" :kevin)
     (defseries "The Daily Show with Jon Stewart" :kevin)
     (defseries "The Following" :anh+kevin)
@@ -607,6 +647,7 @@ Catch up series to a specific episode:
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Top of the Lake" :anh+kevin)
     (defseries "Tosh.0" :kevin)
+    (defseries "True Blood" :kevin)
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
@@ -624,14 +665,14 @@ Catch up series to a specific episode:
     
     (defquality :high-any-source
         :priority 40
-        :codec :x264 
+        :codec *codec-x264*
         :resolution :720p)
     
     (defquality :x264-?dtv-mp4
         :priority 10
         :container :mp4
         :source '(:pdtv :hdtv)
-        :codec :x264)
+        :codec *codec-x264*)
     
     (defvar *btn-my-series-feed*
         "https://broadcasthe.net/...")

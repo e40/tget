@@ -45,6 +45,10 @@
 
 (setq *download-root* "/me/layer/videos/")
 
+(defvar *codec-x264*
+    ;; It goes by two different names:
+    '(:x264 :h.264))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TVT
 
@@ -83,7 +87,7 @@
 ;; When --debug is given on the command line, the debug version is used,
 ;; and that's what this is.  No need to bombard the RSS server with
 ;; requests while debugging.
-(defvar *tvt-debug-feed* "tget-test-data/tvt-recent.xml")
+(defvar *tvt-debug-feed* "tget-test-data/tvt.xml")
 
 ;; This is how you define names for qualities you care about.
 ;;
@@ -97,13 +101,13 @@
 ;;;; The documentation for these options is in the README.md file.
     :priority 50
     :source :hdtv
-    :codec :x264 
+    :codec *codec-x264* 
     :resolution :sd)
 
 (defquality :high
     :priority 40
     :source :hdtv
-    :codec :x264 
+    :codec *codec-x264* 
     :resolution :720p)
 
 (defquality :low
@@ -214,6 +218,7 @@
 (defseries "NCIS" :adrian+kevin)
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :adrian+kevin)
+(defseries "NTSF:SD:SUV" :kevin)
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
@@ -223,6 +228,7 @@
 (defseries "Sherlock" :kevin)
 (defseries "Strike Back" :kevin)
 (defseries "The Americans (2013)" :kevin)
+(defseries "The Burn" :kevin)
 (defseries "The Colbert Report" :kevin)
 (defseries "The Daily Show with Jon Stewart" :kevin)
 (defseries "The Following" :anh+kevin)
@@ -241,6 +247,7 @@
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
+(defseries "True Blood" :kevin)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
@@ -258,14 +265,14 @@
 
 (defquality :high-any-source
     :priority 40
-    :codec :x264 
+    :codec *codec-x264*
     :resolution :720p)
 
 (defquality :x264-?dtv-mp4
     :priority 10
     :container :mp4
     :source '(:pdtv :hdtv)
-    :codec :x264)
+    :codec *codec-x264*)
 
 (defvar *btn-my-series-feed*
     "https://broadcasthe.net/...")

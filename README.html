@@ -105,11 +105,12 @@ the following table) have direct correspondence to
 <em>transmission-remote</em> command line arguments:</p>
 
 <table>
-<tr>
+<thead><tr>
 <th align="center">tget keyword</th>
 <th align="center">
 <em>transmission-remote</em> argument</th>
-</tr>
+</tr></thead>
+<tbody>
 <tr>
 <td align="center">
 <code>:host</code> &amp; <code>:port</code>
@@ -148,6 +149,7 @@ the following table) have direct correspondence to
 <code>--download-dir</code> <em>path</em>
 </td>
 </tr>
+</tbody>
 </table><p>You can use <code>(sys:getenv "ENV_VAR")</code> to grab values from the
 environment.</p>
 
@@ -262,6 +264,43 @@ interface.</p>
 <h2>
 <a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
 
+<p>Primary behavior determining arguments:</p>
+
+<pre><code>--catch-up   
+--catch-up-series series-episode-name
+--delete-episodes series-name
+--delete-series series-name
+--dump-all
+--dump-complete-to
+--dump-episodes series-name
+--dump-series
+--dump-stats
+</code></pre>
+
+<p>If none of the above are given, tget goes into <em>download</em> mode.
+In download mode, tget will download torrent files that match the given
+configuration.</p>
+
+<p>If one of the above arguments are given, tget will not do any downloading.</p>
+
+<p>Behavior modifying arguments:</p>
+
+<pre><code>--auto-backup condition
+--compact-database
+--config file
+--cron
+--quiet
+--db database-name
+--debug
+--feed-interval ndays
+--learn
+--reset
+--root data-directory
+</code></pre>
+
+<h3>
+<a name="usage-details" class="anchor" href="#usage-details"><span class="octicon octicon-link"></span></a>Usage details</h3>
+
 <p>The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
 case.</p>
@@ -290,15 +329,15 @@ downloaded.</p>
 See examples below.</p>
 </li>
 <li>
-<p><code>--delete-episodes name</code></p>
+<p><code>--delete-episodes series-name</code></p>
 
-<p>Delete episodes with series name matching <code>name</code>.  This is permanant!
+<p>Delete episodes with series name matching <code>series-name</code>.  This is permanant!
 Using this option with --auto-backup force is recommended.</p>
 </li>
 <li>
-<p><code>--delete-series name</code></p>
+<p><code>--delete-series series-name</code></p>
 
-<p>Delete series with series name matching <code>name</code>.  This is permanant!
+<p>Delete series with series name matching <code>series-name</code>.  This is permanant!
 Using this option with --auto-backup force is recommended.</p>
 </li>
 <li>
@@ -313,14 +352,14 @@ Using this option with --auto-backup force is recommended.</p>
 the database to stdout.  See --catch-up-series.</p>
 </li>
 <li>
-<p><code>--dump-episodes name</code></p>
+<p><code>--dump-episodes series-name</code></p>
 
-<p>Dump all episode objects matching series name <code>name</code> to stdout.</p>
+<p>Dump all episode objects matching series name <code>series-name</code> to stdout.</p>
 </li>
 <li>
-<p><code>--dump-series name</code></p>
+<p><code>--dump-series series-name</code></p>
 
-<p>Dump all series objects matching series name <code>name</code> to stdout.</p>
+<p>Dump all series objects matching series name <code>series-name</code> to stdout.</p>
 </li>
 <li>
 <p><code>--dump-stats</code></p>
@@ -514,6 +553,10 @@ $ tget --catch-up-series "breaking bad s04"
 
 (setq *download-root* "/me/layer/videos/")
 
+(defvar *codec-x264*
+    ;; It goes by two different names:
+    '(:x264 :h.264))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TVT
 
@@ -552,7 +595,7 @@ $ tget --catch-up-series "breaking bad s04"
 ;; When --debug is given on the command line, the debug version is used,
 ;; and that's what this is.  No need to bombard the RSS server with
 ;; requests while debugging.
-(defvar *tvt-debug-feed* "tget-test-data/tvt-recent.xml")
+(defvar *tvt-debug-feed* "tget-test-data/tvt.xml")
 
 ;; This is how you define names for qualities you care about.
 ;;
@@ -566,13 +609,13 @@ $ tget --catch-up-series "breaking bad s04"
 ;;;; The documentation for these options is in the README.md file.
     :priority 50
     :source :hdtv
-    :codec :x264 
+    :codec *codec-x264* 
     :resolution :sd)
 
 (defquality :high
     :priority 40
     :source :hdtv
-    :codec :x264 
+    :codec *codec-x264* 
     :resolution :720p)
 
 (defquality :low
@@ -683,6 +726,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "NCIS" :adrian+kevin)
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :adrian+kevin)
+(defseries "NTSF:SD:SUV" :kevin)
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
@@ -692,6 +736,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Sherlock" :kevin)
 (defseries "Strike Back" :kevin)
 (defseries "The Americans (2013)" :kevin)
+(defseries "The Burn" :kevin)
 (defseries "The Colbert Report" :kevin)
 (defseries "The Daily Show with Jon Stewart" :kevin)
 (defseries "The Following" :anh+kevin)
@@ -710,6 +755,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
+(defseries "True Blood" :kevin)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
@@ -727,14 +773,14 @@ $ tget --catch-up-series "breaking bad s04"
 
 (defquality :high-any-source
     :priority 40
-    :codec :x264 
+    :codec *codec-x264*
     :resolution :720p)
 
 (defquality :x264-?dtv-mp4
     :priority 10
     :container :mp4
     :source '(:pdtv :hdtv)
-    :codec :x264)
+    :codec *codec-x264*)
 
 (defvar *btn-my-series-feed*
     "https://broadcasthe.net/...")

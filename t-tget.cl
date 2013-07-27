@@ -97,7 +97,10 @@
 		   "the biggest loser (au)")
 		  ("the daily show with jon stewart"
 		   "the daily show"
-		   "the daily show with jon stewart"))))
+		   "the daily show with jon stewart")
+		  ("ntsf:sd:suv" "ntsf sd suv" "ntsf:sd:suv")
+		  ("ntsf sd suv" "ntsf:sd:suv" "ntsf:sd:suv")
+		  )))
     (dolist (thing things)
       (test (third thing)
 	    (fuzzy-compare-series-names (first thing) (second thing))
@@ -112,7 +115,6 @@
   (with-tget-tests ()
     (dolist (feed '("tget-test-data/btn.xml"
 		    "tget-test-data/eztv.xml"
-		    "tget-test-data/tvt-recent.xml"
 		    "tget-test-data/tvt.xml"))
       (test-db-init)
       (format t "~%~%;;;;; PARSE FEED: ~a~%~%" feed)

@@ -24,7 +24,7 @@
 	    :net.rss)
       net.rss:*uri-to-package*)
 
-(defvar *tget-version* "1.31")
+(defvar *tget-version* "1.32")
 (defvar *schema-version*
     ;; 1 == initial version
     ;; 2 == added `delay' slot
@@ -617,6 +617,40 @@
     "
 ## Usage
 
+Primary behavior determining arguments:
+
+    --catch-up   
+    --catch-up-series series-episode-name
+    --delete-episodes series-name
+    --delete-series series-name
+    --dump-all
+    --dump-complete-to
+    --dump-episodes series-name
+    --dump-series
+    --dump-stats
+
+If none of the above are given, tget goes into *download* mode.
+In download mode, tget will download torrent files that match the given
+configuration.
+
+If one of the above arguments are given, tget will not do any downloading.
+
+Behavior modifying arguments:
+
+    --auto-backup condition
+    --compact-database
+    --config file
+    --cron
+    --quiet
+    --db database-name
+    --debug
+    --feed-interval ndays
+    --learn
+    --reset
+    --root data-directory
+
+### Usage details
+
 The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
 case.
@@ -639,14 +673,14 @@ The following are arguments controlling primary behavior:
   Catch series up to the episode given in the companion argument.
   See examples below.
 
-* `--delete-episodes name`
+* `--delete-episodes series-name`
 
-  Delete episodes with series name matching `name`.  This is permanant!
+  Delete episodes with series name matching `series-name`.  This is permanant!
   Using this option with --auto-backup force is recommended.
 
-* `--delete-series name`
+* `--delete-series series-name`
 
-  Delete series with series name matching `name`.  This is permanant!
+  Delete series with series name matching `series-name`.  This is permanant!
   Using this option with --auto-backup force is recommended.
 
 * `--dump-all`
@@ -658,13 +692,13 @@ The following are arguments controlling primary behavior:
   Dump a table of series and last downloaded information for all series in
   the database to stdout.  See --catch-up-series.
 
-* `--dump-episodes name`
+* `--dump-episodes series-name`
 
-  Dump all episode objects matching series name `name` to stdout.
+  Dump all episode objects matching series name `series-name` to stdout.
 
-* `--dump-series name`
+* `--dump-series series-name`
 
-  Dump all series objects matching series name `name` to stdout.
+  Dump all series objects matching series name `series-name` to stdout.
 
 * `--dump-stats`
 
@@ -780,34 +814,44 @@ Catch up series to a specific episode:
 )
 
 (eval-when (compile)
-  (with-open-file (s "README.md" :direction :output
-		   :if-exists :supersede)
-    (with-open-file (ug "userguide.md")
-      (let (line)
-	(loop
-	  (setq line (read-line ug nil ug))
-	  (when (eq line ug) (return))
-	  (cond
-	   ((=~ "^%%VALUE:\\s+(.*)\\s*$" line)
-	    (let ((sym (intern $1 *package*)))
-	      (when (not (boundp sym))
-		(.error "user::~a does not have a value." $1))
-	      (format s "    ~{~s~^, ~}~%" (symbol-value sym))))
-	   (t
-	    (write line :stream s :escape nil)
-	    (terpri s))))))
+  (let ((temp-file (sys:make-temp-file-name))
+	(readme-md "README.md"))
+    (format t ";; Maybe make ~a...~%" readme-md)
+    (unwind-protect
+	(progn
+	  (with-open-file (s temp-file :direction :output
+			   :if-exists :supersede)
+	    (with-open-file (ug "userguide.md")
+	      (let (line)
+		(loop
+		  (setq line (read-line ug nil ug))
+		  (when (eq line ug) (return))
+		  (cond
+		   ((=~ "^%%VALUE:\\s+(.*)\\s*$" line)
+		    (let ((sym (intern $1 *package*)))
+		      (when (not (boundp sym))
+			(.error "user::~a does not have a value." $1))
+		      (format s "    ~{~s~^, ~}~%" (symbol-value sym))))
+		   (t
+		    (write line :stream s :escape nil)
+		    (terpri s))))))
       
-    (format s *usage*)
+	    (format s *usage*)
     
-    (with-open-file (cfg "config.cl" :direction :input)
-      (format s "~%## Example configuration file~%~%")
-      (let (line)
-	(loop
-	  (setq line (read-line cfg nil cfg))
-	  (when (eq line cfg) (return))
-	  (write "    " :stream s :escape nil)
-	  (write line :stream s :escape nil)
-	  (terpri s))))))
+	    (with-open-file (cfg "config.cl" :direction :input)
+	      (format s "~%## Example configuration file~%~%")
+	      (let (line)
+		(loop
+		  (setq line (read-line cfg nil cfg))
+		  (when (eq line cfg) (return))
+		  (write "    " :stream s :escape nil)
+		  (write line :stream s :escape nil)
+		  (terpri s)))))
+	  (when (not (excl::compare-files temp-file readme-md))
+	    (format t ";; Updating ~a...~%" readme-md)
+	    (delete-file readme-md)
+	    (rename-file-raw temp-file readme-md)))
+      (when (probe-file temp-file) (delete-file temp-file)))))
 
 (defvar *verbose*
     ;; Be noisy.  `nil' is used for cron mode.
@@ -841,7 +885,7 @@ Catch up series to a specific episode:
 	      ("auto-backup" :long auto-backup :required-companion)
 	      ("compact-database" :long compact)
 	      ("config" :long config-file :required-companion)
-	      ("cron" :long cron-mode)
+	      ("cron" :long quiet)
 	      ("db" :long database :required-companion)
 	      ("debug" :long debug-mode)
 	      ("feed-interval" :long feed-interval :required-companion)
@@ -874,7 +918,7 @@ Catch up series to a specific episode:
 		   (merge-pathnames "config.cl" *tget-data-directory*)))
 	   
 	   (when debug-mode (setq *debug* t))
-	   (setq *verbose* (not cron-mode))
+	   (setq *verbose* (not quiet))
 	   (setq *learn* learn-mode)
 	   
 	   (if* config-file
@@ -943,7 +987,9 @@ Catch up series to a specific episode:
 
 	   (if* dump-all
 	      then (doclass (ep (find-class 'episode))
-		     (describe ep))
+		     (if* *verbose*
+			then (describe ep)
+			else (format t "~a~%" ep)))
 	    elseif dump-complete-to
 	      then (let ((res '()))
 		     (doclass (series (find-class 'series))
@@ -2709,6 +2755,8 @@ Episode:\\s*(\\d+)?"
   ;; - if one ends in (word) then it is not significant, but retain it
   ;; - "and" and "&" are the same (prefer "and")
   ;; - colons are not significant (retain them)
+  ;;   when a colon appears at the same position as a space, prefer the
+  ;;   colon
   ;; - commas are not significant (retain them)
   ;; - if they differ, use the longer one
   ;;
@@ -2746,16 +2794,42 @@ Episode:\\s*(\\d+)?"
 		else (values the
 			     (butlast parts)
 			     (car (last parts)))))))
-       (fuzzy= (s1 s2 &aux temp (char-bag '(#\: #\, #\?)))
+       (fuzzy-string= (s1 s2 &aux (char-bag '(#\: #\, #\?)))
+	 ;; compare at the string level and DO comparison at
+	 ;; the character level.  We return `nil' if the strings are
+	 ;; not the same length.  Return the string with the better
+	 ;; representation, if they are roughly similar.
+	 (when (not (= (length s1) (length s2)))
+	   (return-from fuzzy-string= nil))
+	 (do* ((len (length s1))
+	       (i 0 (1+ i))
+	       best)
+	     ((= i len) best)
+	   (if* (char= (schar s1 i) (schar s2 i))
+	      then (or best (setq best s1))
+	    elseif (and (char= #\space (schar s1 i))
+			(member (schar s2 i) char-bag :test #'char=))
+	      then (setq best s2)
+	    elseif (and (char= #\space (schar s2 i))
+			(member (schar s1 i) char-bag :test #'char=))
+	      then (setq best s1)
+	      else (setq best nil))))
+       (fuzzy-word= (s1 s2 &aux temp
+				(tail-bag '(#\: #\, #\?))
+				(len1 (length s1))
+				(len2 (length s2)))
+	 ;; compare at the word/phrase level, but don't do comparison at
+	 ;; the character level
 	 (if* (string= s1 s2)
 	    then s1
-	  elseif (or (string= "&" s1) (string= "&" s2))
+	  elseif (or (and (string= "&" s1) (string= "and" s2))
+		     (and (string= "and" s1) (string= "&" s2)))
 	    then "and"
-	  elseif (or (member (char (setq temp s1) (1- (length s1)))
-			     char-bag :test #'char=)
-		     (member (char (setq temp s2) (1- (length s2)))
-			     char-bag :test #'char=))
-	    then ;; the one with the colon, comma or question mark wins
+	  elseif (or (member (char (setq temp s1) (1- len1))
+			     tail-bag :test #'char=)
+		     (member (char (setq temp s2) (1- len2))
+			     tail-bag :test #'char=))
+	    then ;; the one ENDING with the [:,?] wins
 		 temp
 	  elseif (and (or (char= #\( (schar s1 0))
 			  (char= #\( (schar s2 0)))
@@ -2772,6 +2846,8 @@ Episode:\\s*(\\d+)?"
     (let ((new '())
 	  the1 middle1 last1 the2 middle2 last2
 	  m1 m2 e1 e2 temp)
+      (when (setq temp (fuzzy-string= series-name1 series-name2))
+	(return-from fuzzy-compare-series-names temp))
       (multiple-value-setq (the1 middle1 last1)
 	(decompose-series-name series-name1))
       (multiple-value-setq (the2 middle2 last2)
@@ -2787,7 +2863,7 @@ Episode:\\s*(\\d+)?"
 	(when (or (null m1) (null m2)) (return))
 	(setq e1 (car m1)
 	      e2 (car m2))
-	(if* (setq temp (fuzzy= e1 e2))
+	(if* (setq temp (fuzzy-word= e1 e2))
 	   then (push temp new)
 	   else (return))
 	(setq m1 (cdr m1)
@@ -2815,7 +2891,7 @@ Episode:\\s*(\\d+)?"
 	;; both matched all the way, now deal with the last
 	(cond
 	 ((and last1 last2)
-	  (let ((winner (fuzzy= last1 last2)))
+	  (let ((winner (fuzzy-word= last1 last2)))
 	    (if* winner
 	       then (push winner new)
 	     elseif (or (string= "australia" last1)

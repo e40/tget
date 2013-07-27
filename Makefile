@@ -68,7 +68,10 @@ build: FORCE
 ifdef INSTALL_CONFIG_FILE
 	cp -p $(INSTALL_CONFIG_FILE) tget/config.cl
 endif
-	./markdown-to-html.cl
+	@if [ README.md -nt README.html ]; then \
+	    echo Building README.html; \
+	    ./markdown-to-html.cl; \
+	fi
 
 .PHONY: test
 test: test-lisp test-other
@@ -80,8 +83,7 @@ test-lisp: FORCE
 	$(runlisp)
 
 test-other: FORCE
-	./test.sh compact
-	./test.sh --learn
+	./test.sh
 
 ifeq ($(FI_APPS_COMMON),t)
 repo_check: FORCE
