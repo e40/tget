@@ -1,11 +1,10 @@
-Summary: T0rrent Get
+Summary: Torrent Get
 Name: tget
 Version: %{version}
 Release: %{release}
 License: Mozilla
 Group: Applications/Internet
 Requires: transmission-common
-#URL: 
 Source0: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
@@ -13,7 +12,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 %define debug_package %{nil}
 
 %description
-T0rrent Get.  Your personal t0rrent downloader.
+Torrent Get.  Your personal torrent downloader.
 
 
 %prep
@@ -40,9 +39,12 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Sat Jul 08 2013 Kevin Layer <layer@relay> - 
+* Sun Jul 28 2013 me - 
+- v1.36: fix name
+
+* Sat Jul 08 2013 me -
 - Depend on transmission-common for transmission-remote.
 
-* Sat Mar 23 2013 Kevin Layer <layer@relay> - 
+* Sat Mar 23 2013 me - 
 - Initial build.
 

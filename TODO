@@ -2,6 +2,25 @@ TODO:
 
 high:
 
+- if transmission-remote doesn't exist, then it's not reported to the
+  user
+
+   10105: download: #<"top gear", S20E02 [high]>
+   10105: cmd: transmission-remote foo.example.com:9091 ....
+   10105:   exit status: 127
+   10105:   stdout: nil
+   10105:   stderr: /bin/sh: transmission-remote: command not found
+
+- adding a new series to the config file and NOT using :catch-up
+  causes the first episode to create a complete-to with the caught up
+  episode
+
+- new argument --ignore-episode: I want to add "Would I Lie to You?"
+  but I downloaded S06 and S07E08.  I need to have some way to tell
+  tget this.
+
+- need a command line arg that shows gaps for series that have them
+
 - for feeds that don't have a filename: fuzzy heuristic to get better
   series name: is there some other element we can use to do this for
   those feeds?

@@ -2,7 +2,7 @@
 at_franz = $(shell if test -d /fi/cl/8.2/acl; then echo t; else echo nil; fi)
 
 # Before Makefile.local include so it can be used there
-ARCH=$(shell uname -i)
+ARCH ?= $(shell uname -i)
 
 use_dcl = $(shell if test -f ../dcl.dxl; then echo yes; else echo no; fi)
 ifeq ($(use_dcl),yes)
@@ -29,14 +29,6 @@ LISP ?= mlisp
 runlisp = $(LISP) -q -batch -L build.tmp -kill
 
 version := $(shell fgrep 'defvar *tget-version* ' tget.cl | sed -e 's,.*"\(.*\)".*,\1,')
-
-ifeq ($(FI_APPS_COMMON),t)
-release ?= $(shell . fi-apps-common/rpm-utils.sh && \
-	rpm_next_release_number \
-	   /net/$(REPOHOST)$(REPOBASE)/$(ARCH)/tget-$(version)-*.$(ARCH).rpm)
-else
-release ?= 1
-endif
 
 tardir = tget-$(version)
 tarball = tget-$(version).tar.gz
@@ -122,39 +114,41 @@ clean: FORCE
 
 tarball: FORCE
 	mkdir $(tardir)
-	cp -p Makefile *.cl *.md $(tardir)
+	cp -p Makefile* *.cl *.md *.sh *.spec $(tardir)
+	mkdir $(tardir)/tget-config
+	cp -p tget-config/config.cl $(tardir)/tget-config/config.cl
 	tar zcf $(tarball) $(tardir)
 	rm -fr $(tardir)
 
-SIGN ?= --sign
+#SIGN ?= --sign
 
-rpm:	$(ALL_EXTRA) tarball
+REMOVE_PREVIOUS_VERSIONS ?= no
+REPOHOST                 ?= relay
+REPOBASE                 ?= /tftpboot/local
+
+REPODIR=$(REPOBASE)/$(ARCH)
+
+release ?= $(shell . /usr/local/bin/rpm-utils.sh && rpm_next_release2 tget)
+
+rpm:	tget.spec $(ALL_EXTRA) tarball
 	mkdir -p BUILD RPMS/$(ARCH) SRPMS
-	rpmbuild --define "_sourcedir $(CURDIR)" \
+	rpmbuild $(SIGN) --define "_sourcedir $(CURDIR)" \
 		--define "_topdir $(CURDIR)" \
+		--define "_builddir $(CURDIR)/BUILD" \
+		--define "_rpmdir $(CURDIR)/RPMS" \
+		--define "_srcrpmdir $(CURDIR)/SRPMS" \
 		--define "version $(version)" \
 		--define "release $(release)" \
 		--define "mlisp $(LISP)" \
-		$(SIGN) \
-		--target $(ARCH) \
-		-ba tget.spec
+		--target $(ARCH) -ba tget.spec
 	rm $(tarball)
-
-REMOVE_PREVIOUS_VERSIONS ?= no
-REPOHOST		 ?= fs1
-REPOBASE		 ?= /storage1/franz/common
-
-REPODIR=$(REPOBASE)/$(ARCH)
 
 install-repo: FORCE
 ifeq ($(REMOVE_PREVIOUS_VERSIONS),yes)
 	ssh root@$(REPOHOST) "rm -f $(REPODIR)/tget-*"
 endif
-	scp -p RPMS/$(ARCH)/tget-$(version)*.$(ARCH).rpm root@$(REPOHOST):$(REPODIR)
+	scp -p RPMS/$(ARCH)/tget-$(version)-*.rpm root@$(REPOHOST):$(REPODIR)
 	ssh root@$(REPOHOST) "createrepo -s sha -q --update $(REPODIR)"
-
-backup:
-	rsync -c -va --delete --delete-after ./ freon:src/tget/
 
 ###############################################################################
 FORCE:

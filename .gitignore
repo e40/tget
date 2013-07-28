@@ -2,7 +2,6 @@
 *.in
 *.lxml
 *.out
-/*.xml
 /BUILD/
 /Makefile.local
 /RPMS/
