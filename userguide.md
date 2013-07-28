@@ -277,7 +277,7 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality`
+### `defseries name group &key delay quality catch-up`
 
 Required arguments:
 
@@ -292,7 +292,13 @@ Optional arguments:
 
 `:quality` -- this allows the group quality to be overriden.
 
+`:catch-up` -- do not download any episodes of this series at or
+before this season and episode.  An example value is `S05E08`.  Case
+differences are ignored (e.g., you can use `s` or `S`).
+
 ## Maintenance tasks
+
+## Maintenance task: making the database smaller
 
 After some time, _tget_ can slow down due to the database growing.  It
 has to do with how _tget_ operates, temporarily storing episodes while
@@ -305,3 +311,36 @@ database.  To clean them out, you can
 This will backup the current database and then compact it to make it
 more efficient.  It will usually dramatically decrease the size of the
 database, if it's been in use for a month or more.
+
+## Maintenance task: adding a new series
+
+The easiest way to add a new series is to add it to the configuration
+file, like this:
+
+    (defseries "New Series" :group1)
+
+However, sometimes you might want to add it in a caught up state.
+That would be:
+
+    (defseries "New Series" :group1 :catch-up "S05E08")
+
+Which would cause episodes from `S05E09` and later to be downloaded,
+and nothing before it.
+
+## Maintenance task: removing a series
+
+There are two ways you can remove a series.
+
+The first method entails removing it from the configuration file
+and then running _tget_ to remove it from the database.  The removing
+from the database part would be:
+
+    $ tget --delete-series "True Blood"
+
+The second method entails changing the configuration file to note this
+series should be removed:
+
+    (defseries "Series Name" :group1 :remove t)
+
+You can remove this entry in the configuration file after _tget_ has
+been run once.

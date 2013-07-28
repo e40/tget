@@ -205,7 +205,7 @@
 (defseries "NCIS" :adrian+kevin)
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :adrian+kevin)
-(defseries "NTSF:SD:SUV" :kevin)
+(defseries "NTSF:SD:SUV" :kevin :catch-up "s03e01")
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
@@ -234,7 +234,6 @@
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
-(defseries "True Blood" :kevin)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
@@ -243,6 +242,7 @@
 (defseries "Falling Skies" :kevin :remove t)
 (defseries "Inside Amy Schumer" :kevin :remove t)
 (defseries "Southland" :kevin :remove t) ;; canceled!
+(defseries "True Blood" :kevin :remove t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BTN

@@ -1,4 +1,4 @@
-# tget 1.35 - torrent get
+# tget 1.36 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -277,7 +277,7 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality`
+### `defseries name group &key delay quality catch-up`
 
 Required arguments:
 
@@ -292,7 +292,13 @@ Optional arguments:
 
 `:quality` -- this allows the group quality to be overriden.
 
+`:catch-up` -- do not download any episodes of this series at or
+before this season and episode.  An example value is `S05E08`.  Case
+differences are ignored (e.g., you can use `s` or `S`).
+
 ## Maintenance tasks
+
+## Maintenance task: making the database smaller
 
 After some time, _tget_ can slow down due to the database growing.  It
 has to do with how _tget_ operates, temporarily storing episodes while
@@ -305,6 +311,39 @@ database.  To clean them out, you can
 This will backup the current database and then compact it to make it
 more efficient.  It will usually dramatically decrease the size of the
 database, if it's been in use for a month or more.
+
+## Maintenance task: adding a new series
+
+The easiest way to add a new series is to add it to the configuration
+file, like this:
+
+    (defseries "New Series" :group1)
+
+However, sometimes you might want to add it in a caught up state.
+That would be:
+
+    (defseries "New Series" :group1 :catch-up "S05E08")
+
+Which would cause episodes from `S05E09` and later to be downloaded,
+and nothing before it.
+
+## Maintenance task: removing a series
+
+There are two ways you can remove a series.
+
+The first method entails removing it from the configuration file
+and then running _tget_ to remove it from the database.  The removing
+from the database part would be:
+
+    $ tget --delete-series "True Blood"
+
+The second method entails changing the configuration file to note this
+series should be removed:
+
+    (defseries "Series Name" :group1 :remove t)
+
+You can remove this entry in the configuration file after _tget_ has
+been run once.
 
 ## Usage
 
@@ -709,7 +748,7 @@ Catch up series to a specific episode:
     (defseries "NCIS" :adrian+kevin)
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :adrian+kevin)
-    (defseries "NTSF:SD:SUV" :kevin)
+    (defseries "NTSF:SD:SUV" :kevin :catch-up "s03e01")
     (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
     (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
@@ -738,7 +777,6 @@ Catch up series to a specific episode:
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Top of the Lake" :anh+kevin)
     (defseries "Tosh.0" :kevin)
-    (defseries "True Blood" :kevin)
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
@@ -747,6 +785,7 @@ Catch up series to a specific episode:
     (defseries "Falling Skies" :kevin :remove t)
     (defseries "Inside Amy Schumer" :kevin :remove t)
     (defseries "Southland" :kevin :remove t) ;; canceled!
+    (defseries "True Blood" :kevin :remove t)
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; BTN

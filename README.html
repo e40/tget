@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-135---torrent-get" class="anchor" href="#tget-135---torrent-get"><span class="octicon octicon-link"></span></a>tget 1.35 - torrent get</h1>
+<a name="tget-136---torrent-get" class="anchor" href="#tget-136---torrent-get"><span class="octicon octicon-link"></span></a>tget 1.36 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -339,7 +339,7 @@ the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.</p>
 
 <h3>
-<a name="defseries-name-group-key-delay-quality" class="anchor" href="#defseries-name-group-key-delay-quality"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality</code>
+<a name="defseries-name-group-key-delay-quality-catch-up" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up</code>
 </h3>
 
 <p>Required arguments:</p>
@@ -355,8 +355,15 @@ quotes are removed in parsing.</p>
 
 <p><code>:quality</code> -- this allows the group quality to be overriden.</p>
 
+<p><code>:catch-up</code> -- do not download any episodes of this series at or
+before this season and episode.  An example value is <code>S05E08</code>.  Case
+differences are ignored (e.g., you can use <code>s</code> or <code>S</code>).</p>
+
 <h2>
 <a name="maintenance-tasks" class="anchor" href="#maintenance-tasks"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>
+
+<h2>
+<a name="maintenance-task-making-the-database-smaller" class="anchor" href="#maintenance-task-making-the-database-smaller"><span class="octicon octicon-link"></span></a>Maintenance task: making the database smaller</h2>
 
 <p>After some time, <em>tget</em> can slow down due to the database growing.  It
 has to do with how <em>tget</em> operates, temporarily storing episodes while
@@ -370,6 +377,45 @@ database.  To clean them out, you can</p>
 <p>This will backup the current database and then compact it to make it
 more efficient.  It will usually dramatically decrease the size of the
 database, if it's been in use for a month or more.</p>
+
+<h2>
+<a name="maintenance-task-adding-a-new-series" class="anchor" href="#maintenance-task-adding-a-new-series"><span class="octicon octicon-link"></span></a>Maintenance task: adding a new series</h2>
+
+<p>The easiest way to add a new series is to add it to the configuration
+file, like this:</p>
+
+<pre><code>(defseries "New Series" :group1)
+</code></pre>
+
+<p>However, sometimes you might want to add it in a caught up state.
+That would be:</p>
+
+<pre><code>(defseries "New Series" :group1 :catch-up "S05E08")
+</code></pre>
+
+<p>Which would cause episodes from <code>S05E09</code> and later to be downloaded,
+and nothing before it.</p>
+
+<h2>
+<a name="maintenance-task-removing-a-series" class="anchor" href="#maintenance-task-removing-a-series"><span class="octicon octicon-link"></span></a>Maintenance task: removing a series</h2>
+
+<p>There are two ways you can remove a series.</p>
+
+<p>The first method entails removing it from the configuration file
+and then running <em>tget</em> to remove it from the database.  The removing
+from the database part would be:</p>
+
+<pre><code>$ tget --delete-series "True Blood"
+</code></pre>
+
+<p>The second method entails changing the configuration file to note this
+series should be removed:</p>
+
+<pre><code>(defseries "Series Name" :group1 :remove t)
+</code></pre>
+
+<p>You can remove this entry in the configuration file after <em>tget</em> has
+been run once.</p>
 
 <h2>
 <a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
@@ -821,7 +867,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "NCIS" :adrian+kevin)
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :adrian+kevin)
-(defseries "NTSF:SD:SUV" :kevin)
+(defseries "NTSF:SD:SUV" :kevin :catch-up "s03e01")
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
@@ -850,7 +896,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
-(defseries "True Blood" :kevin)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
@@ -859,6 +904,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Falling Skies" :kevin :remove t)
 (defseries "Inside Amy Schumer" :kevin :remove t)
 (defseries "Southland" :kevin :remove t) ;; canceled!
+(defseries "True Blood" :kevin :remove t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BTN

@@ -75,7 +75,8 @@ endif
 
 .PHONY: test
 test: test-lisp test-other
-	rm -fr test.db*
+# Don't remove, so we can examine the database after the tests run
+#	rm -fr test.db*
 
 test-lisp: FORCE
 	rm -f build.tmp

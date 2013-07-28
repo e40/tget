@@ -31,23 +31,32 @@ tget --run --reset --learn
 tget --cron --dump-complete-to > test.complete-to
 if ! diff tget-test-data/reference.complete-to test.complete-to; then
     echo ERROR: complete-to test failed 
+    echo do
+    echo "    mv test.complete-to tget-test-data/reference.complete-to"
+    echo if this is the new reference.
     exit 1
 else
     rm -f test.complete-to
 fi
 
-tget --cron --dump-stats > test.stats
-if ! diff tget-test-data/reference.stats test.stats; then
-    echo ERROR: stats test failed 
-    exit 1
-else
-    rm -f test.stats
-fi
-
 tget --cron --dump-all > test.all
 if ! diff <(sort < tget-test-data/reference.all) <(sort < test.all); then
     echo ERROR: all test failed 
+    echo do
+    echo "    mv test.all tget-test-data/reference.all"
+    echo if this is the new reference.
     exit 1
 else
     rm -f test.all
+fi
+
+tget --cron --dump-stats > test.stats
+if ! diff tget-test-data/reference.stats test.stats; then
+    echo ERROR: stats test failed 
+    echo do
+    echo "    mv test.stats tget-test-data/reference.stats"
+    echo if this is the new reference.
+    exit 1
+else
+    rm -f test.stats
 fi

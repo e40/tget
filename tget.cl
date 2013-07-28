@@ -25,7 +25,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "1.35")
+(defvar *tget-version* "1.36")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -454,12 +454,13 @@
 	      :quality quality
 	      :download-path download-path))))
 
-(defmacro defseries (name group &key delay quality remove)
+(defmacro defseries (name group &key delay quality remove catch-up)
   (if* remove
      then `(forget-series ,name :noisy nil)
      else `(make-series
 	    :name ,name
 	    :group ,group
+	    ,@(when catch-up `(:catch-up ,catch-up))
 	    ,@(when delay `(:delay ,delay))
 	    ,@(when quality `(:quality ,quality)))))
 
@@ -473,7 +474,8 @@
      elseif noisy
        then (warn "Could not find series: ~s." name))))
 
-(defun make-series (&key name group delay quality)
+(defun make-series (&key name group delay quality catch-up
+		    &aux series)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
 	 (old (query-series-name-to-series name)))
@@ -484,24 +486,32 @@
 	(.error "Bad group: ~s." group))
     (or (stringp name)
 	(.error "Series name must be a string: ~s." name))
-    (if* old
-       then (when (not (eq group (series-group old)))
-	      (.error "There is a duplicate defseries for ~s."
-		      pretty-name))
-	    (when (string/= (series-name old) pretty-name)
-	      (setf (series-pretty-name old) pretty-name))
-	    (setf (series-group old) group)
-	    (setf (series-delay old) delay)
-	    (setf (series-quality old) quality)
-	    old
-       else (make-instance 'series
-	      :pretty-name pretty-name
-	      :name name
-	      :complete-to nil
-	      :discontinuous-episodes nil
-	      :group group
-	      :delay delay
-	      :quality quality))))
+    (when catch-up
+      (or (stringp catch-up)
+	  (.error "Series catch-up must be a string: ~s." catch-up)))
+    (setq series
+      (if* old
+	 then (when (not (eq group (series-group old)))
+		(.error "There is a duplicate defseries for ~s."
+			pretty-name))
+	      (when (string/= (series-name old) pretty-name)
+		(setf (series-pretty-name old) pretty-name))
+	      (setf (series-group old) group)
+	      (setf (series-delay old) delay)
+	      (setf (series-quality old) quality)
+	      old
+	 else (make-instance 'series
+		:pretty-name pretty-name
+		:name name
+		:complete-to nil
+		:discontinuous-episodes nil
+		:group group
+		:delay delay
+		:quality quality)))
+    (when catch-up
+      (catch-up-series (concatenate 'simple-string name " " catch-up)
+		       :series series))
+    series))
 
 (defmacro deftransmission (options &key host port username password
 					add-paused trash-torrent-file
@@ -1966,7 +1976,7 @@ transmission-remote ~a:~a ~
        else (format t "--~%")))
   (tget-commit))
 
-(defun catch-up-series (what)
+(defun catch-up-series (what &key series)
   ;; The episode descriptor is at the end of the series.
   (multiple-value-bind (match whole series-name ignore1 season ignore2 epnum)
       (match-re "^(.*)(\\s|\\.+)s([0-9]{2,3})(e([0-9]{2,3}))?$"
@@ -1976,18 +1986,17 @@ transmission-remote ~a:~a ~
       (.error "Could not parse series name and episode info: ~a." what))
     
     (setq series-name (canonicalize-series-name series-name))
-    (let ((series (or (query-series-name-to-series series-name)
+    (let ((series (or series
+		      (query-series-name-to-series series-name)
 		      (.error "Could not find series: ~s." series-name))))
       (setq season (parse-integer season))
       (setq epnum
 	(if* epnum
 	   then (parse-integer epnum)
 	   else *max-epnum*))
-      (format t "Setting series ~a complete-to to season ~d and epnum ~d~%."
-	      season season epnum)
-      (update-complete-to series season epnum))))
+      (update-complete-to series season epnum :verbose t))))
 
-(defun update-complete-to (series season epnum
+(defun update-complete-to (series season epnum &key verbose
 			   &aux ct
 				;; For a range, just select the end epnum
 				(epnum (if (consp epnum) (cdr epnum) epnum))
@@ -2008,7 +2017,12 @@ transmission-remote ~a:~a ~
   (setq ct (series-complete-to series))
   
   (labels
-      ((contiguous-episodes (ct1 ct2)
+      ((announce ()
+	 (when verbose
+	   (format
+	    t "Setting series ~a complete-to to season ~d and epnum ~d~%."
+	    series season epnum)))
+       (contiguous-episodes (ct1 ct2)
 	 ;; Return T if CT1 and CT2 represent contiguous episodes.
 	 ;; Examples of contiguous episodes:
 	 ;;  CT1          CT2
@@ -2078,7 +2092,8 @@ transmission-remote ~a:~a ~
     (cond
      ((null ct)
       ;; No complete-to, so just save it
-      (setf (series-complete-to series) new-ct))
+      (setf (series-complete-to series) new-ct)
+      (announce))
      
      ((equalp ct new-ct)
       ;; ignore, the same
@@ -2096,7 +2111,8 @@ transmission-remote ~a:~a ~
 	 else ;; ...and the epsisodes are not contiguous, so start
 	      ;; discontinuous-episodes
 	      (setf (series-discontinuous-episodes series)
-		(list new-ct))))
+		(list new-ct)))
+      (announce))
      
      (t
       ;; We have current discontinuous episodes.  Need to carefully manage
@@ -2107,11 +2123,14 @@ transmission-remote ~a:~a ~
 	      ;; Normalize discontinuous-episodes, since there
 	      ;; might be new contiguous episodes in that list now
 	      (canonicalize-discontinuous-episodes series)
+	      (announce)
 	 else ;; Episodes are not contiguous, so merge NEW-CT into the list
 	      ;; of discontiguous-episodes, but keep it sorted
 	      (let ((v (sorted-insert new-ct
 				      (series-discontinuous-episodes series))))
-		(setf (series-discontinuous-episodes series) v)))))))
+		(setf (series-discontinuous-episodes series) v)
+;;;;TODO: announce???
+		))))))
 
 (defun episode-after-complete-to (ep series)
   (cond
