@@ -25,7 +25,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "1.36")
+(defvar *tget-version* "1.37")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -646,6 +646,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-episodes series-name
     --dump-series
     --dump-stats
+    --skip
 
 Behavior modifying arguments:
 
@@ -726,6 +727,11 @@ The following are arguments controlling primary behavior:
 * `--dump-stats`
 
   Dump information about the database to stdout.
+
+* `--skip series-name`
+
+  Skip the next episode of `series-name`.  It does so by using the last
+  downloaded episode and incrementing it by 1.
 
 The following options augment the options above or have the stated side
 effects:
@@ -919,6 +925,7 @@ Catch up series to a specific episode:
 	      ("dump-episodes" :long dump-episodes :required-companion)
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-stats" :long dump-stats)
+	      ("skip" :long skip-next :required-companion)
 
 ;;;; modifiers (change primary behavior)
 	      ("auto-backup" :long auto-backup :required-companion)
@@ -1086,6 +1093,9 @@ Catch up series to a specific episode:
 		   (done)
 	    elseif catch-up-series
 	      then (catch-up-series catch-up-series)
+		   (done)
+	    elseif skip-next
+	      then (skip-next skip-next)
 		   (done)
 	    elseif compact
 	      then ;; already did that, just exit
@@ -1995,6 +2005,19 @@ transmission-remote ~a:~a ~
 	   then (parse-integer epnum)
 	   else *max-epnum*))
       (update-complete-to series season epnum :verbose t))))
+
+(defun skip-next (series)
+  ;; Skip the next episode of SERIES
+  (setq series (canonicalize-series-name series))
+  (let ((series (or (query-series-name-to-series series)
+		    (.error "Could not find series: ~s." series)))
+	complete-to)
+    (when (not (setq complete-to (series-complete-to series)))
+      (.error "Series does not have any episodes: ~a." series))
+    (update-complete-to series
+			(car complete-to)
+			(1+ (cdr complete-to))
+			:verbose t)))
 
 (defun update-complete-to (series season epnum &key verbose
 			   &aux ct

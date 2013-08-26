@@ -1,4 +1,4 @@
-# tget 1.36 - torrent get
+# tget 1.37 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -360,6 +360,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-episodes series-name
     --dump-series
     --dump-stats
+    --skip
 
 Behavior modifying arguments:
 
@@ -437,6 +438,11 @@ The following are arguments controlling primary behavior:
 * `--dump-stats`
 
   Dump information about the database to stdout.
+
+* `--skip series-name`
+
+  Skip the next episode of `series-name`.  It does so by using the last
+  downloaded episode and incrementing it by 1.
 
 The following options augment the options above or have the stated side
 effects:
@@ -646,6 +652,8 @@ Catch up series to a specific episode:
         :codec :xvid
         :resolution :sd)
     
+    (defquality :indi :resolution :sd)
+    
     ;; This is a user-defined quality function.
     
     (defun my-quality (episode)
@@ -713,6 +721,7 @@ Catch up series to a specific episode:
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer" :kevin)
     (defseries "Bates Motel" :anh+kevin)
+    (defseries "Black Mirror" :kevin)
     (defseries "Boardwalk Empire" :kevin)
     (defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
     (defseries "Childrens Hospital (US)" :kevin)
@@ -730,13 +739,17 @@ Catch up series to a specific episode:
     (defseries "Futurama" :adrian+kevin)
     (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
     (defseries "Hannibal" :anh+kevin)
+    (defseries "Hell on Wheels" :kevin)
     (defseries "Homeland" :kevin)
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
-    (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
+    (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
+      ;; All there is on TVT
+      :quality :indi)
     (defseries "Longmire" :kevin)
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
+    (defseries "Low Winter Sun" :kevin)
     (defseries "Luther" :kevin)
     (defseries "Mad Men" :kevin)
     (defseries "Maron" :kevin)
@@ -748,7 +761,6 @@ Catch up series to a specific episode:
     (defseries "NCIS" :adrian+kevin)
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :adrian+kevin)
-    (defseries "NTSF:SD:SUV" :kevin :catch-up "s03e01")
     (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
     (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
@@ -773,6 +785,7 @@ Catch up series to a specific episode:
     (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
+    (defseries "The White Queen" :anh+kevin)
     (defseries "Top Gear (US)" :adrian+kevin :quality :high)
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Top of the Lake" :anh+kevin)
@@ -780,10 +793,12 @@ Catch up series to a specific episode:
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
+    (defseries "Would I Lie To You" :adrian+kevin)
     
     ;; removed:
     (defseries "Falling Skies" :kevin :remove t)
     (defseries "Inside Amy Schumer" :kevin :remove t)
+    (defseries "NTSF:SD:SUV" :kevin :remove t)
     (defseries "Southland" :kevin :remove t) ;; canceled!
     (defseries "True Blood" :kevin :remove t)
     

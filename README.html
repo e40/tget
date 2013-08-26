@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-136---torrent-get" class="anchor" href="#tget-136---torrent-get"><span class="octicon octicon-link"></span></a>tget 1.36 - torrent get</h1>
+<a name="tget-137---torrent-get" class="anchor" href="#tget-137---torrent-get"><span class="octicon octicon-link"></span></a>tget 1.37 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -433,6 +433,7 @@ been run once.</p>
 --dump-episodes series-name
 --dump-series
 --dump-stats
+--skip
 </code></pre>
 
 <p>Behavior modifying arguments:</p>
@@ -527,6 +528,12 @@ the database to stdout.  See --catch-up-series.</p>
 <p><code>--dump-stats</code></p>
 
 <p>Dump information about the database to stdout.</p>
+</li>
+<li>
+<p><code>--skip series-name</code></p>
+
+<p>Skip the next episode of <code>series-name</code>.  It does so by using the last
+downloaded episode and incrementing it by 1.</p>
 </li>
 </ul><p>The following options augment the options above or have the stated side
 effects:</p>
@@ -765,6 +772,8 @@ $ tget --catch-up-series "breaking bad s04"
     :codec :xvid
     :resolution :sd)
 
+(defquality :indi :resolution :sd)
+
 ;; This is a user-defined quality function.
 
 (defun my-quality (episode)
@@ -832,6 +841,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer" :kevin)
 (defseries "Bates Motel" :anh+kevin)
+(defseries "Black Mirror" :kevin)
 (defseries "Boardwalk Empire" :kevin)
 (defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
 (defseries "Childrens Hospital (US)" :kevin)
@@ -849,13 +859,17 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Futurama" :adrian+kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
 (defseries "Hannibal" :anh+kevin)
+(defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin)
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin)
-(defseries "Kung Fu Panda: Legends of Awesomeness" :adrian)
+(defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
+  ;; All there is on TVT
+  :quality :indi)
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)
 (defseries "Louie" :kevin)
+(defseries "Low Winter Sun" :kevin)
 (defseries "Luther" :kevin)
 (defseries "Mad Men" :kevin)
 (defseries "Maron" :kevin)
@@ -867,7 +881,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "NCIS" :adrian+kevin)
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :adrian+kevin)
-(defseries "NTSF:SD:SUV" :kevin :catch-up "s03e01")
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
@@ -892,6 +905,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
+(defseries "The White Queen" :anh+kevin)
 (defseries "Top Gear (US)" :adrian+kevin :quality :high)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
@@ -899,10 +913,12 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
+(defseries "Would I Lie To You" :adrian+kevin)
 
 ;; removed:
 (defseries "Falling Skies" :kevin :remove t)
 (defseries "Inside Amy Schumer" :kevin :remove t)
+(defseries "NTSF:SD:SUV" :kevin :remove t)
 (defseries "Southland" :kevin :remove t) ;; canceled!
 (defseries "True Blood" :kevin :remove t)
 
