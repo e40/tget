@@ -2,6 +2,10 @@ TODO:
 
 high:
 
+- if the feed can be retrieved but the download fails, the item should
+  be retried next time -- currently, the database is updated and the
+  item is never downloaded
+
 - if transmission-remote doesn't exist, then it's not reported to the
   user
 
