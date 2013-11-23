@@ -78,7 +78,24 @@
   (require :autozoom))
 
 (defpackage :user
-  (:use #:excl #:util.date-time #:excl.shell #:db.allegrocache)
+  (:use #:excl #:util.date-time #:excl.shell)
+  (:import-from #:db.allegrocache
+		;; Specify each symbol instead of using the package,
+		;; because we need to review the :db argument usage for
+		;; each new function/macro.
+		#:close-database
+		#:commit
+		#:create-expression-cursor
+		#:db-object-oid
+		#:delete-instance
+		#:doclass
+		#:free-index-cursor
+		#:next-index-cursor
+		#:open-file-database
+		#:restore-database
+		#:retrieve-from-index
+		#:save-database
+		)
   (:import-from #:db.allegrocache.utils
 		#:defclass*))
 
@@ -110,6 +127,8 @@
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
+(defvar *main* nil)			; main acache database
+(defvar *temp* nil)			; temp acache database
 (defvar *database-name* nil)
 (defvar *version-file* nil)
 (defvar *config-file* nil)
@@ -454,7 +473,7 @@
     atom-or-list))
 
 (defun make-quality (&key name priority container source codec resolution)
-  (let ((old (retrieve-from-index 'quality 'name name)))
+  (let ((old (retrieve-from-index 'quality 'name name :db *main*)))
 
     (or (and (null priority)
 	     (setq priority 1))
@@ -495,7 +514,7 @@
 
 (defun make-group (&key name rss-url debug-feed delay ratio quality
 			download-path)
-  (let ((old (retrieve-from-index 'group 'name name)))
+  (let ((old (retrieve-from-index 'group 'name name :db *main*)))
     (check-rss-url rss-url)
     ;; don't check debug-feed
     (check-delay delay)
@@ -676,7 +695,7 @@
 (defun check-quality (quality)
   (and quality
        (or (and (symbolp quality)
-		(or (retrieve-from-index 'group 'name quality)
+		(or (retrieve-from-index 'group 'name quality :db *main*)
 		    (keywordp quality)
 		    (eq 't quality)
 		    (symbol-function quality)
@@ -1092,14 +1111,14 @@ Catch up series to a specific episode:
 	   (open-log-files)
 
 	   (if* dump-all
-	      then (doclass (ep (find-class 'episode))
+	      then (doclass (ep (find-class 'episode) :db *main*)
 		     (if* *verbose*
 			then (describe ep)
 			else (format t "~a~%" ep)))
 		   (done)
 	    elseif dump-complete-to
 	      then (let ((res '()))
-		     (doclass (series (find-class 'series))
+		     (doclass (series (find-class 'series) :db *main*)
 		       (push
 			(format nil "~55a: ~a~%"
 				(series-pretty-name series)
@@ -1117,10 +1136,19 @@ Catch up series to a specific episode:
 			 (groups 0)
 			 (qualities 0)
 			 (episodes 0))
-		     (doclass (o (find-class 'series)) o (incf series))
-		     (doclass (o (find-class 'group)) o (incf groups))
-		     (doclass (o (find-class 'quality)) o (incf qualities))
-		     (doclass (o (find-class 'episode)) o (incf episodes))
+		     (doclass (o (find-class 'series) :db *main*)
+		       (declare (ignorable o))
+		       (incf series)
+		       )
+		     (doclass (o (find-class 'group) :db *main*)
+		       (declare (ignorable o))
+		       (incf groups))
+		     (doclass (o (find-class 'quality) :db *main*)
+		       (declare (ignorable o))
+		       (incf qualities))
+		     (doclass (o (find-class 'episode) :db *main*)
+		       (declare (ignorable o))
+		       (incf episodes))
 		     (format t "~
 ;; series: ~d
 ;; groups: ~d
@@ -1293,11 +1321,12 @@ Catch up series to a specific episode:
 		     (eq :force *auto-backup*))
 	    (setq backed-up (backup-database "because requested"))))
 
-	(open-file-database *database-name*
-			    :use :memory
-			    :if-does-not-exist if-does-not-exist
-			    :read-only nil
-			    :if-exists if-exists)
+	(setq *main*
+	  (open-file-database *database-name*
+			      :use :memory
+			      :if-does-not-exist if-does-not-exist
+			      :read-only nil
+			      :if-exists if-exists))
 	
 	(if* (not (probe-file *version-file*))
 	   then ;; New database, write it
@@ -1329,12 +1358,13 @@ Catch up series to a specific episode:
 	(when compact
 	  ;; To compact the database we close, save, restore and reopen
 	  ;; it.
-	  (close-database)
+	  (close-database :db *main*)
 	  (let ((xml-file (sys:make-temp-file-name "tgetcompact"))
 		(version-file (sys:make-temp-file-name "tgetversion")))
 	    (format t ";; Saving database to temp file (~a)..." xml-file)
 	    (force-output t)
-	    (save-database xml-file :file *database-name* :verbose nil)
+	    (save-database xml-file :file *database-name* :verbose nil
+			   :db *main*)
 	    (sys:copy-file *version-file* version-file)
 	    (format t "done.~%")
 	    ;; this already prints what it does:
@@ -1342,7 +1372,8 @@ Catch up series to a specific episode:
 	    (sys:copy-file version-file *version-file*)
 	    (delete-file xml-file)
 	    (delete-file version-file))
-	  (open-file-database *database-name* :use :memory :read-only nil))
+	  (setq *main*
+	    (open-file-database *database-name* :use :memory :read-only nil)))
 
 	(setq ok t))
     ;; In the event of an error, make sure we release the lock:
@@ -1400,7 +1431,7 @@ Catch up series to a specific episode:
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
   (format t ";;   Initializing new slots of series instances.~%")
-  (doclass (series (find-class 'series))
+  (doclass (series (find-class 'series) :db *main*)
 ;;;;TODO: If I don't print the series objects, the slots aren't updated!
     (format t ";; updating ~a...~%" series)
     (setf (series-complete-to series) nil)
@@ -1414,7 +1445,7 @@ Catch up series to a specific episode:
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
   (format t ";;   Fix container and repack slots of episodes.~%")
-  (doclass (ep (find-class 'episode))
+  (doclass (ep (find-class 'episode) :db *main*)
     (when (not (slot-boundp ep 'container))
       (setf (episode-container ep) nil))
     (when (not (slot-boundp ep 'repack))
@@ -1427,7 +1458,7 @@ Catch up series to a specific episode:
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
   (format t ";;   Update pretty-epnum for each episode.~%")
-  (doclass (ep (find-class 'episode))
+  (doclass (ep (find-class 'episode) :db *main*)
     (when (not (slot-boundp ep 'pretty-epnum))
       (let ((new (season-and-episode-to-pretty-epnum (episode-season ep)
 						     (episode-episode ep))))
@@ -1444,7 +1475,7 @@ Catch up series to a specific episode:
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
   (format t ";;   Update episode/pretty-epnum for range episodes.~%")
-  (doclass (ep (find-class 'episode))
+  (doclass (ep (find-class 'episode) :db *main*)
     (when (episode-filename ep)
       (let ((new-episode (nth-value 2
 				    (extract-episode-info-from-filename
@@ -1468,20 +1499,20 @@ Catch up series to a specific episode:
   (tget-commit))
 
 (defun tget-commit ()
-  (commit))
+  (commit :db *main*))
 
 (defun close-tget-database ()
   (when db.allegrocache::*allegrocache*
     (when *verbose* (format t ";; closing database...~%"))
-    (commit)
-    (close-database)
+    (commit :db *main*)
+    (close-database :db *main*)
     (setq db.allegrocache::*allegrocache* nil)
     (release-database-lock-file)))
 
 (push '(close-tget-database) sys:*exit-cleanup-forms*)
 
 (defun query-series-name-to-series (name)
-  (retrieve-from-index 'series 'name name))
+  (retrieve-from-index 'series 'name name :db *main*))
 
 (defun make-episode (&key transient
 			  full-title
@@ -1567,7 +1598,9 @@ Catch up series to a specific episode:
 		     ,@(when container `((= container ,container)))
 		     ,@(when source `((= source ,source)))
 		     ,@(when codec `((= codec ,codec)))
-		     ,@(when resolution `((= resolution ,resolution))))))
+		     ,@(when resolution `((= resolution ,resolution))))
+		   :db *main*
+		   ))
 	  (episodes '()))
       (when cursor
 	(loop
@@ -1583,7 +1616,7 @@ Catch up series to a specific episode:
     (let* ((ep episode)
 	   (q (if* (eq 't quality)
 		 then nil
-		 else (or (retrieve-from-index 'quality 'name quality)
+		 else (or (retrieve-from-index 'quality 'name quality :db *main*)
 			  (.error "No quality named ~s." quality))))
 	   (cursor
 	    (create-expression-cursor
@@ -1593,7 +1626,8 @@ Catch up series to a specific episode:
 		   `((= transient ,transient)))
 	       (= series-name ,(episode-series-name ep))
 	       (= season ,(episode-season ep))
-	       (= episode ,(episode-episode ep)))))
+	       (= episode ,(episode-episode ep)))
+	     :db *main*))
 	   (episodes '()))
       (when cursor
 	(loop
@@ -1609,19 +1643,19 @@ Catch up series to a specific episode:
 
 (defun query-group-to-series (group)
   ;; Return a list of all series instances that are in group GROUP-NAME.
-  (retrieve-from-index 'series 'group (group-name group)
+  (retrieve-from-index 'series 'group (group-name group) :db *main*
 		       :all t))
 
 ;;;TODO: cache the lookups... mostly will be just a few of them
 (defun quality (thing)
   (if* (keywordp thing)
-     then (retrieve-from-index 'quality 'name thing)
+     then (retrieve-from-index 'quality 'name thing :db *main*)
      else ;; user-defined function or `t', just return it
 	  thing))
 
 (defun episode-quality (ep &key priority)
   ;; Given an episode, return the name of the quality
-  (doclass (q (find-class 'quality))
+  (doclass (q (find-class 'quality) :db *main*)
     (when (quality-match-p ep q)
       (return
 	(if* priority
@@ -1645,7 +1679,7 @@ Catch up series to a specific episode:
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
 			    ep-printer)
   (tget-commit)
-  (doclass (group (find-class 'group))
+  (doclass (group (find-class 'group) :db *main*)
     (tagbody
       ;; Setup the printer for this group.  The idea is to have no output
       ;; unless there are matches.
@@ -1682,7 +1716,7 @@ Catch up series to a specific episode:
       (process-transient-objects group ep-printer)
   
       ;; Remove the remaining transient episodes
-      (dolist (ep (retrieve-from-index 'episode 'transient t :all t))
+      (dolist (ep (retrieve-from-index 'episode 'transient t :all t :db *main*))
 	(delete-instance ep))
       (tget-commit)
      next-feed
@@ -2030,7 +2064,7 @@ transmission-remote ~a:~a ~
   ;; Our job is to mark the complete-to slot of all series objects with the
   ;; data from the episodes objects we have in the database.
   (format t ";; Catching up for all series:~%")
-  (doclass (series (find-class 'series))
+  (doclass (series (find-class 'series) :db *main*)
     ;; We merely have to call update-complete-to on all episodes in this
     ;; series and that function will set the complete-to and
     ;; discontinuous-episodes slots properly.

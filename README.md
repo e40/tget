@@ -717,30 +717,34 @@ Catch up series to a specific episode:
         :quality 'my-quality
         :download-path (merge-pathnames "anh+kevin/" *download-root*))
     
+    ;; Use ... :catch-up "S01E02" ... to start a series after the 1st ep
+    ;; Use ... :remove t ... to delete a series
+    
     (defseries "8 Out of 10 Cats" :kevin)
+    (defseries "Almost Human" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer" :kevin)
     (defseries "Bates Motel" :anh+kevin)
+    (defseries "Bear Grylls: Escape From Hell" :kevin :catch-up "S01E05")
     (defseries "Black Mirror" :kevin)
     (defseries "Boardwalk Empire" :kevin)
-    (defseries "Breaking Bad" :kevin :delay 0) ;; immediate download
+    (defseries "Brooklyn Nine-Nine" :kevin)
     (defseries "Childrens Hospital (US)" :kevin)
     (defseries "Come Fly with Me (2010)" :kevin)
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :anh+kevin)
-    (defseries "Dexter" :kevin)
     (defseries "Doc Martin" :anh+kevin)
     (defseries "Downton Abbey" :anh)
+    (defseries "Dracula (2013)" :kevin)
     (defseries "Dragons Den (UK)" :kevin)
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin)
     (defseries "Family Tree" :kevin)
     (defseries "Frontline (US)" :kevin)
-    (defseries "Futurama" :adrian+kevin)
     (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
     (defseries "Hannibal" :anh+kevin)
     (defseries "Hell on Wheels" :kevin)
-    (defseries "Homeland" :kevin)
+    (defseries "Homeland" :kevin :delay 0) ;; immediate download
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
     (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
@@ -749,7 +753,6 @@ Catch up series to a specific episode:
     (defseries "Longmire" :kevin)
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
-    (defseries "Low Winter Sun" :kevin)
     (defseries "Luther" :kevin)
     (defseries "Mad Men" :kevin)
     (defseries "Maron" :kevin)
@@ -765,20 +768,19 @@ Catch up series to a specific episode:
     (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
     (defseries "Phineas and Furb" :adrian)
+    (defseries "Ray Donovan" :kevin)
     (defseries "Ridiculousness" :adrian+kevin)
     (defseries "Shark Tank" :adrian+kevin)
     (defseries "Sherlock" :kevin)
-    (defseries "Strike Back" :kevin)
     (defseries "The Americans (2013)" :kevin)
+    (defseries "The Blacklist" :adrian+kevin)
     (defseries "The Burn" :kevin)
     (defseries "The Colbert Report" :kevin)
     (defseries "The Daily Show with Jon Stewart" :kevin)
-    (defseries "The Following" :anh+kevin)
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The IT Crowd" :kevin)
     (defseries "The Jeselnik Offensive" :kevin)
-    (defseries "The Killing" :anh+kevin)
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
     (defseries "The Newsroom (2012)" :kevin)
@@ -794,13 +796,6 @@ Catch up series to a specific episode:
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
     (defseries "Would I Lie To You" :adrian+kevin)
-    
-    ;; removed:
-    (defseries "Falling Skies" :kevin :remove t)
-    (defseries "Inside Amy Schumer" :kevin :remove t)
-    (defseries "NTSF:SD:SUV" :kevin :remove t)
-    (defseries "Southland" :kevin :remove t) ;; canceled!
-    (defseries "True Blood" :kevin :remove t)
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; BTN
