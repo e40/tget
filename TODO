@@ -2,6 +2,11 @@ TODO:
 
 high:
 
+- remove episodes when a series is removed
+
+  - during a compact, delete all episodes not associated with any
+    series
+
 - if the feed can be retrieved but the download fails, the item should
   be retried next time -- currently, the database is updated and the
   item is never downloaded

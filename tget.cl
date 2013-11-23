@@ -1,6 +1,71 @@
+;; tget.cl -- download files from rss feeds for tv shows
+;;   This program was inspired by flexget.
+;;
 ;; This Source Code Form is subject to the terms of the Mozilla Public
 ;; License, v. 2.0. If a copy of the MPL was not distributed with this
 ;; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+;;
+;; Only a few sites and their RSS feeds are supported.  TVT and BTN, for
+;; now.  Some others are in development.  The problem is the RSS feeds from
+;; many sites are completely worthly.  kickass torrents, for example.  You
+;; can search and get an RSS feed on a search, but the individual results
+;; for the search point not to .torrent files, but to other web pages.
+;; This means tget would have to have a specialized parse for kickass
+;; torrent torrent HTML pages.  Ugh.
+;;
+;; Here's how tget works:
+;;
+;; An object database, AllegroCache, is used to store series, episode and
+;; other information.  Every episode downloaded by tget is stored in the
+;; database.
+;;
+;; At program startup, the config file is loaded, and it can add or
+;; substract series from the database.  The config file also defines
+;; `groups', for people or combinations of people, though this is just how
+;; the author uses them.  For each group defined in the config file, we:
+;;
+;; - Fetch the RSS feed, which exists in memory as a list of RSS objects.
+;;
+;; - RSS objects are turned into episode objects, by looking at the
+;;   source of the feed (TVT, BTN, etc) and calling a specialized parser on
+;;   each rss object.  The result is an episode object in the database,
+;;   which is created with is marked as `transient'.  Transient episodes
+;;   haven't been downloaded yet, but they are for series we have specified
+;;   in the config file.  Episodes for series not in the config file are
+;;   never turned into RSS objects.
+;;
+;; - Now, we iterate over each series in this group and find `matches' for
+;;   transient episodes we just added to the database.  (See
+;;   process-transient-objects for information on how the matching is done.)
+;;   Matching episodes are downloaded and marked as non-transient. All
+;;   remaining transient objects are deleted from the database.
+;;
+;; Problem:
+;;  The creation of so many transient episodes, many of which are removed
+;;  at the end of the group iteration, is very stressful on the database.
+;;  Over time, the number of deleted objects grows so large that queries
+;;  on the database take a very long time.  A typical run of tget on a
+;;  compacted database takes a couple of seconds, at most.  After a month,
+;;  it could take a minute or more.
+;;
+;; Possible solutions:
+;;  1. Store the transient objects in a different database and only
+;;     instantiate episodes in the main database once they are downloaded.
+;;  2. In function matching-episodes, there is a query-episode call to see
+;;     if a non-transient ep exists.  This shouldn't be necessary, because
+;;     the series object has all the information about what we have
+;;     downloaded.
+;;       PROBLEM: shows like The Daily Show present a unique problem, since
+;;          there is no real way to store the downloaded state in the
+;;          series object.  Gaps are normal and sometimes large.
+;;  3. A hybrid of the above two.  Normal series wouldn't need to store the
+;;     the episodes.  How to identify the abnormal series, though?
+;;
+;; Solution #1 is easiest.  #3 might be OK, and would potentially shrink
+;; the database size a lot.  #2 is attractive, but I can't see how to make
+;; it work in all cases.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (eval-when (compile eval load)
   (require :ssl)
@@ -1574,7 +1639,7 @@ Catch up series to a specific episode:
 ;; the meat
 
 (defvar *http-timeout*
-    ;; If it won't respond in 45 seconds, it won't respond at all
+    ;; If it won't respond in this number of seconds, give up
     120)
 
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
