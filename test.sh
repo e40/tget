@@ -6,22 +6,22 @@ set -eu
 
 function tget {
     ./tget/tget --debug --root \
-	$PWD --db $PWD/test.db \
+	$PWD --db $PWD/main.db \
 	--config $PWD/tget-config/config.cl \
 	"$@"
 }
 
 set -x
 
-rm -fr test.db*
+rm -fr main.db*
 
 ######### test #1
 # copy production db, compact it
 
-cp -rp ~/.tget.d/db test.db
-du -sh test.db*
+cp -rp ~/.tget.d/db main.db
+du -sh main.db*
 tget --compact-database
-du -sh test.db*
+du -sh main.db*
 
 ######### test #2
 # start from a fresh database and learn

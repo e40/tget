@@ -9,7 +9,8 @@
 /archive.after
 /archive.before
 /build.tmp
-/test.db*
+/main.db*
+/temp.db*
 /tget-config/
 /tget-test-data/
 /tget/

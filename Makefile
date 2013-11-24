@@ -108,7 +108,8 @@ endif
 
 clean: FORCE
 	rm -fr tget BUILD RPMS SRPMS BUILDROOT SPECS
-	rm -fr test.db*
+	rm -fr main.db*
+	rm -fr temp.db*
 	rm -f archive.before archive.after
 	rm -f *.fasl */*.fasl *.out *.log build.in *.debug build.tmp
 

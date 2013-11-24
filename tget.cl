@@ -83,6 +83,7 @@
 		;; Specify each symbol instead of using the package,
 		;; because we need to review the :db argument usage for
 		;; each new function/macro.
+		#:*allegrocache*
 		#:close-database
 		#:commit
 		#:create-expression-cursor
@@ -107,7 +108,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "1.37")
+(defvar *tget-version* "2.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -129,7 +130,8 @@
 (defvar *auto-backup* t)
 (defvar *main* nil)			; main acache database
 (defvar *temp* nil)			; temp acache database
-(defvar *database-name* nil)
+(defvar *database-main-name* nil)
+(defvar *database-temp-name* nil)
 (defvar *version-file* nil)
 (defvar *config-file* nil)
 (defvar *debug* nil)
@@ -493,13 +495,14 @@
 	    (setf (quality-codec old) codec)
 	    (setf (quality-resolution old) resolution)
 	    old
-       else (make-instance 'quality
-	      :name name
-	      :priority priority
-	      :container container
-	      :source source
-	      :codec codec
-	      :resolution resolution))))
+       else (let ((*allegrocache* *main*))
+	      (make-instance 'quality
+		:name name
+		:priority priority
+		:container container
+		:source source
+		:codec codec
+		:resolution resolution)))))
 
 (defmacro defgroup (name &key rss-url debug-feed delay ratio quality
 			      download-path)
@@ -529,14 +532,15 @@
 	    (setf (group-quality old) quality)
 	    (setf (group-download-path old) download-path)
 	    old
-       else (make-instance 'group
-	      :name name
-	      :rss-url rss-url
-	      :debug-feed debug-feed
-	      :delay delay
-	      :ratio ratio
-	      :quality quality
-	      :download-path download-path))))
+       else (let ((*allegrocache* *main*))
+	      (make-instance 'group
+		:name name
+		:rss-url rss-url
+		:debug-feed debug-feed
+		:delay delay
+		:ratio ratio
+		:quality quality
+		:download-path download-path)))))
 
 (defmacro defseries (name group &key delay quality remove catch-up)
   (if* remove
@@ -554,7 +558,7 @@
     (if* s
        then (format t "removing series ~a~%" s)
 	    (delete-instance s)
-	    (tget-commit)
+	    (tget-commit *main*)
      elseif noisy
        then (warn "Could not find series: ~s." name))))
 
@@ -584,14 +588,15 @@
 	      (setf (series-delay old) delay)
 	      (setf (series-quality old) quality)
 	      old
-	 else (make-instance 'series
-		:pretty-name pretty-name
-		:name name
-		:complete-to nil
-		:discontinuous-episodes nil
-		:group group
-		:delay delay
-		:quality quality)))
+	 else (let ((*allegrocache* *main*))
+		(make-instance 'series
+		  :pretty-name pretty-name
+		  :name name
+		  :complete-to nil
+		  :discontinuous-episodes nil
+		  :group group
+		  :delay delay
+		  :quality quality))))
     (when catch-up
       (catch-up-series (concatenate 'simple-string name " " catch-up)
 		       :series series))
@@ -1034,11 +1039,14 @@ Catch up series to a specific episode:
 		 (usage "--root directory does not exist: ~a." root))
 	     (setq *tget-data-directory* (pathname-as-directory root)))
 	   
-	   (setq *database-name*
+	   (setq *database-main-name*
 	     ;; This should *not* end in a slash:
 	     (merge-pathnames "db" *tget-data-directory*))
+	   (setq *database-temp-name*
+	     ;; This should *not* end in a slash:
+	     (merge-pathnames "temp" *tget-data-directory*))
 	   (setq *version-file*
-	     ;; Set in main, if *database-name* changed
+	     ;; Set in main, if *database-main-name* changed
 	     (merge-pathnames "db/version.cl" *tget-data-directory*))
 	   (setq *config-file*
 	     ;; First one wins:
@@ -1066,9 +1074,8 @@ Catch up series to a specific episode:
 	   (when database
 	     ;; Remove trailing slash, if there is one
 	     (when (=~ "(.*)/$" database) (setq database $1))
-	     (setq *database-name*
-	       (merge-pathnames (pathname database)
-				*tget-data-directory*))
+	     (setq *database-main-name*
+	       (merge-pathnames (pathname database) *tget-data-directory*))
 	     (setq *version-file*
 	       (pathname (format nil "~a/version.cl" database))))
 	   
@@ -1138,8 +1145,7 @@ Catch up series to a specific episode:
 			 (episodes 0))
 		     (doclass (o (find-class 'series) :db *main*)
 		       (declare (ignorable o))
-		       (incf series)
-		       )
+		       (incf series))
 		     (doclass (o (find-class 'group) :db *main*)
 		       (declare (ignorable o))
 		       (incf groups))
@@ -1176,7 +1182,7 @@ Catch up series to a specific episode:
 				(canonicalize-series-name delete-episodes)))
 		     (format t "removing ~a~%" ep)
 		     (delete-instance ep))
-		   (tget-commit)
+		   (tget-commit *main*)
 		   (done)
 	    elseif delete-series
 	      then (forget-series delete-series)
@@ -1245,7 +1251,7 @@ Catch up series to a specific episode:
 
 (defun acquire-database-lock-file ()
   (when (null *lock-file*)
-    (setq *lock-file* (pathname (format nil "~a.lock" *database-name*))))
+    (setq *lock-file* (pathname (format nil "~a.lock" *database-main-name*))))
   (handler-case
       (with-open-file (s *lock-file* :direction :output
 		       :if-exists :error
@@ -1265,10 +1271,9 @@ Catch up series to a specific episode:
 				(if-does-not-exist :create)
 				(if-exists :open)
 			   &aux ok backed-up)
-  (when db.allegrocache::*allegrocache*
-    (close-tget-database))
+  (when *main* (close-tget-database))
 
-  (ensure-directories-exist *database-name*)
+  (ensure-directories-exist *database-main-name*)
   
   (acquire-database-lock-file)
   
@@ -1294,7 +1299,7 @@ Catch up series to a specific episode:
 				       *tget-version*))
 	     write-version-file)
     
-	(when (probe-file *database-name*)
+	(when (probe-file *database-main-name*)
 	  ;; Check for the need to backup
 	  (when (and (not backed-up)
 		     compact
@@ -1321,8 +1326,16 @@ Catch up series to a specific episode:
 		     (eq :force *auto-backup*))
 	    (setq backed-up (backup-database "because requested"))))
 
+	;; Do this first, so the `default' database is *main*.  This should
+	;; only matter for the test suite
+	(setq *temp*
+	  (open-file-database *database-temp-name*
+			      :use :memory
+			      :if-does-not-exist :create
+			      :read-only nil
+			      :if-exists :supersede))
 	(setq *main*
-	  (open-file-database *database-name*
+	  (open-file-database *database-main-name*
 			      :use :memory
 			      :if-does-not-exist if-does-not-exist
 			      :read-only nil
@@ -1363,17 +1376,20 @@ Catch up series to a specific episode:
 		(version-file (sys:make-temp-file-name "tgetversion")))
 	    (format t ";; Saving database to temp file (~a)..." xml-file)
 	    (force-output t)
-	    (save-database xml-file :file *database-name* :verbose nil
+	    (save-database xml-file :file *database-main-name* :verbose nil
 			   :db *main*)
 	    (sys:copy-file *version-file* version-file)
 	    (format t "done.~%")
 	    ;; this already prints what it does:
-	    (restore-database xml-file *database-name*)
+	    (restore-database xml-file *database-main-name*)
 	    (sys:copy-file version-file *version-file*)
 	    (delete-file xml-file)
 	    (delete-file version-file))
 	  (setq *main*
-	    (open-file-database *database-name* :use :memory :read-only nil)))
+	    (open-file-database *database-main-name* :use :memory
+				:read-only nil))
+	  ;; Don't need *temp* in this case
+	  )
 
 	(setq ok t))
     ;; In the event of an error, make sure we release the lock:
@@ -1381,7 +1397,7 @@ Catch up series to a specific episode:
       (when backed-up
 	(format t ";; Error during database open, copy is here: ~a.~%"
 		backed-up))
-      (if* db.allegrocache::*allegrocache*
+      (if* *main*
 	 then (close-tget-database)
 	 else ;; error before the database was opened, but the lock file
 	      ;; was created, so remove it
@@ -1396,13 +1412,13 @@ Catch up series to a specific episode:
        backup)))
 
 (defun backup-database (reason)
-  ;; Backup the database given by *database-name*.  We haven't opened it
+  ;; Backup the database given by *database-main-name*.  We haven't opened it
   ;; yet, so we're safe to copy the files.
   (format t ";; Backing up database ~a.~%" reason)
-  (when (not (probe-file *database-name*))
-    (.error "Database ~a does not exist." *database-name*))
-  (let* ((backup-directory (backup-directory *database-name*))
-	 (from (pathname-as-directory *database-name*))
+  (when (not (probe-file *database-main-name*))
+    (.error "Database ~a does not exist." *database-main-name*))
+  (let* ((backup-directory (backup-directory *database-main-name*))
+	 (from (pathname-as-directory *database-main-name*))
 	 (to (pathname-as-directory backup-directory)))
     (ensure-directories-exist to)
     (dolist (file (directory from))
@@ -1410,7 +1426,7 @@ Catch up series to a specific episode:
 		     (merge-pathnames (enough-pathname file from) to)
 		     :preserve-time t))
     (format t ";;  Copy is in ~a.~%" to)
-    ;; Like *database-name*, no trailing slash
+    ;; Like *database-main-name*, no trailing slash
     backup-directory))
 
 (defmethod db-upgrade ((version (eql 2)))
@@ -1436,7 +1452,7 @@ Catch up series to a specific episode:
     (format t ";; updating ~a...~%" series)
     (setf (series-complete-to series) nil)
     (setf (series-discontinuous-episodes series) nil))
-  (tget-commit))
+  (tget-commit *main*))
 
 (defmethod db-upgrade ((version (eql 5)))
   ;; The change from 5 to 6: series slot name change, `last-episode' to
@@ -1450,7 +1466,7 @@ Catch up series to a specific episode:
       (setf (episode-container ep) nil))
     (when (not (slot-boundp ep 'repack))
       (setf (episode-repack ep) nil)))
-  (tget-commit))
+  (tget-commit *main*))
 
 (defmethod db-upgrade ((version (eql 6)))
   ;; The change from 6 to 7: added pretty-epnum, so need to initialize it
@@ -1466,7 +1482,7 @@ Catch up series to a specific episode:
 	(format t "pretty-epnum => ~10a (for ~s)~%"
 		new (series-pretty-name (episode-series ep)))
 	(setf (episode-pretty-epnum ep) new))))
-  (tget-commit))
+  (tget-commit *main*))
 
 (defmethod db-upgrade ((version (eql 7)))
   ;; The change from 7 to 8: no change, but fix episode and pretty-epnum
@@ -1496,17 +1512,21 @@ Catch up series to a specific episode:
 			      new-episode)
 	  (format t ";;   complete-to is now ~a...~%"
 		  (series-complete-to (episode-series ep)))))))
-  (tget-commit))
+  (tget-commit *main*))
 
-(defun tget-commit ()
-  (commit :db *main*))
+(defun tget-commit (db)
+  (commit :db db))
 
 (defun close-tget-database ()
-  (when db.allegrocache::*allegrocache*
+  (when *main*
     (when *verbose* (format t ";; closing database...~%"))
     (commit :db *main*)
     (close-database :db *main*)
-    (setq db.allegrocache::*allegrocache* nil)
+    (setq *main* nil)
+    (when *temp*
+      (commit :db *temp*)
+      (close-database :db *temp*)
+      (setq *temp* nil))
     (release-database-lock-file)))
 
 (push '(close-tget-database) sys:*exit-cleanup-forms*)
@@ -1549,25 +1569,28 @@ Catch up series to a specific episode:
 ;;;;      only download the non-Indi... so need some way to tag Indi's
 	    (warn "more than one! ~s" temp))
 	  (car temp)
-     else (make-instance 'episode 
-	   :transient transient
-	   :full-title full-title
-	   :torrent-url torrent-url
-	   :pub-date pub-date
-	   :type type
-	   :length length
-	   :series series
-	   :series-name series-name
-	   :title title
-	   :season season
-	   :episode episode
-	   :pretty-epnum pretty-epnum
-	   :repack repack
-	   :filename filename
-	   :container container
-	   :source source
-	   :codec codec
-	   :resolution resolution)))
+     else (let ((*allegrocache* (if* transient
+				   then *temp*
+				   else *main*)))
+	    (make-instance 'episode 
+	      :transient transient
+	      :full-title full-title
+	      :torrent-url torrent-url
+	      :pub-date pub-date
+	      :type type
+	      :length length
+	      :series series
+	      :series-name series-name
+	      :title title
+	      :season season
+	      :episode episode
+	      :pretty-epnum pretty-epnum
+	      :repack repack
+	      :filename filename
+	      :container container
+	      :source source
+	      :codec codec
+	      :resolution resolution))))
 
 (defun query-episode (&key series-name
 			   season
@@ -1580,7 +1603,11 @@ Catch up series to a specific episode:
 			   episode
 			   quality
 			   ;;
-			   (transient nil transient-given))
+			   (transient nil transient-given)
+		      &aux (db
+			    (if* (and transient-given transient)
+			       then *temp*
+			       else *main*)))
   ;; There are three states for :transient
   ;;  - :transient nil -- consider only non-transient episodes
   ;;  - :transient t -- consider only transient episodes
@@ -1599,8 +1626,7 @@ Catch up series to a specific episode:
 		     ,@(when source `((= source ,source)))
 		     ,@(when codec `((= codec ,codec)))
 		     ,@(when resolution `((= resolution ,resolution))))
-		   :db *main*
-		   ))
+		   :db db))
 	  (episodes '()))
       (when cursor
 	(loop
@@ -1616,7 +1642,8 @@ Catch up series to a specific episode:
     (let* ((ep episode)
 	   (q (if* (eq 't quality)
 		 then nil
-		 else (or (retrieve-from-index 'quality 'name quality :db *main*)
+		 else (or (retrieve-from-index 'quality 'name quality
+					       :db *main*)
 			  (.error "No quality named ~s." quality))))
 	   (cursor
 	    (create-expression-cursor
@@ -1627,7 +1654,7 @@ Catch up series to a specific episode:
 	       (= series-name ,(episode-series-name ep))
 	       (= season ,(episode-season ep))
 	       (= episode ,(episode-episode ep)))
-	     :db *main*))
+	     :db db))
 	   (episodes '()))
       (when cursor
 	(loop
@@ -1643,8 +1670,7 @@ Catch up series to a specific episode:
 
 (defun query-group-to-series (group)
   ;; Return a list of all series instances that are in group GROUP-NAME.
-  (retrieve-from-index 'series 'group (group-name group) :db *main*
-		       :all t))
+  (retrieve-from-index 'series 'group (group-name group) :all t :db *main*))
 
 ;;;TODO: cache the lookups... mostly will be just a few of them
 (defun quality (thing)
@@ -1678,7 +1704,8 @@ Catch up series to a specific episode:
 
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
 			    ep-printer)
-  (tget-commit)
+  (tget-commit *main*)
+  (tget-commit *temp*)
   (doclass (group (find-class 'group) :db *main*)
     (tagbody
       ;; Setup the printer for this group.  The idea is to have no output
@@ -1706,7 +1733,8 @@ Catch up series to a specific episode:
 	  ;; error
 	  (setq *http-timeout* 30)
 	  (go next-feed)))
-      (tget-commit)
+      (tget-commit *main*)
+      (tget-commit *temp*)
     
       ;; Now, the newly added objects in the database have their transient
       ;; slot set to `t'.  We can query against them, to see if we
@@ -1716,9 +1744,10 @@ Catch up series to a specific episode:
       (process-transient-objects group ep-printer)
   
       ;; Remove the remaining transient episodes
-      (dolist (ep (retrieve-from-index 'episode 'transient t :all t :db *main*))
+      (dolist (ep (retrieve-from-index 'episode 'transient t :all t :db *temp*))
 	(delete-instance ep))
-      (tget-commit)
+      (tget-commit *temp*)
+      (tget-commit *main*)
      next-feed
       )))
 
@@ -1769,7 +1798,7 @@ Catch up series to a specific episode:
 		 matching-episodes
 	    else (select-episodes matching-episodes))
 	 ep-printer))))
-  (tget-commit))
+  (tget-commit *temp*))
 
 (defun matching-episodes (group series episodes quality)
   ;; Return a list of episodes, from the EPISODES list, which are transient
@@ -1977,6 +2006,7 @@ Catch up series to a specific episode:
      else (.error "internal error: epnum<: ~s ~s." n1 n2)))
 
 (defun download-episodes (group episodes print-func)
+  ;; EPISODES are transient.
   (dolist (episode episodes)
     (@log "download: ~a" episode)
     (funcall print-func episode)
@@ -1984,8 +2014,27 @@ Catch up series to a specific episode:
     (update-complete-to (episode-series episode)
 			(episode-season episode)
 			(episode-episode episode))
-    (torrent-handler *torrent-handler* episode group))
-  (tget-commit))
+    (torrent-handler *torrent-handler* episode group)
+    ;; copy the ep from *temp* to *main*
+    (make-episode :transient nil
+		  :full-title (episode-full-title episode)
+		  :torrent-url (episode-torrent-url episode)
+		  :pub-date (episode-pub-date episode)
+		  :type (episode-type episode)
+		  :length (episode-length episode)
+		  :series (episode-series episode)
+		  :series-name (episode-series-name episode)
+		  :title (episode-title episode)
+		  :season (episode-season episode)
+		  :episode (episode-episode episode)
+		  :pretty-epnum (episode-pretty-epnum episode)
+		  :repack (episode-repack episode)
+		  :filename (episode-filename episode)
+		  :container (episode-container episode)
+		  :source (episode-source episode)
+		  :codec (episode-codec episode)
+		  :resolution (episode-resolution episode)))
+  (tget-commit *main*))
 
 (defmethod torrent-handler ((obj transmission) episode group)
   (let* ((cmd
@@ -2083,7 +2132,7 @@ transmission-remote ~a:~a ~
 		     (car (series-complete-to series))
 		     (cdr (series-complete-to series))))
        else (format t "--~%")))
-  (tget-commit))
+  (tget-commit *main*))
 
 (defun catch-up-series (what &key series)
   ;; The episode descriptor is at the end of the series.

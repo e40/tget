@@ -1,7 +1,9 @@
 
 (setq *tget-data-directory* *default-pathname-defaults*)
-(setq *database-name* (merge-pathnames "test.db" *load-pathname*))
-(setq *version-file* (pathname (format nil "~a/version.cl" *database-name*)))
+(setq *database-main-name* (merge-pathnames "main.db" *load-pathname*))
+(setq *database-temp-name* (merge-pathnames "temp.db" *load-pathname*))
+(setq *version-file* (pathname (format nil "~a/version.cl"
+				       *database-main-name*)))
 (setq *log-file* (merge-pathnames "ep.log" *load-pathname*))
 (setq *config-file* (merge-pathnames "tget-config/config.cl" *load-pathname*))
 (setq *debug* t)
@@ -15,16 +17,16 @@
 
 (defun opendb (&key reset copy-db compact)
   (setq *transmission-remote* nil)
-  (when db.allegrocache::*allegrocache*
+  (when *main*
     (close-tget-database)
     (setq *torrent-handler* nil))
   (when copy-db
-    (when (string= (namestring copy-db) (namestring *database-name*))
+    (when (string= (namestring copy-db) (namestring *database-main-name*))
       (error "They're the same database!"))
-    (when (probe-file *database-name*)
-      (delete-directory-and-files *database-name*))
+    (when (probe-file *database-main-name*)
+      (delete-directory-and-files *database-main-name*))
     (copy-directory (pathname-as-directory copy-db)
-		    (pathname-as-directory *database-name*)
+		    (pathname-as-directory *database-main-name*)
 		    :quiet nil))
   (open-tget-database :compact compact
 		      :if-exists (if* reset
@@ -36,7 +38,8 @@
 	     *schema-version*
 	     *tget-data-directory*
 	     *auto-backup*
-	     *database-name*
+	     *database-main-name*
+	     *database-temp-name*
 	     *version-file*
 	     *config-file*
 	     *debug*
