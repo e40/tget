@@ -61,9 +61,9 @@
 ;;  3. A hybrid of the above two.  Normal series wouldn't need to store the
 ;;     the episodes.  How to identify the abnormal series, though?
 ;;
-;; Solution #1 is easiest.  #3 might be OK, and would potentially shrink
-;; the database size a lot.  #2 is attractive, but I can't see how to make
-;; it work in all cases.
+;; Solution #1 was implemented in version 2.0.
+;; #3 might be OK, and would potentially shrink the database size a lot.
+;; #2 is attractive, but I can't see how to make it work in all cases.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 

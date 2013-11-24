@@ -10,7 +10,7 @@
 /archive.before
 /build.tmp
 /main.db*
-/temp.db*
+/temp*
 /tget-config/
 /tget-test-data/
 /tget/
