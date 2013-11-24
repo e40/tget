@@ -108,7 +108,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.0")
+(defvar *tget-version* "2.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -727,6 +727,8 @@ Primary behavior determining arguments (one of these must be given):
     --run
     --catch-up   
     --catch-up-series series-episode-name
+    --check-database
+    --clean-database
     --compact-database
     --delete-episodes series-name
     --delete-series series-name
@@ -781,6 +783,14 @@ The following are arguments controlling primary behavior:
 
   Catch series up to the episode given in the companion argument.
   See examples below.
+
+* `--check-database`
+
+  Report on items in the database which can be cleaned up.
+
+* `--clean-database`
+
+  Remove items reported by `--check-database`.
 
 * `--compact-database`
 
@@ -1006,6 +1016,8 @@ Catch up series to a specific episode:
 	      ("run" :long run-mode)
 	      ("catch-up" :long catch-up-mode)
 	      ("catch-up-series" :long catch-up-series :required-companion)
+	      ("check" :long check-database)
+	      ("clean" :long clean-database)
 	      ("compact-database" :long compact)
 	      ("delete-episodes" :long delete-episodes :required-companion)
 	      ("delete-series" :long delete-series :required-companion)
@@ -1104,7 +1116,8 @@ Catch up series to a specific episode:
 					    dump-stats dump-series
 					    dump-episodes delete-episodes
 					    delete-series
-					    catch-up-mode catch-up-series)
+					    catch-up-mode catch-up-series
+					    check-database clean-database)
 				      then :error
 				      else :create)
 				   :compact compact)
@@ -1192,6 +1205,12 @@ Catch up series to a specific episode:
 		   (done)
 	    elseif catch-up-series
 	      then (catch-up-series catch-up-series)
+		   (done)
+	    elseif check-database
+	      then (clean-database :check t)
+		   (done)
+	    elseif clean-database
+	      then (clean-database)
 		   (done)
 	    elseif skip-next
 	      then (skip-next skip-next)
@@ -1513,6 +1532,16 @@ Catch up series to a specific episode:
 	  (format t ";;   complete-to is now ~a...~%"
 		  (series-complete-to (episode-series ep)))))))
   (tget-commit *main*))
+
+(defun clean-database (&key check)
+  ;; clean database:
+  ;; - all eps are not part of a known series
+  (doclass (ep (find-class 'episode) :db *main*)
+    (when (not (query-series-name-to-series (episode-series-name ep)))
+      (if* check
+	 then (format t "Orphan: ~a~%" ep)
+	 else (format t "Delete orphan: ~a~%" ep)
+	      (delete-instance ep)))))
 
 (defun tget-commit (db)
   (commit :db db))

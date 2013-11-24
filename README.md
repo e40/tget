@@ -1,4 +1,4 @@
-# tget 2.0 - torrent get
+# tget 2.1 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -352,6 +352,8 @@ Primary behavior determining arguments (one of these must be given):
     --run
     --catch-up   
     --catch-up-series series-episode-name
+    --check-database
+    --clean-database
     --compact-database
     --delete-episodes series-name
     --delete-series series-name
@@ -403,6 +405,14 @@ The following are arguments controlling primary behavior:
 
   Catch series up to the episode given in the companion argument.
   See examples below.
+
+* `--check-database`
+
+  Report on items in the database which can be cleaned up.
+
+* `--clean-database`
+
+  Remove items reported by `--check-database`.
 
 * `--compact-database`
 

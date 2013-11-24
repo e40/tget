@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-20---torrent-get" class="anchor" href="#tget-20---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.0 - torrent get</h1>
+<a name="tget-21---torrent-get" class="anchor" href="#tget-21---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.1 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -425,6 +425,8 @@ been run once.</p>
 <pre><code>--run
 --catch-up   
 --catch-up-series series-episode-name
+--check-database
+--clean-database
 --compact-database
 --delete-episodes series-name
 --delete-series series-name
@@ -485,6 +487,16 @@ downloaded.</p>
 
 <p>Catch series up to the episode given in the companion argument.
 See examples below.</p>
+</li>
+<li>
+<p><code>--check-database</code></p>
+
+<p>Report on items in the database which can be cleaned up.</p>
+</li>
+<li>
+<p><code>--clean-database</code></p>
+
+<p>Remove items reported by <code>--check-database</code>.</p>
 </li>
 <li>
 <p><code>--compact-database</code></p>
