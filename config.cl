@@ -209,6 +209,7 @@
 (defseries "Maron" :kevin)
 (defseries "Midsomer Murders" :anh)
 (defseries "Misfits" :kevin)
+(defseries "Mob City" :kevin)
 (defseries "Modern Family" :adrian+kevin)
 (defseries "Motive" :kevin)
 (defseries "Mythbusters" :adrian+kevin)

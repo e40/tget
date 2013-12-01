@@ -735,7 +735,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-all
     --dump-complete-to
     --dump-episodes series-name
-    --dump-series
+    --dump-series series-name
     --dump-stats
     --skip
 
