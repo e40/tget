@@ -108,7 +108,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.1")
+(defvar *tget-version* "2.1.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2640,6 +2640,10 @@ transmission-remote ~a:~a ~
 	   then :special
 	 elseif (=~ "^(\\d\\d)\\.(\\d)$" des-episode)
 	   then ;; e.g., 08.1 => return `8'
+		(parse-integer $1)
+	 elseif (=~ "^00\\.(\\d\\d)$" des-episode)
+	   then ;; e.g., 00.nn => return `nn'
+		;; This crazy format appeared with Gold Rush on 12/28/13
 		(parse-integer $1)
 	 elseif (and (= 6 (length des-episode))
 		     (=~ "^(\\d\\d)\\.(?i:all)$" des-episode))

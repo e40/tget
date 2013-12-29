@@ -1,0 +1,14 @@
+Debugging tget issues.
+
+**** Feed specific problems
+
+First, fetch the latest feed:
+
+  $ wget -O feed.xml 'http://...'
+
+Then, in lisp, do
+
+  :ld load.cl
+  (opendb :reset t) 
+  (setq rss-objects (feed-to-rss-objects :file "feed.xml"))
+  (setq show-objects (mapcar #'rss-to-episode rss-objects))

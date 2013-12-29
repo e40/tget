@@ -1,4 +1,4 @@
-# tget 2.1 - torrent get
+# tget 2.1.1 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -766,8 +766,10 @@ Catch up series to a specific episode:
     (defseries "Luther" :kevin)
     (defseries "Mad Men" :kevin)
     (defseries "Maron" :kevin)
+    (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin :catch-up "S01E06")
     (defseries "Midsomer Murders" :anh)
     (defseries "Misfits" :kevin)
+    (defseries "Mob City" :kevin)
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Motive" :kevin)
     (defseries "Mythbusters" :adrian+kevin)

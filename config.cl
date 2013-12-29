@@ -207,6 +207,7 @@
 (defseries "Luther" :kevin)
 (defseries "Mad Men" :kevin)
 (defseries "Maron" :kevin)
+(defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin :catch-up "S01E06")
 (defseries "Midsomer Murders" :anh)
 (defseries "Misfits" :kevin)
 (defseries "Mob City" :kevin)
