@@ -108,7 +108,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.1.1")
+(defvar *tget-version* "2.1.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -352,6 +352,9 @@
   filename				;e.g. "Vikings.S01E04.HDTV.x264-2HD.mp4"
 ;;;;
   (transient :index :any))
+
+(defmethod episode-p ((obj t)) nil)
+(defmethod episode-p ((obj episode)) t)
 
 (defmethod print-object ((obj episode) stream)
   (cond
@@ -2526,8 +2529,7 @@ transmission-remote ~a:~a ~
 	(if* (equalp "all" day)
 	   then :all
 	   else ;; use the ordinal day of the year
-		(date-time-yd-day
-		 (date-time (format nil "~a-~a-~a" year month day)))))))
+		(month-day-to-ordinal year month day)))))
 
     (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
 
@@ -2595,6 +2597,22 @@ transmission-remote ~a:~a ~
 	    (match-re "\\.(repack|proper)\\." filename :case-fold t)
 	    container source codec resolution)))
 
+(defun month-day-to-ordinal (year month day)
+  ;; Args are all strings representing the given quantities.
+  (let ((month (parse-integer month))
+	(day (parse-integer day)))
+    ;; Sometimes it's MM.DD and sometimes it's
+    ;; DD.MM.  The latter is rare, but does occur.
+    ;; Only thing we can do is look for a month > 12
+    ;; and reverse them.  <sigh>
+    (when (> month 12)
+      (let ((temp month))
+	(setq month day
+	      day temp)))
+    (date-time-yd-day
+     (date-time (format nil "~a-~2,'0d-~2,'0d"
+			year month day)))))
+
 (defmethod convert-rss-to-episode ((type (eql :tvtorrents.com)) rss)
   (let ((des (rss-item-description rss))
 	series series-name season episode pretty-epnum repack container
@@ -2653,10 +2671,10 @@ transmission-remote ~a:~a ~
 	 elseif (=~ "^(\\d\\d\\d?)-(\\d\\d\\d?)$" des-episode)
 	   then ;; a range of episodes
 		(cons (parse-integer $1) (parse-integer $2))
-	 elseif (= 5 (length des-episode))
+	 elseif (and (> des-season 1900) ;; check, to make sure
+		     (= 5 (length des-episode)))
 	   then (if* (=~ "^(\\d\\d)\\.(\\d\\d)$" des-episode)
-		   then (date-time-yd-day
-			 (date-time (format nil "~a-~a-~a" des-season $1 $2)))
+		   then (month-day-to-ordinal des-season $1 $2)
 		   else (.error "can't parse episode: ~s" des-episode))
 	   else (parse-integer des-episode)))
 

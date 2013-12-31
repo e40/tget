@@ -12,3 +12,9 @@ Then, in lisp, do
   (opendb :reset t) 
   (setq rss-objects (feed-to-rss-objects :file "feed.xml"))
   (setq show-objects (mapcar #'rss-to-episode rss-objects))
+
+**** Run test suite
+
+  :ld load.cl
+  (test-tget)
+

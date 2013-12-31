@@ -20,6 +20,7 @@
   (test-tget-epnum-comparisions)
   (test-tget-fuzzy-matching)
   (test-tget-feed-reading)
+  (test-tget-feed-bugs)
   (test-tget-complete-to)
   (test-tget-processing)
   (+ util.test:*test-errors* util.test:*test-unexpected-failures*))
@@ -119,6 +120,46 @@
       (test-db-init)
       (format t "~%~%;;;;; PARSE FEED: ~a~%~%" feed)
       (mapcar #'rss-to-episode (feed-to-rss-objects :file feed)))))
+
+(defun test-tget-feed-bugs ()
+  ;; malformed data
+  (with-tget-tests ()
+    (test-db-init)
+    (let ((e (rss-to-episode
+	      (make-rss-item
+	       :source :tvtorrents.com
+	 
+	       :title "The Daily Show with Jon Stewart - 2013x19.12 - Jonah Hill (.mp4)"
+	       :link "http://foo.bar.com/blahblah"
+	       :guid nil
+	       :comments "foo bar"
+	       :pub-date "Tue, 31 Dec 2013 00:25:15 +0000"
+	 
+	       :description
+	       "Show Name:The Daily Show with Jon Stewart; Show Title: Jonah Hill (.mp4); Season: 2013; Episode: 19.12; Filename: The.Daily.Show.2013.19.12.Jonah.Hill.HDTV.x264-2HD.mp4;"
+	       :type "application/x-bittorrent"
+	       :length "417684110"))))
+      (test t (episode-p e))
+      (test 2013 (episode-season e))
+      (test 353 (episode-episode e)))
+    
+    (let ((e (rss-to-episode
+	      (make-rss-item
+	       :source :tvtorrents.com
+	 
+	       :title "Vikings - 4x00.11 - Foo the Bar (.mp4)"
+	       :link "http://foo.bar.com/blahblah"
+	       :guid nil
+	       :comments "foo the bar"
+	       :pub-date "Tue, 31 Dec 2013 00:25:15 +0000"
+	 
+	       :description
+	       "Show Name:Vikings; Show Title: Foo the Bar (.mp4); Season: 4; Episode: 00.11; Filename: Vikings.S04.Foo.the.Bar.HDTV.x264-2HD.mp4;"
+	       :type "application/x-bittorrent"
+	       :length "417684110"))))
+      (test t (episode-p e))
+      (test 4 (episode-season e))
+      (test 11 (episode-episode e)))))
 
 (defun test-tget-complete-to ()
   (test-db-init)
