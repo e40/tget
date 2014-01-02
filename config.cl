@@ -20,6 +20,8 @@
   :port (sys:getenv "TRANSMISSION_PORT")
   :username (sys:getenv "TRANSMISSION_USER")
   :password (sys:getenv "TRANSMISSION_PASS")
+  :ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
+  :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
   :add-paused nil
   :trash-torrent-file t
   :ratio "1.04"))
@@ -170,6 +172,9 @@
 
 ;; Use ... :catch-up "S01E02" ... to start a series after the 1st ep
 ;; Use ... :remove t ... to delete a series
+;; Use ... :subdir "dirname" ... to put the episodes into a subdirectory of
+;;          the group download path -- this is a hack to make Plex Media
+;;          Server see episodes of The Daily Show and The Colbert Report.
 
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "Almost Human" :kevin)
@@ -228,8 +233,8 @@
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Blacklist" :adrian+kevin)
 (defseries "The Burn" :kevin)
-(defseries "The Colbert Report" :kevin)
-(defseries "The Daily Show with Jon Stewart" :kevin)
+(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report")
+(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show")
 (defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The IT Crowd" :kevin)

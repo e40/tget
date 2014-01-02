@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-212---torrent-get" class="anchor" href="#tget-212---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.1.2 - torrent get</h1>
+<a name="tget-22---torrent-get" class="anchor" href="#tget-22---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.2 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -257,8 +257,20 @@ like this:</p>
 <code>--download-dir</code> <em>path</em>
 </td>
 </tr>
+<tr>
+<td align="center"><code>:ssh-user</code></td>
+<td align="center">See below</td>
+</tr>
+<tr>
+<td align="center"><code>:ssh-identity</code></td>
+<td align="center">See below</td>
+</tr>
 </tbody>
-</table><p>For example:</p>
+</table><p>The <code>:ssh-user</code> and <code>:ssh-identity</code> are the user and identity file for
+SSH.  They are used to SSH to the remote machine and make sure
+directories exist.</p>
+
+<p>For example:</p>
 
 <pre><code>(set-torrent-handler
  (make-transmission-remote-handler
@@ -266,6 +278,8 @@ like this:</p>
   :port (sys:getenv "TRANSMISSION_PORT")
   :username (sys:getenv "TRANSMISSION_USER")
   :password (sys:getenv "TRANSMISSION_PASS")
+  :ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
+  :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
   :add-paused nil
   :trash-torrent-file t
   :ratio "1.04"))
@@ -339,7 +353,7 @@ the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.</p>
 
 <h3>
-<a name="defseries-name-group-key-delay-quality-catch-up" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up</code>
+<a name="defseries-name-group-key-delay-quality-catch-up-subdir" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir</code>
 </h3>
 
 <p>Required arguments:</p>
@@ -358,6 +372,12 @@ quotes are removed in parsing.</p>
 <p><code>:catch-up</code> -- do not download any episodes of this series at or
 before this season and episode.  An example value is <code>S05E08</code>.  Case
 differences are ignored (e.g., you can use <code>s</code> or <code>S</code>).</p>
+
+<p><code>:subdir</code> -- put episodes of this series into a subdirectory of the
+group download path.  This is a workaround for limitations in Plex
+Media Server, which will not recognize episodes of shows with dates in
+their names instead of episode numbers.  <em>The Daily Show</em> and
+<em>The Colbert Report</em> are two examples of these types of shows.</p>
 
 <h2>
 <a name="maintenance-tasks" class="anchor" href="#maintenance-tasks"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>
@@ -701,6 +721,8 @@ $ tget --catch-up-series "breaking bad s04"
   :port (sys:getenv "TRANSMISSION_PORT")
   :username (sys:getenv "TRANSMISSION_USER")
   :password (sys:getenv "TRANSMISSION_PASS")
+  :ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
+  :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
   :add-paused nil
   :trash-torrent-file t
   :ratio "1.04"))
@@ -851,6 +873,9 @@ $ tget --catch-up-series "breaking bad s04"
 
 ;; Use ... :catch-up "S01E02" ... to start a series after the 1st ep
 ;; Use ... :remove t ... to delete a series
+;; Use ... :subdir "dirname" ... to put the episodes into a subdirectory of
+;;          the group download path -- this is a hack to make Plex Media
+;;          Server see episodes of The Daily Show and The Colbert Report.
 
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "Almost Human" :kevin)
@@ -909,8 +934,8 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Blacklist" :adrian+kevin)
 (defseries "The Burn" :kevin)
-(defseries "The Colbert Report" :kevin)
-(defseries "The Daily Show with Jon Stewart" :kevin)
+(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report")
+(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show")
 (defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The IT Crowd" :kevin)

@@ -68,6 +68,7 @@
 
 
 (eval-when (compile eval load)
+  (require :osi)
   (require :ssl)
   (require :ef-e-crcrlf)
   (require :rssreader)
@@ -108,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.1.2")
+(defvar *tget-version* "2.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -124,7 +125,8 @@
     ;; 7 == add `pretty-epnum' to episode class
     ;; 8 == Fix `episode' & `pretty-epnum' for range episodes like for
     ;;      "Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
-    8)
+    ;; 9 == added `subdir' slot to series
+    9)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -307,8 +309,12 @@
   ;; episodes that came in after complete-to but there are gaps
   discontinuous-episodes
   delay
-;;;; overrides for group:
-  quality)
+;;;; override for group:
+  quality
+;;;; added in schema version 9:
+  ;; Put episodes for this series in a subdirectory, because Plex Media
+  ;; Service is really stupid about scanning and matching episodes.
+  subdir)
 
 (defmethod print-object ((obj series) stream)
   (cond
@@ -327,7 +333,7 @@
 (defvar *max-epnum* 9999)
 
 (defclass* episode (:conc-name t :print nil :init nil)
-  series
+  series				; the series object for this ep
   ;;Downcased version of the series name.  e.g. "vikings"
   ;; ***must match series class naming***
   (series-name :index :any)
@@ -435,14 +441,17 @@
 (defstruct (transmission
 	    (:constructor .make-transmission 
 			  (&key host port username password add-paused
-				trash-torrent-file ratio)))
+				trash-torrent-file ratio
+				ssh-identity ssh-user)))
   host
   port
   username
   password
   add-paused
   trash-torrent-file
-  ratio)
+  ratio
+  ssh-identity
+  ssh-user)
 
 (defvar *torrent-handler* nil)
 
@@ -526,7 +535,7 @@
     (check-delay delay)
     (check-ratio ratio)
     (check-quality quality)
-    (setq download-path (check-download-path download-path))
+    (setq download-path (namestring download-path))
     (if* old
        then (setf (group-rss-url old) rss-url)
 	    (setf (group-debug-feed old) debug-feed)
@@ -545,12 +554,13 @@
 		:quality quality
 		:download-path download-path)))))
 
-(defmacro defseries (name group &key delay quality remove catch-up)
+(defmacro defseries (name group &key delay quality remove catch-up subdir)
   (if* remove
      then `(forget-series ,name :noisy nil)
      else `(make-series
 	    :name ,name
 	    :group ,group
+	    ,@(when subdir `(:subdir ,subdir))
 	    ,@(when catch-up `(:catch-up ,catch-up))
 	    ,@(when delay `(:delay ,delay))
 	    ,@(when quality `(:quality ,quality)))))
@@ -565,7 +575,7 @@
      elseif noisy
        then (warn "Could not find series: ~s." name))))
 
-(defun make-series (&key name group delay quality catch-up
+(defun make-series (&key name group delay quality catch-up subdir
 		    &aux series)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
@@ -580,6 +590,9 @@
     (when catch-up
       (or (stringp catch-up)
 	  (.error "Series catch-up must be a string: ~s." catch-up)))
+    (when subdir
+      (or (stringp subdir)
+	  (.error "Series subdir must be a string: ~s." subdir)))
     (setq series
       (if* old
 	 then (when (not (eq group (series-group old)))
@@ -590,6 +603,7 @@
 	      (setf (series-group old) group)
 	      (setf (series-delay old) delay)
 	      (setf (series-quality old) quality)
+	      (setf (series-subdir old) subdir)
 	      old
 	 else (let ((*allegrocache* *main*))
 		(make-instance 'series
@@ -599,7 +613,8 @@
 		  :discontinuous-episodes nil
 		  :group group
 		  :delay delay
-		  :quality quality))))
+		  :quality quality
+		  :subdir subdir))))
     (when catch-up
       (catch-up-series (concatenate 'simple-string name " " catch-up)
 		       :series series))
@@ -634,7 +649,8 @@
 	 :ratio ,g-ratio)))))
 
 (defun make-transmission-remote-handler
-    (&key host port username password add-paused trash-torrent-file ratio)
+    (&key host port username password add-paused trash-torrent-file ratio
+	  ssh-identity ssh-user)
   (or (stringp host)
       (.error "transmission host is not a string: ~s." host))
   (or (numberp port)
@@ -652,6 +668,13 @@
 	      password))
   (check-ratio ratio)
   
+  (or (null ssh-identity)
+      (stringp ssh-identity)
+      (.error "ssh-identity is not a string: ~s." ssh-identity))
+  (or (null ssh-user)
+      (stringp ssh-user)
+      (.error "ssh-user is not a string: ~s." ssh-user))
+  
   (.make-transmission
    :host host
    :port port
@@ -659,7 +682,9 @@
    :password password
    :add-paused add-paused
    :trash-torrent-file trash-torrent-file
-   :ratio ratio))
+   :ratio ratio
+   :ssh-identity ssh-identity
+   :ssh-user ssh-user))
 
 ;; for compatibility
 (setf (symbol-function 'make-transmission-remote)
@@ -710,12 +735,6 @@
 		    (.error "Quality ~s does not exist."
 			    quality)))
 	   (.error "Bad quality: ~s." quality))))
-
-(defun check-download-path (download-path)
-  #+not-yet ;; might be on a different machine?!
-  (or (probe-file download-path)
-      (.error "download path does not exist: ~a." download-path))
-  (namestring download-path))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main
@@ -1536,6 +1555,17 @@ Catch up series to a specific episode:
 		  (series-complete-to (episode-series ep)))))))
   (tget-commit *main*))
 
+(defmethod db-upgrade ((version (eql 8)))
+  ;; The change from 8 to 9: added `subdir' slot to series objects
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (format t ";;   Update series objects.~%")
+  (doclass (s (find-class 'series) :db *main*)
+    ;; When we load the config file, we'll overwrite the ones that have
+    ;; values.
+    (setf (series-subdir s) nil))
+  (tget-commit *main*))
+
 (defun clean-database (&key check)
   ;; clean database:
   ;; - all eps are not part of a known series
@@ -2069,7 +2099,8 @@ Catch up series to a specific episode:
   (tget-commit *main*))
 
 (defmethod torrent-handler ((obj transmission) episode group)
-  (let* ((cmd
+  (let* ((series (episode-series episode))
+	 (cmd
 	  (format nil "~
 transmission-remote ~a:~a ~
   --auth=~a:~a ~
@@ -2087,7 +2118,18 @@ transmission-remote ~a:~a ~
 		     else "--no-start-paused")
 		  (or (group-ratio group) (transmission-ratio obj))
 		  (transmission-trash-torrent-file obj)
-		  (group-download-path group))))
+		  (if* (series-subdir series)
+		     then ;; Need to tack on the series-subdir to the end
+			  ;; of the group download-path
+			  (let ((dir
+				 (merge-pathnames
+				  (pathname-as-directory (series-subdir series))
+				  (group-download-path group))))
+			    (ensure-remote-directory-exists obj dir)
+			    dir)
+		     else (let ((dir (group-download-path group)))
+			    (ensure-remote-directory-exists obj dir)
+			    dir)))))
     (cond
      ((or *debug* *learn*)
       (@log "cmd[not executed]: ~a" cmd))
@@ -2130,6 +2172,44 @@ transmission-remote ~a:~a ~
 	  (@log "  rename failed")
 	  (warn "Could not rename ~a to ~a: ~a" temp-file pretty-name c)
 	  (when (probe-file temp-file) (delete-file temp-file))))))))
+
+(defmethod ensure-remote-directory-exists ((obj transmission) dir)
+  (when (not *learn*)
+    ;; If the command to make the directory fails, then tget will exit
+    (execute-remote-command obj (format nil "mkdir -p ~a" dir))))
+
+(defmethod execute-remote-command ((obj transmission) command-line)
+  (@log "execute command on ~a (as ~a): ~a"
+	(transmission-host obj)
+	(transmission-ssh-user obj)
+	command-line)
+  (multiple-value-bind (stdout stderr exit-code)
+      (ssh-command-output (transmission-ssh-user obj)
+			  (transmission-ssh-identity obj)
+			  (transmission-host obj)
+			  command-line)
+    (cond
+     ((= 0 exit-code)
+      (@log "  success"))
+     (t
+      (@log "  failed with exit status ~d" exit-code)
+      (@log "  stdout: ~a" stdout)
+      (@log "  stderr: ~a" stderr)
+      (.error "remote command (~s) failed (~d) to host ~s: ~s, ~s"
+	      command-line exit-code
+	      (transmission-host obj)
+	      stdout stderr)))))
+
+(defun ssh-command-output (user identity host command-line
+			   &rest args &key &allow-other-keys)
+  (apply
+   #'excl.osi:command-output
+   ;; First time sshing into the host, we'll need
+   ;; StrictHostKeyChecking=no, otherwise we'll get asked if we want to
+   ;; add it to the known_hosts file.
+   (format nil "ssh -o StrictHostKeyChecking=no -l ~a -i ~a ~a '~a'"
+	   user identity host command-line)
+   args))
 
 (defun episode-to-pretty-file-name (ep suffix)
   (format nil "~a_~a_~a~a"

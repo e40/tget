@@ -205,6 +205,12 @@ The `:host` part must come before the value.
 | `:trash-torrent-file t`   | `--trash-torrent`              |
 | `:ratio`                  | `-sr` _ratio_                  |
 | `:download-path`          | `--download-dir` _path_        |
+| `:ssh-user`               | See below                      |
+| `:ssh-identity`           | See below                      |
+
+The `:ssh-user` and `:ssh-identity` are the user and identity file for
+SSH.  They are used to SSH to the remote machine and make sure
+directories exist.
 
 For example:
 
@@ -214,6 +220,8 @@ For example:
       :port (sys:getenv "TRANSMISSION_PORT")
       :username (sys:getenv "TRANSMISSION_USER")
       :password (sys:getenv "TRANSMISSION_PASS")
+      :ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
+      :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
       :add-paused nil
       :trash-torrent-file t
       :ratio "1.04"))
@@ -277,7 +285,7 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality catch-up`
+### `defseries name group &key delay quality catch-up subdir`
 
 Required arguments:
 
@@ -295,6 +303,12 @@ Optional arguments:
 `:catch-up` -- do not download any episodes of this series at or
 before this season and episode.  An example value is `S05E08`.  Case
 differences are ignored (e.g., you can use `s` or `S`).
+
+`:subdir` -- put episodes of this series into a subdirectory of the
+group download path.  This is a workaround for limitations in Plex
+Media Server, which will not recognize episodes of shows with dates in
+their names instead of episode numbers.  _The Daily Show_ and
+_The Colbert Report_ are two examples of these types of shows.
 
 ## Maintenance tasks
 
