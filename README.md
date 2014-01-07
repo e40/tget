@@ -1,4 +1,4 @@
-# tget 2.2 - torrent get
+# tget 2.3 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -370,10 +370,12 @@ Primary behavior determining arguments (one of these must be given):
     --clean-database
     --compact-database
     --delete-episodes series-name
+    --delete-orphans
     --delete-series series-name
     --dump-all
     --dump-complete-to
     --dump-episodes series-name
+    --dump-orphans
     --dump-series series-name
     --dump-stats
     --skip
@@ -437,6 +439,11 @@ The following are arguments controlling primary behavior:
   Delete episodes with series name matching `series-name`.  This is permanant!
   Using this option with --auto-backup force is recommended.
 
+* `--delete-orphans`
+
+  Delete orphaned series and episodes from the database.  See
+  `--dump-orphans` for more information.
+
 * `--delete-series series-name`
 
   Delete series with series name matching `series-name`.  This is permanant!
@@ -454,6 +461,13 @@ The following are arguments controlling primary behavior:
 * `--dump-episodes series-name`
 
   Dump all episode objects matching series name `series-name` to stdout.
+
+* `--dump-orphans`
+
+  Dump orphaned series and episodes.  Orphaned series are those which do
+  not appear in the config file but exist in the database.  Orphaned
+  episodes are those are in the database but have no corresponding series
+  object.
 
 * `--dump-series series-name`
 

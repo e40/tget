@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-22---torrent-get" class="anchor" href="#tget-22---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.2 - torrent get</h1>
+<a name="tget-23---torrent-get" class="anchor" href="#tget-23---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.3 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -449,10 +449,12 @@ been run once.</p>
 --clean-database
 --compact-database
 --delete-episodes series-name
+--delete-orphans
 --delete-series series-name
 --dump-all
 --dump-complete-to
 --dump-episodes series-name
+--dump-orphans
 --dump-series series-name
 --dump-stats
 --skip
@@ -530,6 +532,12 @@ See examples below.</p>
 Using this option with --auto-backup force is recommended.</p>
 </li>
 <li>
+<p><code>--delete-orphans</code></p>
+
+<p>Delete orphaned series and episodes from the database.  See
+<code>--dump-orphans</code> for more information.</p>
+</li>
+<li>
 <p><code>--delete-series series-name</code></p>
 
 <p>Delete series with series name matching <code>series-name</code>.  This is permanant!
@@ -550,6 +558,14 @@ the database to stdout.  See --catch-up-series.</p>
 <p><code>--dump-episodes series-name</code></p>
 
 <p>Dump all episode objects matching series name <code>series-name</code> to stdout.</p>
+</li>
+<li>
+<p><code>--dump-orphans</code></p>
+
+<p>Dump orphaned series and episodes.  Orphaned series are those which do
+not appear in the config file but exist in the database.  Orphaned
+episodes are those are in the database but have no corresponding series
+object.</p>
 </li>
 <li>
 <p><code>--dump-series series-name</code></p>

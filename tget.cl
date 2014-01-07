@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.2")
+(defvar *tget-version* "2.3")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -575,6 +575,8 @@
      elseif noisy
        then (warn "Could not find series: ~s." name))))
 
+(defvar *all-series-names* (make-hash-table :size 777 :test #'equal))
+
 (defun make-series (&key name group delay quality catch-up subdir
 		    &aux series)
   (let* ((pretty-name name)
@@ -615,10 +617,36 @@
 		  :delay delay
 		  :quality quality
 		  :subdir subdir))))
+    (setf (gethash pretty-name *all-series-names*) t)
     (when catch-up
       (catch-up-series (concatenate 'simple-string name " " catch-up)
 		       :series series))
     series))
+
+(defun dump-orphaned-series (delete)
+  (doclass (series (find-class 'series) :db *main*)
+    (let ((name (series-pretty-name series)))
+      (when (not (gethash name *all-series-names*))
+	(format t "Orphaned series: ~a" name)
+	(when delete
+	  (format t "...removing...")
+	  (forget-series name :noisy nil)
+	  (format t "done."))
+	(format t "~%"))))
+  (doclass (ep (find-class 'episode) :db *main*)
+    (when (null (episode-series ep))
+      (let ((s (query-series-name-to-series (episode-series-name ep))))
+	(if* s
+	   then ;; Got lost somehow... fix it
+		(format t ";; Fixing series slot of ~a~%" ep)
+		(setf (episode-series ep) s)
+	   else (format t "Orphan episode: ~a" ep)
+		(when delete
+		  (format t "...removing...")
+		  (delete-instance ep)
+		  (format t "done."))
+		(format t "~%")))))
+  (tget-commit *main*))
 
 (defmacro deftransmission (options &key host port username password
 					add-paused trash-torrent-file
@@ -753,10 +781,12 @@ Primary behavior determining arguments (one of these must be given):
     --clean-database
     --compact-database
     --delete-episodes series-name
+    --delete-orphans
     --delete-series series-name
     --dump-all
     --dump-complete-to
     --dump-episodes series-name
+    --dump-orphans
     --dump-series series-name
     --dump-stats
     --skip
@@ -823,6 +853,11 @@ The following are arguments controlling primary behavior:
   Delete episodes with series name matching `series-name`.  This is permanant!
   Using this option with --auto-backup force is recommended.
 
+* `--delete-orphans`
+
+  Delete orphaned series and episodes from the database.  See
+  `--dump-orphans` for more information.
+
 * `--delete-series series-name`
 
   Delete series with series name matching `series-name`.  This is permanant!
@@ -840,6 +875,13 @@ The following are arguments controlling primary behavior:
 * `--dump-episodes series-name`
 
   Dump all episode objects matching series name `series-name` to stdout.
+
+* `--dump-orphans`
+
+  Dump orphaned series and episodes.  Orphaned series are those which do
+  not appear in the config file but exist in the database.  Orphaned
+  episodes are those are in the database but have no corresponding series
+  object.
 
 * `--dump-series series-name`
 
@@ -1042,10 +1084,12 @@ Catch up series to a specific episode:
 	      ("clean-database" :long clean-database)
 	      ("compact-database" :long compact)
 	      ("delete-episodes" :long delete-episodes :required-companion)
+	      ("delete-orphans" :long delete-orphans)
 	      ("delete-series" :long delete-series :required-companion)
 	      ("dump-all" :long dump-all)
 	      ("dump-complete-to" :long dump-complete-to)
 	      ("dump-episodes" :long dump-episodes :required-companion)
+	      ("dump-orphans" :long dump-orphans)
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-stats" :long dump-stats)
 	      ("skip" :long skip-next :required-companion)
@@ -1136,6 +1180,7 @@ Catch up series to a specific episode:
 				   :if-does-not-exist
 				   (if* (or dump-all dump-complete-to
 					    dump-stats dump-series
+					    delete-orphans dump-orphans
 					    dump-episodes delete-episodes
 					    delete-series
 					    catch-up-mode catch-up-series
@@ -1172,6 +1217,9 @@ Catch up series to a specific episode:
 			res))
 		     (setq res (sort res #'string<))
 		     (dolist (line res) (write line :escape nil)))
+		   (done)
+	    elseif (or dump-orphans delete-orphans)
+	      then (dump-orphaned-series delete-orphans)
 		   (done)
 	    elseif dump-stats
 	      then (let ((series 0)
