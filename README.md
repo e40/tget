@@ -1,4 +1,4 @@
-# tget 2.3 - torrent get
+# tget 2.3.1 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -522,7 +522,8 @@ effects:
 
   Run in debug mode.  In this mode, torrents are not downloaded and the
   debug feed defined by the configuration file is used.  Also, the program
-  is more verbose.
+  is more verbose.  This is for testing and is not recommended.  It implies
+  `--learn`.
 
 * `--feed-interval ndays`
 

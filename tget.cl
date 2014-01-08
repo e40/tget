@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.3")
+(defvar *tget-version* "2.3.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -936,7 +936,8 @@ effects:
 
   Run in debug mode.  In this mode, torrents are not downloaded and the
   debug feed defined by the configuration file is used.  Also, the program
-  is more verbose.
+  is more verbose.  This is for testing and is not recommended.  It implies
+  `--learn`.
 
 * `--feed-interval ndays`
 
@@ -2120,30 +2121,32 @@ Catch up series to a specific episode:
   (dolist (episode episodes)
     (@log "download: ~a" episode)
     (funcall print-func episode)
-    (setf (episode-transient episode) nil)
-    (update-complete-to (episode-series episode)
-			(episode-season episode)
-			(episode-episode episode))
-    (torrent-handler *torrent-handler* episode group)
-    ;; copy the ep from *temp* to *main*
-    (make-episode :transient nil
-		  :full-title (episode-full-title episode)
-		  :torrent-url (episode-torrent-url episode)
-		  :pub-date (episode-pub-date episode)
-		  :type (episode-type episode)
-		  :length (episode-length episode)
-		  :series (episode-series episode)
-		  :series-name (episode-series-name episode)
-		  :title (episode-title episode)
-		  :season (episode-season episode)
-		  :episode (episode-episode episode)
-		  :pretty-epnum (episode-pretty-epnum episode)
-		  :repack (episode-repack episode)
-		  :filename (episode-filename episode)
-		  :container (episode-container episode)
-		  :source (episode-source episode)
-		  :codec (episode-codec episode)
-		  :resolution (episode-resolution episode)))
+    (when (torrent-handler *torrent-handler* episode group)
+      ;; download worked or we're in *learn* mode.  In either case, mark
+      ;; this ep as downloaded.
+      (setf (episode-transient episode) nil)
+      (update-complete-to (episode-series episode)
+			  (episode-season episode)
+			  (episode-episode episode))
+      ;; copy the ep from *temp* to *main*
+      (make-episode :transient nil
+		    :full-title (episode-full-title episode)
+		    :torrent-url (episode-torrent-url episode)
+		    :pub-date (episode-pub-date episode)
+		    :type (episode-type episode)
+		    :length (episode-length episode)
+		    :series (episode-series episode)
+		    :series-name (episode-series-name episode)
+		    :title (episode-title episode)
+		    :season (episode-season episode)
+		    :episode (episode-episode episode)
+		    :pretty-epnum (episode-pretty-epnum episode)
+		    :repack (episode-repack episode)
+		    :filename (episode-filename episode)
+		    :container (episode-container episode)
+		    :source (episode-source episode)
+		    :codec (episode-codec episode)
+		    :resolution (episode-resolution episode))))
   (tget-commit *main*))
 
 (defmethod torrent-handler ((obj transmission) episode group)
@@ -2180,15 +2183,33 @@ transmission-remote ~a:~a ~
 			    dir)))))
     (cond
      ((or *debug* *learn*)
-      (@log "cmd[not executed]: ~a" cmd))
+      (@log "cmd[not executed]: ~a" cmd)
+      ;; success
+      t)
      (t
       (multiple-value-bind (stdout stderr exit-status)
 	  (excl.osi:command-output cmd :whole t)
 	(@log "cmd: ~a" cmd)
 	(@log "  exit status: ~a" exit-status)
-	(when (/= 0 exit-status)
-	  (@log "  stdout: ~a" stdout)
-	  (@log "  stderr: ~a" stderr)))))))
+	(if* (or (/= 0 exit-status)
+		 (check-for-transmission-remote-errors stdout stderr))
+	   then (@log "  stdout: ~a" stdout)
+		(@log "  stderr: ~a" stderr)
+		(format t "~
+***** did not download episode, will try again next time~%")
+		;; failure
+		nil
+	   else ;; success
+		t))))))
+
+(defun check-for-transmission-remote-errors (stdout stderr)
+  ;; A non-nil return means there were errors.
+  (if* (or (string/= "" stderr)
+	   (=~ "(Error|error)" stdout))
+     then t
+     else ;; OK, I guess.  transmission-remote is a sucky program that
+	  ;; sometimes doesn't finish the job, but returns a 0 exit status
+	  nil))
 
 (defmethod torrent-handler ((obj pathname) episode group)
   (declare (ignore group))
@@ -2204,22 +2225,35 @@ transmission-remote ~a:~a ~
 		    obj))
 	(pretty-name (merge-pathnames
 		      (episode-to-pretty-file-name episode ".torrent")
-		      obj)))
+		      obj))
+	(res ;; assume success
+	 t))
     (cond
      ((or *debug* *learn*)
-      (@log "torrent[not downloaded]: ~a" url))
+      (@log "torrent[not downloaded]: ~a" url)
+      ;; success
+      t)
      (t
       (@log "torrent[downloaded]: ~a" url)
       (handler-case (net.aserve.client:http-copy-file url temp-file)
 	(error (c)
 	  (@log "  http-copy-file failed")
 	  (warn "failed (~a) to download torrent file: ~a" c url)
-	  (when (probe-file temp-file) (delete-file temp-file))))
-      (handler-case (rename-file-raw temp-file pretty-name)
-	(error (c)
-	  (@log "  rename failed")
-	  (warn "Could not rename ~a to ~a: ~a" temp-file pretty-name c)
-	  (when (probe-file temp-file) (delete-file temp-file))))))))
+	  (when (probe-file temp-file) (delete-file temp-file))
+	  ;; failure
+	  (setq res nil)))
+      (when (not res)
+	(handler-case (rename-file-raw temp-file pretty-name)
+	  (error (c)
+	    (@log "  rename failed")
+	    (warn "Could not rename ~a to ~a: ~a" temp-file pretty-name c)
+	    (when (probe-file temp-file) (delete-file temp-file))
+	    ;; failure
+	    (setq res nil))))
+      (when (null res)
+	(format t "~
+***** did not download episode, will try again next time~%"))
+      res))))
 
 (defmethod ensure-remote-directory-exists ((obj transmission) dir)
   (when (not *learn*)
