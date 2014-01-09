@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.3.1")
+(defvar *tget-version* "2.3.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2204,7 +2204,7 @@ transmission-remote ~a:~a ~
 
 (defun check-for-transmission-remote-errors (stdout stderr)
   ;; A non-nil return means there were errors.
-  (if* (or (string/= "" stderr)
+  (if* (or (and stderr (string/= "" stderr))
 	   (=~ "(Error|error)" stdout))
      then t
      else ;; OK, I guess.  transmission-remote is a sucky program that
@@ -2231,8 +2231,7 @@ transmission-remote ~a:~a ~
     (cond
      ((or *debug* *learn*)
       (@log "torrent[not downloaded]: ~a" url)
-      ;; success
-      t)
+      res)
      (t
       (@log "torrent[downloaded]: ~a" url)
       (handler-case (net.aserve.client:http-copy-file url temp-file)
@@ -2242,7 +2241,7 @@ transmission-remote ~a:~a ~
 	  (when (probe-file temp-file) (delete-file temp-file))
 	  ;; failure
 	  (setq res nil)))
-      (when (not res)
+      (when (null res)
 	(handler-case (rename-file-raw temp-file pretty-name)
 	  (error (c)
 	    (@log "  rename failed")

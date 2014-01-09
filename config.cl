@@ -68,7 +68,7 @@
 	  ;; Using "Favorite shows" feed means you have to maintain your
 	  ;; list of shows in *two* places, which I find very annoying.
 	  ;;
-	  "http://www.tvtorrents.com/..."
+	  "https://www.tvtorrents.com/..."
 	  interval))
 
 (defvar *tvt-rss* 'tvt-rss-feed)
