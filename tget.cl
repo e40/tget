@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.3.2")
+(defvar *tget-version* "2.3.3")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2241,7 +2241,7 @@ transmission-remote ~a:~a ~
 	  (when (probe-file temp-file) (delete-file temp-file))
 	  ;; failure
 	  (setq res nil)))
-      (when (null res)
+      (when res
 	(handler-case (rename-file-raw temp-file pretty-name)
 	  (error (c)
 	    (@log "  rename failed")
