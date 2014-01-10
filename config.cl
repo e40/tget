@@ -295,3 +295,5 @@
 (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
 (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
 (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
+(defseries "8 Out of 10 Cats Does Countdown"
+    :btn-adrian+kevin :quality :high-any-source :catch-up "S02E01")

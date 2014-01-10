@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-232---torrent-get" class="anchor" href="#tget-232---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.3.2 - torrent get</h1>
+<a name="tget-233---torrent-get" class="anchor" href="#tget-233---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.3.3 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -786,7 +786,7 @@ $ tget --catch-up-series "breaking bad s04"
       ;; Using "Favorite shows" feed means you have to maintain your
       ;; list of shows in *two* places, which I find very annoying.
       ;;
-      "http://www.tvtorrents.com/..."
+      "https://www.tvtorrents.com/..."
       interval))
 
 (defvar *tvt-rss* 'tvt-rss-feed)
@@ -1013,6 +1013,9 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
 (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
 (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
+(defseries "8 Out of 10 Cats Does Countdown"
+    :btn-adrian+kevin :quality :high-any-source
+    :catch-up "S02E01")
 </code></pre>
 </div>
 </body>

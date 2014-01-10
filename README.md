@@ -1,4 +1,4 @@
-# tget 2.3.2 - torrent get
+# tget 2.3.3 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -883,6 +883,8 @@ Catch up series to a specific episode:
     (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
     (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
     (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
+    (defseries "8 Out of 10 Cats Does Countdown"
+        :btn-adrian+kevin :quality :high-any-source :catch-up "S02E01")
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
