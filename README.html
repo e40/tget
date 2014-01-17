@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-233---torrent-get" class="anchor" href="#tget-233---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.3.3 - torrent get</h1>
+<a name="tget-24---torrent-get" class="anchor" href="#tget-24---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.4 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -353,7 +353,7 @@ the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.</p>
 
 <h3>
-<a name="defseries-name-group-key-delay-quality-catch-up-subdir" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir</code>
+<a name="defseries-name-group-key-delay-quality-catch-up-subdir-date-based" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir-date-based"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir date-based</code>
 </h3>
 
 <p>Required arguments:</p>
@@ -378,6 +378,11 @@ group download path.  This is a workaround for limitations in Plex
 Media Server, which will not recognize episodes of shows with dates in
 their names instead of episode numbers.  <em>The Daily Show</em> and
 <em>The Colbert Report</em> are two examples of these types of shows.</p>
+
+<p><code>:date-based</code> -- indicate this series is date based and turn off the
+accounting for complete seasons.  This is useful for shows like
+<em>The Daily Show</em> and <em>The Colbert Report</em>, which don't have seasons
+and the episodes for these are ordered by date.</p>
 
 <h2>
 <a name="maintenance-tasks" class="anchor" href="#maintenance-tasks"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>
@@ -749,7 +754,6 @@ $ tget --catch-up-series "breaking bad s04"
 #+ignore
 (set-torrent-handler (pathname "~/Downloads/"))
 
-
 (setq *download-root* "/me/layer/videos/")
 
 (defvar *codec-x264*
@@ -764,8 +768,9 @@ $ tget --catch-up-series "breaking bad s04"
 ;; to give the various downloads time to settle.  It reduces the chances of
 ;; having to download repacks or propers (another name for repacks).
 ;;
-;; I like a 6 hour delay.
-(defvar *tvt-delay* 6)
+;; The delay before a TVT episode is downloaded.  This cuts down on bogus
+;; episodes and the need to download a repack.
+(defvar *tvt-delay* 5)
 
 ;; Not all sites support the idea of a feed interval, but TVT does.
 ;; It's a nice feature, because if you decide to download a new series,
@@ -917,6 +922,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Frontline (US)" :kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
 (defseries "Hannibal" :anh+kevin)
+(defseries "Helix" :kevin)
 (defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin :delay 0) ;; immediate download
 (defseries "James May's Man Lab" :adrian+kevin)
@@ -951,8 +957,10 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Blacklist" :adrian+kevin)
 (defseries "The Burn" :kevin)
-(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report")
-(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show")
+(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
+       :date-based t)
+(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
+       :date-based t)
 (defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The IT Crowd" :kevin)
@@ -1014,8 +1022,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
 (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
 (defseries "8 Out of 10 Cats Does Countdown"
-    :btn-adrian+kevin :quality :high-any-source
-    :catch-up "S02E01")
+    :btn-adrian+kevin :quality :high-any-source :catch-up "S02E01")
 </code></pre>
 </div>
 </body>

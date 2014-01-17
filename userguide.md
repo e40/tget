@@ -285,7 +285,7 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality catch-up subdir`
+### `defseries name group &key delay quality catch-up subdir date-based`
 
 Required arguments:
 
@@ -309,6 +309,11 @@ group download path.  This is a workaround for limitations in Plex
 Media Server, which will not recognize episodes of shows with dates in
 their names instead of episode numbers.  _The Daily Show_ and
 _The Colbert Report_ are two examples of these types of shows.
+
+`:date-based` -- indicate this series is date based and turn off the
+accounting for complete seasons.  This is useful for shows like
+_The Daily Show_ and _The Colbert Report_, which don't have seasons
+and the episodes for these are ordered by date.
 
 ## Maintenance tasks
 

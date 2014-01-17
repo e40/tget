@@ -110,6 +110,9 @@
 (defun test-db-init ()
   (open-tget-database :if-exists :supersede)
   (setq *torrent-handler* nil)
+  ;; Define this before loading the config file, so we don't rely on that
+  ;; value.  The test suite requires the value `6'.
+  (setq *tvt-delay* 6)
   (load "tget-config/config.cl" :verbose t))
 
 (defun test-tget-feed-reading ()
@@ -177,6 +180,7 @@
 		      (make-instance 'series 
 			:name (gensym ,g-name)
 			:complete-to ,g-c-t
+			:date-based nil
 			:discontinuous-episodes ,g-d-e)))
 		(unwind-protect (progn ,@body)
 		  (delete-instance ,var))))))

@@ -1,4 +1,4 @@
-# tget 2.3.3 - torrent get
+# tget 2.4 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -285,7 +285,7 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality catch-up subdir`
+### `defseries name group &key delay quality catch-up subdir date-based`
 
 Required arguments:
 
@@ -309,6 +309,11 @@ group download path.  This is a workaround for limitations in Plex
 Media Server, which will not recognize episodes of shows with dates in
 their names instead of episode numbers.  _The Daily Show_ and
 _The Colbert Report_ are two examples of these types of shows.
+
+`:date-based` -- indicate this series is date based and turn off the
+accounting for complete seasons.  This is useful for shows like
+_The Daily Show_ and _The Colbert Report_, which don't have seasons
+and the episodes for these are ordered by date.
 
 ## Maintenance tasks
 
@@ -619,7 +624,6 @@ Catch up series to a specific episode:
     #+ignore
     (set-torrent-handler (pathname "~/Downloads/"))
     
-    
     (setq *download-root* "/me/layer/videos/")
     
     (defvar *codec-x264*
@@ -634,8 +638,9 @@ Catch up series to a specific episode:
     ;; to give the various downloads time to settle.  It reduces the chances of
     ;; having to download repacks or propers (another name for repacks).
     ;;
-    ;; I like a 6 hour delay.
-    (defvar *tvt-delay* 6)
+    ;; The delay before a TVT episode is downloaded.  This cuts down on bogus
+    ;; episodes and the need to download a repack.
+    (defvar *tvt-delay* 5)
     
     ;; Not all sites support the idea of a feed interval, but TVT does.
     ;; It's a nice feature, because if you decide to download a new series,
@@ -787,6 +792,7 @@ Catch up series to a specific episode:
     (defseries "Frontline (US)" :kevin)
     (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
     (defseries "Hannibal" :anh+kevin)
+    (defseries "Helix" :kevin)
     (defseries "Hell on Wheels" :kevin)
     (defseries "Homeland" :kevin :delay 0) ;; immediate download
     (defseries "James May's Man Lab" :adrian+kevin)
@@ -821,8 +827,10 @@ Catch up series to a specific episode:
     (defseries "The Americans (2013)" :kevin)
     (defseries "The Blacklist" :adrian+kevin)
     (defseries "The Burn" :kevin)
-    (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report")
-    (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show")
+    (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
+    	   :date-based t)
+    (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
+    	   :date-based t)
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The IT Crowd" :kevin)

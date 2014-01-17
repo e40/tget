@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.3.3")
+(defvar *tget-version* "2.4")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -126,7 +126,8 @@
     ;; 8 == Fix `episode' & `pretty-epnum' for range episodes like for
     ;;      "Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
     ;; 9 == added `subdir' slot to series
-    9)
+    ;; 10 == added `date-based' slot to series
+    10)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -314,7 +315,11 @@
 ;;;; added in schema version 9:
   ;; Put episodes for this series in a subdirectory, because Plex Media
   ;; Service is really stupid about scanning and matching episodes.
-  subdir)
+  subdir
+  ;; This series is date based, and as such cannot use the complete-to
+  ;; mechanism, since we can't really tell what the sequence of episodes
+  ;; will be named.  The Daily Show is like this.
+  date-based)
 
 (defmethod print-object ((obj series) stream)
   (cond
@@ -554,13 +559,15 @@
 		:quality quality
 		:download-path download-path)))))
 
-(defmacro defseries (name group &key delay quality remove catch-up subdir)
+(defmacro defseries (name group &key delay quality remove catch-up subdir
+				     date-based)
   (if* remove
      then `(forget-series ,name :noisy nil)
      else `(make-series
 	    :name ,name
 	    :group ,group
 	    ,@(when subdir `(:subdir ,subdir))
+	    ,@(when date-based `(:date-based ,date-based))
 	    ,@(when catch-up `(:catch-up ,catch-up))
 	    ,@(when delay `(:delay ,delay))
 	    ,@(when quality `(:quality ,quality)))))
@@ -577,7 +584,7 @@
 
 (defvar *all-series-names* (make-hash-table :size 777 :test #'equal))
 
-(defun make-series (&key name group delay quality catch-up subdir
+(defun make-series (&key name group delay quality catch-up subdir date-based
 		    &aux series)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
@@ -595,6 +602,10 @@
     (when subdir
       (or (stringp subdir)
 	  (.error "Series subdir must be a string: ~s." subdir)))
+    (when date-based
+      (or (null date-based)
+	  (eq 't date-based)
+	  (.error "Series date-based must be `t' or `nil': ~s." date-based)))
     (setq series
       (if* old
 	 then (when (not (eq group (series-group old)))
@@ -606,6 +617,7 @@
 	      (setf (series-delay old) delay)
 	      (setf (series-quality old) quality)
 	      (setf (series-subdir old) subdir)
+	      (setf (series-date-based old) date-based)
 	      old
 	 else (let ((*allegrocache* *main*))
 		(make-instance 'series
@@ -616,7 +628,8 @@
 		  :group group
 		  :delay delay
 		  :quality quality
-		  :subdir subdir))))
+		  :subdir subdir
+		  :date-based date-based))))
     (setf (gethash pretty-name *all-series-names*) t)
     (when catch-up
       (catch-up-series (concatenate 'simple-string name " " catch-up)
@@ -1418,6 +1431,9 @@ Catch up series to a specific episode:
 
 	;; Do this first, so the `default' database is *main*.  This should
 	;; only matter for the test suite
+	(when *debug*
+	  (format t "~&;; Open temp db: ~a~%" *database-temp-name*)
+	  (format t "~&;; Open main db: ~a~%" *database-main-name*))
 	(setq *temp*
 	  (open-file-database *database-temp-name*
 			      :use :memory
@@ -1475,6 +1491,8 @@ Catch up series to a specific episode:
 	    (sys:copy-file version-file *version-file*)
 	    (delete-file xml-file)
 	    (delete-file version-file))
+	  (when *debug*
+	    (format t "~&;; Open main db: ~a~%" *database-main-name*))
 	  (setq *main*
 	    (open-file-database *database-main-name* :use :memory
 				:read-only nil))
@@ -1608,11 +1626,28 @@ Catch up series to a specific episode:
   ;; The change from 8 to 9: added `subdir' slot to series objects
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
-  (format t ";;   Update series objects.~%")
+  (format t ";;   Update series objects to include 'subdir slot...~%")
   (doclass (s (find-class 'series) :db *main*)
     ;; When we load the config file, we'll overwrite the ones that have
     ;; values.
-    (setf (series-subdir s) nil))
+    (when (not (slot-boundp s 'subdir))
+      (setf (series-subdir s) nil)))
+  (tget-commit *main*))
+
+(defmethod db-upgrade ((version (eql 9)))
+  ;; The change from 9 to 10: added `date-based' slot to series objects
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (format t ";;   Update series objects to include 'date-based slot...~%")
+  (doclass (s (find-class 'series) :db *main*)
+    ;; When we load the config file, we'll overwrite the ones that have
+    ;; values.
+    (when (not (slot-boundp s 'date-based))
+      (setf (series-date-based s) nil))
+    (when (series-date-based s)
+      ;; If series is date based, then set complete-to to `nil', so it
+      ;; won't be used for these cases.
+      (setf (series-complete-to s) nil)))
   (tget-commit *main*))
 
 (defun clean-database (&key check)
@@ -2371,6 +2406,11 @@ transmission-remote ~a:~a ~
   (when (null series) (.error "series is nil!"))
   (when (null season) (.error "season is nil!"))
   (when (null epnum) (.error "epnum is nil!"))
+  
+  (when (series-date-based series)
+    ;; If the series is not date based, like The Daily Show, then
+    ;; do nothing.
+    (return-from update-complete-to))
   
   ;; sanity check
   (when (and (null (series-complete-to series))

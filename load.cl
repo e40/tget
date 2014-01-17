@@ -74,3 +74,5 @@
  `(progn
     (opendb :copy-db "~/.tget.d/db")
     (prof:with-profiling () (process-groups))))
+
+(pprint `(test-tget))

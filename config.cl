@@ -31,7 +31,6 @@
 #+ignore
 (set-torrent-handler (pathname "~/Downloads/"))
 
-
 (setq *download-root* "/me/layer/videos/")
 
 (defvar *codec-x264*
@@ -46,8 +45,9 @@
 ;; to give the various downloads time to settle.  It reduces the chances of
 ;; having to download repacks or propers (another name for repacks).
 ;;
-;; I like a 6 hour delay.
-(defvar *tvt-delay* 6)
+;; The delay before a TVT episode is downloaded.  This cuts down on bogus
+;; episodes and the need to download a repack.
+(defvar *tvt-delay* 5)
 
 ;; Not all sites support the idea of a feed interval, but TVT does.
 ;; It's a nice feature, because if you decide to download a new series,
@@ -199,6 +199,7 @@
 (defseries "Frontline (US)" :kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
 (defseries "Hannibal" :anh+kevin)
+(defseries "Helix" :kevin)
 (defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin :delay 0) ;; immediate download
 (defseries "James May's Man Lab" :adrian+kevin)
@@ -233,8 +234,10 @@
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Blacklist" :adrian+kevin)
 (defseries "The Burn" :kevin)
-(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report")
-(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show")
+(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
+	   :date-based t)
+(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
+	   :date-based t)
 (defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The IT Crowd" :kevin)
