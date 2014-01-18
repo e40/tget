@@ -17,6 +17,7 @@
 
 (defun test-tget ()
   (test-tget-date-parser)
+  (test-tget-episode-parser)
   (test-tget-epnum-comparisions)
   (test-tget-fuzzy-matching)
   (test-tget-feed-reading)
@@ -33,6 +34,48 @@
 	(- (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 +0000")
 	   (parse-rss20-date "Sun, 06 Nov 1994 08:49:37 -0700"))))
 
+(defun test-tget-episode-parser ()
+  (macrolet ((test-values (values string epr ja)
+	       `(do* ((ref ,values (cdr ref))
+		      (vals (multiple-value-list
+			     (parse-name-season-and-episode
+			      ,string
+			      :episode-required ,epr
+			      :junk-allowed ,ja))
+			    (cdr vals)))
+		    ((null ref)
+		     (when vals
+		       (error "extra values: ~s." vals)))
+		  (test (car ref)
+			(car vals)
+			:test #'equal))))
+    ;;                                          epr? junk?
+    (test-values '("Foo" 3 4)   "Foo.S03E04.mp4" t   t)
+    (test-values '("Foo" 3 4)   "Foo.S03E04"     t   t)
+    (test-values '(nil)         "Foo.S03.mp4"    t   t)
+    (test-values '(nil)         "Foo.S03E04.mp4" t   nil)
+    (test-values '("Foo" 3 4)   "Foo S03E04.mp4" t   t)
+    (test-values '("Foo" 3 4)   "Foo S03E04"     t   t)
+    (test-values '("Foo" 3 4)   "Foo S03E04"     t   nil)
+    (test-values '("Foo" 3 4)   "Foo.S03E04"     t   nil)
+    (test-values '(nil)         "Foo.S03E04.mp4" t   nil)
+    (test-values '("Foo" 3 nil) "Foo S03.mp4"    nil t)
+    (test-values '("Foo" 3 nil) "Foo S03"        nil nil)
+    (test-values '(nil)         "Foo S03"        t   nil)
+
+    (test-values '("The.Foo.Bar" 2014 2) "The.Foo.Bar.2014.01.02.mp4" nil t)
+    (test-values '(nil)                  "The.Foo.Bar.2014.1.2.mp4"   nil t)
+    (test-values '("The.Foo.Bar" 2014 2) "The.Foo.Bar 2014.01.02"     nil nil)
+    (test-values '("The.Foo.Bar" 2014 2) "The.Foo.Bar 2014.01.02"     nil t)
+    (test-values '(nil)                  "The.Foo.Bar 2014.01"        nil nil)
+    (test-values '(nil)                  "The.Foo.Bar 2014"           nil nil)
+    (test-values '("The.Foo.Bar" 2014 2) "The.Foo.Bar.2014x01.02.mp4" nil t)
+    (test-values '(nil)                  "The.Foo.Bar.2014x1.2.mp4"   nil t)
+    (test-values '("The.Foo.Bar" 2014 2) "The.Foo.Bar 2014x01.02"     nil nil)
+    (test-values '("The.Foo.Bar" 2014 2) "The.Foo.Bar 2014x01.02"     nil t)
+    (test-values '(nil)                  "The.Foo.Bar 2014x01"        nil nil)
+    ))
+ 
 (defun test-tget-epnum-comparisions ()
   (test t   (epnum< 1 2))
   (test nil (epnum< 1 1))
@@ -106,6 +149,8 @@
       (test (third thing)
 	    (fuzzy-compare-series-names (first thing) (second thing))
 	    :test #'string=))))
+
+(defvar *tvt-delay*)
 
 (defun test-db-init ()
   (open-tget-database :if-exists :supersede)

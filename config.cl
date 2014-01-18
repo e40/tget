@@ -179,7 +179,7 @@
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "Almost Human" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
-(defseries "Archer" :kevin)
+(defseries "Archer (2009)" :kevin :catch-up "S04")
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin :catch-up "S01E05")
 (defseries "Black Mirror" :kevin)

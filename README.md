@@ -1,4 +1,4 @@
-# tget 2.4 - torrent get
+# tget 2.5 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -487,6 +487,9 @@ The following are arguments controlling primary behavior:
   Skip the next episode of `series-name`.  It does so by using the last
   downloaded episode and incrementing it by 1.
 
+  Note: this has no effect on date-based series.  See the `:date-based`
+  option to `defseries`.
+
 The following options augment the options above or have the stated side
 effects:
 
@@ -772,7 +775,7 @@ Catch up series to a specific episode:
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "Almost Human" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
-    (defseries "Archer" :kevin)
+    (defseries "Archer (2009)" :kevin :catch-up "S04")
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin :catch-up "S01E05")
     (defseries "Black Mirror" :kevin)

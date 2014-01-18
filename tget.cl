@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.4")
+(defvar *tget-version* "2.5")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -909,6 +909,9 @@ The following are arguments controlling primary behavior:
   Skip the next episode of `series-name`.  It does so by using the last
   downloaded episode and incrementing it by 1.
 
+  Note: this has no effect on date-based series.  See the `:date-based`
+  option to `defseries`.
+
 The following options augment the options above or have the stated side
 effects:
 
@@ -1645,9 +1648,10 @@ Catch up series to a specific episode:
     (when (not (slot-boundp s 'date-based))
       (setf (series-date-based s) nil))
     (when (series-date-based s)
-      ;; If series is date based, then set complete-to to `nil', so it
-      ;; won't be used for these cases.
-      (setf (series-complete-to s) nil)))
+      ;; If series is date based, then warn the user there is a
+      ;; complete-to, in case it's wrong.
+      (format t ";;    Warning: complete-to for date-based series:~%     ~a~~%"
+	      s)))
   (tget-commit *main*))
 
 (defun clean-database (&key check)
@@ -2363,26 +2367,118 @@ transmission-remote ~a:~a ~
   (tget-commit *main*))
 
 (defun catch-up-series (what &key series)
+  ;; NOTE: this is only called through direct user action, either via the
+  ;;       command line or from a defseries option.
+  ;;
   ;; The episode descriptor is at the end of the series.
-  (multiple-value-bind (match whole series-name ignore1 season ignore2 epnum)
-      (match-re "^(.*)(\\s|\\.+)s([0-9]{2,3})(e([0-9]{2,3}))?$"
-		what :case-fold t)
-    (declare (ignore whole ignore1 ignore2))
-    (when (null match)
+  (multiple-value-bind (series-name season epnum)
+      (parse-name-season-and-episode what :junk-allowed nil)
+    (when (null series-name)
       (.error "Could not parse series name and episode info: ~a." what))
     
     (setq series-name (canonicalize-series-name series-name))
     (let ((series (or series
 		      (query-series-name-to-series series-name)
 		      (.error "Could not find series: ~s." series-name))))
-      (setq season (parse-integer season))
       (setq epnum
 	(if* epnum
-	   then (parse-integer epnum)
+	   thenret
 	   else *max-epnum*))
-      (update-complete-to series season epnum :verbose t))))
+      (update-complete-to series season epnum :verbose t :force t))))
+
+(defvar *re-name+season* "^(.*)(\\s|\\.+)s([0-9]{2,3})")
+(defvar *re-ep-range* "e([0-9]{2,3}).?e([0-9]{2,3})")
+(defvar *re-epnum* "e([0-9]{2,3})")
+
+(defun parse-name-season-and-episode (thing &key episode-required
+						 (junk-allowed t))
+  (let* ((re-range
+	  (if* episode-required
+	     then (if* junk-allowed
+		     then (load-time-value
+			   (compile-re (concatenate 'simple-string
+					 *re-name+season* *re-ep-range*)
+				       :case-fold t))
+		     else (load-time-value
+			   (compile-re (concatenate 'simple-string
+					 *re-name+season* *re-ep-range*
+					 ;; no junk
+					 "$")
+				       :case-fold t)))
+		  
+	     else (if* junk-allowed
+		     then (load-time-value
+			   (compile-re (concatenate 'simple-string
+					 *re-name+season*
+					 ;; this part is optional
+					 "(?:" *re-ep-range* ")?")
+				       :case-fold t))
+		     else (load-time-value
+			   (compile-re (concatenate 'simple-string
+					 *re-name+season*
+					 ;; this part is optional
+					 "(?:" *re-ep-range* ")?"
+					 ;; no junk
+					 "$")
+				       :case-fold t)))))
+	 (re-normal
+	  ;; Don't need to consider episode-required here, because the
+	  ;; re-range regex will catch this case.
+	  (if* junk-allowed
+	     then (load-time-value
+		   (compile-re (concatenate 'simple-string
+				 *re-name+season* *re-epnum*)
+			       :case-fold t))
+	     else (load-time-value
+		   (compile-re (concatenate 'simple-string
+				 *re-name+season* *re-epnum*
+				 ;; no junk
+				 "$")
+			       :case-fold t))))
+	 (re-date
+	  (load-time-value
+	   (compile-re
+	    ;; Date-based names, like for The Daily Show:
+	    ;;   YYYYxMM.DD or YYYY.MM.DD
+	    "^(.*)(\\s|\\.+)(\\d\\d\\d\\d)[.x](\\d\\d)\\.(\\d\\d|all)")))
+	 match whole ignore1 series-name season episode epnum-start
+	 epnum-end year month day)
+    (declare (ignore-if-unused whole ignore1))
+    (cond
+     ((multiple-value-setq (match whole series-name ignore1 season
+			    epnum-start epnum-end)
+	(match-re re-range thing :case-fold t))
+      (setq season (parse-integer season))
+      (when (and epnum-start epnum-end)
+	(setq episode (cons (parse-integer epnum-start)
+			    (parse-integer epnum-end)))))
+     ((multiple-value-setq (match whole series-name ignore1 season episode)
+	(match-re re-normal thing :case-fold t))
+      (setq season (parse-integer season))
+      ;; The cases where the episode is not included is caught in the
+      ;; previous clause.
+      (setq episode (parse-integer episode)))
+     (t
+      (multiple-value-setq (match whole series-name ignore1 year month day)
+	(match-re re-date thing :case-fold t))
+      (when (not match)
+	;; we tried... let the info be collected in some other way
+	(return-from parse-name-season-and-episode nil))
+      
+      (setq season (parse-integer year))
+      (setq episode
+	(if* (equalp "all" day)
+	   then :all
+	   else ;; use the ordinal day of the year
+		(month-day-to-ordinal year month day)))))
+
+    (when series-name
+      (values series-name season episode))))
 
 (defun skip-next (series)
+  ;; NOTE: this is only called through direct user action via the
+  ;;       command line.
+  ;;
   ;; Skip the next episode of SERIES
   (setq series (canonicalize-series-name series))
   (let ((series (or (query-series-name-to-series series)
@@ -2390,12 +2486,20 @@ transmission-remote ~a:~a ~
 	complete-to)
     (when (not (setq complete-to (series-complete-to series)))
       (.error "Series does not have any episodes: ~a." series))
+    (when (series-date-based series)
+      (.error "Cannot skip the next episode of a date-based series: ~a."
+	      series))
     (update-complete-to series
 			(car complete-to)
 			(1+ (cdr complete-to))
 			:verbose t)))
 
-(defun update-complete-to (series season epnum &key verbose
+(defun update-complete-to (series season epnum
+			   &key verbose
+				;; When non-nil, series-complete-to is
+				;; updated even for series which are date
+				;; based.
+				force
 			   &aux ct
 				;; For a range, just select the end epnum
 				(epnum (if (consp epnum) (cdr epnum) epnum))
@@ -2407,9 +2511,9 @@ transmission-remote ~a:~a ~
   (when (null season) (.error "season is nil!"))
   (when (null epnum) (.error "epnum is nil!"))
   
-  (when (series-date-based series)
-    ;; If the series is not date based, like The Daily Show, then
-    ;; do nothing.
+  (when (and (null force) (series-date-based series))
+    ;; If the series is date based, like The Daily Show, and force is nil,
+    ;; then return before doing anything.
     (return-from update-complete-to))
   
   ;; sanity check
@@ -2504,8 +2608,10 @@ transmission-remote ~a:~a ~
       )
      
      ((older-p new-ct ct)
-      ;; ignore this, since NEW-CT is older than CT
-      )
+      (if* (null force)
+	 thenret ;; ignore this, since NEW-CT is older than CT
+	 else ;; from the command line, respect the user
+	      (setf (series-complete-to series) new-ct)))
      
      ((null (series-discontinuous-episodes series))
       ;; No discontinuous-episodes...
@@ -2695,42 +2801,19 @@ transmission-remote ~a:~a ~
   ;; cannot determine.  In the case of `source', return `:unknown' for XviD
   ;; when we cannot determine the source.
   (let (series-name season episode container source codec resolution
-	uncut match whole year month day
-	epnum-start epnum-end)
+	uncut)
     (declare (ignore-if-unused whole))
 
 ;;;; series-name, season, episode
     ;; Start with the series-name, since if we can't get that then we go
     ;; home and the other things don't matter.
-    (cond
-     ((multiple-value-setq (match whole series-name season epnum-start
-			    epnum-end)
-	(match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3}).?e([0-9]{2,3})"
-		  filename :case-fold t))
-      (setq season (parse-integer season))
-      (setq episode (cons (parse-integer epnum-start)
-			  (parse-integer epnum-end))))
-     ((multiple-value-setq (match whole series-name season episode)
-	(match-re "^(.*)\\.s([0-9]{2,3})e([0-9]{2,3})" filename
-		  :case-fold t))
-      (setq season (parse-integer season))
-      (setq episode (parse-integer episode)))
-     (t 
-      ;; Now try The Daily Show style filenames:
-      ;;   YYYYxMM.DD or YYYY.MM.DD
-      (multiple-value-setq (match whole series-name year month day)
-	(match-re "^(.*)\\.(\\d\\d\\d\\d)[.x](\\d\\d)\\.(\\d\\d|all)"
-		  filename :case-fold t))
-      (when (not match)
-	;; we tried... let the info be collected in some other way
-	(return-from extract-episode-info-from-filename nil))
-      
-      (setq season (parse-integer year))
-      (setq episode
-	(if* (equalp "all" day)
-	   then :all
-	   else ;; use the ordinal day of the year
-		(month-day-to-ordinal year month day)))))
+    (multiple-value-setq (series-name season episode)
+      (parse-name-season-and-episode filename :episode-required t
+				     ;; other stuff after the epnum is OK
+				     :junk-allowed t))
+    (when (null series-name)
+      ;; we tried... let the info be collected in some other way
+      (return-from extract-episode-info-from-filename nil))
 
     (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
 
