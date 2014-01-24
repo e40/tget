@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5")
+(defvar *tget-version* "2.5.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -1648,6 +1648,7 @@ Catch up series to a specific episode:
     (when (not (slot-boundp s 'date-based))
       (setf (series-date-based s) nil))
     (when (series-date-based s)
+;;;;TODO: what about discontinuous-episodes???  They can cause trouble, too.
       ;; If series is date based, then warn the user there is a
       ;; complete-to, in case it's wrong.
       (format t ";;    Warning: complete-to for date-based series:~%     ~a~~%"
@@ -2234,8 +2235,8 @@ transmission-remote ~a:~a ~
 		 (check-for-transmission-remote-errors stdout stderr))
 	   then (@log "  stdout: ~a" stdout)
 		(@log "  stderr: ~a" stderr)
-		(format t "~
-***** did not download episode, will try again next time~%")
+		(format t "~&NOTE: error from transmission-remote: ~a~%"
+			(excl.shell:concat stdout #\Newline stderr))
 		;; failure
 		nil
 	   else ;; success
@@ -2289,8 +2290,7 @@ transmission-remote ~a:~a ~
 	    ;; failure
 	    (setq res nil))))
       (when (null res)
-	(format t "~
-***** did not download episode, will try again next time~%"))
+	(format t "~&NOTE: error downloading ep torrent, will try again~%"))
       res))))
 
 (defmethod ensure-remote-directory-exists ((obj transmission) dir)

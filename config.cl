@@ -180,6 +180,7 @@
 (defseries "Almost Human" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin :catch-up "S04")
+(defseries "At Midnight" :kevin :date-based t :catch-up "2014x01.21")
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin :catch-up "S01E05")
 (defseries "Black Mirror" :kevin)

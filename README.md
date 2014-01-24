@@ -1,4 +1,4 @@
-# tget 2.5 - torrent get
+# tget 2.5.1 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -776,6 +776,7 @@ Catch up series to a specific episode:
     (defseries "Almost Human" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer (2009)" :kevin :catch-up "S04")
+    (defseries "At Midnight" :kevin :date-based t :catch-up "2014x01.21")
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin :catch-up "S01E05")
     (defseries "Black Mirror" :kevin)
