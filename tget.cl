@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.1")
+(defvar *tget-version* "2.5.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2235,7 +2235,7 @@ transmission-remote ~a:~a ~
 		 (check-for-transmission-remote-errors stdout stderr))
 	   then (@log "  stdout: ~a" stdout)
 		(@log "  stderr: ~a" stderr)
-		(format t "~&NOTE: error from transmission-remote: ~a~%"
+		(format t "~&NOTE: error from transmission-remote:~%~a~%"
 			(excl.shell:concat stdout #\Newline stderr))
 		;; failure
 		nil
@@ -2244,8 +2244,14 @@ transmission-remote ~a:~a ~
 
 (defun check-for-transmission-remote-errors (stdout stderr)
   ;; A non-nil return means there were errors.
-  (if* (or (and stderr (string/= "" stderr))
-	   (=~ "(Error|error)" stdout))
+  (if* (=~ "No torrent specified!  Please use the -t option first"
+	   stderr)
+     then ;; Happens when the torrent already exists.
+	  ;; Return success, but print warning.
+	  (format t "~&NOTE: transmission-remote did that -t thing, check dl~%")
+	  nil
+   elseif (or (and stderr (string/= "" stderr))
+	      (=~ "(Error|error)" stdout))
      then t
      else ;; OK, I guess.  transmission-remote is a sucky program that
 	  ;; sometimes doesn't finish the job, but returns a 0 exit status
