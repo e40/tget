@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.2")
+(defvar *tget-version* "2.5.3")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2244,8 +2244,10 @@ transmission-remote ~a:~a ~
 
 (defun check-for-transmission-remote-errors (stdout stderr)
   ;; A non-nil return means there were errors.
-  (if* (=~ "No torrent specified!  Please use the -t option first"
-	   stderr)
+  (if* (and stderr
+	    (string/= "" stderr)
+	    (=~ "No torrent specified!  Please use the -t option first"
+		stderr))
      then ;; Happens when the torrent already exists.
 	  ;; Return success, but print warning.
 	  (format t "~&NOTE: transmission-remote did that -t thing, check dl~%")
