@@ -1,4 +1,4 @@
-# tget 2.5.3 - torrent get
+# tget 2.5.4 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -396,6 +396,7 @@ Behavior modifying arguments:
     --learn
     --reset
     --root data-directory
+    --verbose or -v
 
 ### Usage details
 
@@ -553,6 +554,11 @@ effects:
 * `--root data-directory`
 
   Change the data directory, the defaults is $HOME/.tget.d/
+
+* `--verbose` or `-v`
+
+  Verbose mode.  For now, it makes `--dump-episodes` print detailed
+  information on episodes.
 
 Examples:
 
@@ -773,17 +779,15 @@ Catch up series to a specific episode:
     ;;          Server see episodes of The Daily Show and The Colbert Report.
     
     (defseries "8 Out of 10 Cats" :kevin)
-    (defseries "Almost Human" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
-    (defseries "Archer (2009)" :kevin :catch-up "S04")
-    (defseries "At Midnight" :kevin :date-based t :catch-up "2014x01.21")
+    (defseries "Archer (2009)" :kevin)
+    (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight")
     (defseries "Bates Motel" :anh+kevin)
-    (defseries "Bear Grylls: Escape From Hell" :kevin :catch-up "S01E05")
+    (defseries "Bear Grylls: Escape From Hell" :kevin)
     (defseries "Black Mirror" :kevin)
     (defseries "Boardwalk Empire" :kevin)
     (defseries "Brooklyn Nine-Nine" :kevin)
     (defseries "Childrens Hospital (US)" :kevin)
-    (defseries "Come Fly with Me (2010)" :kevin)
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :anh+kevin)
     (defseries "Doc Martin" :anh+kevin)
@@ -792,13 +796,12 @@ Catch up series to a specific episode:
     (defseries "Dragons Den (UK)" :kevin)
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin)
-    (defseries "Family Tree" :kevin)
     (defseries "Frontline (US)" :kevin)
     (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
     (defseries "Hannibal" :anh+kevin)
-    (defseries "Helix" :kevin)
     (defseries "Hell on Wheels" :kevin)
     (defseries "Homeland" :kevin :delay 0) ;; immediate download
+    (defseries "Intelligence (US)" :kevin)
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
     (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
@@ -809,8 +812,7 @@ Catch up series to a specific episode:
     (defseries "Louie" :kevin)
     (defseries "Luther" :kevin)
     (defseries "Mad Men" :kevin)
-    (defseries "Maron" :kevin)
-    (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin :catch-up "S01E06")
+    (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin)
     (defseries "Midsomer Murders" :anh)
     (defseries "Misfits" :kevin)
     (defseries "Mob City" :kevin)
@@ -825,8 +827,9 @@ Catch up series to a specific episode:
     (defseries "Person of Interest" :kevin)
     (defseries "Phineas and Furb" :adrian)
     (defseries "Ray Donovan" :kevin)
+    (defseries "Rick and Morty" :adrian+kevin)
     (defseries "Ridiculousness" :adrian+kevin)
-    (defseries "Shark Tank" :adrian+kevin)
+    (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
     (defseries "The Americans (2013)" :kevin)
     (defseries "The Blacklist" :adrian+kevin)
@@ -837,7 +840,6 @@ Catch up series to a specific episode:
     	   :date-based t)
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
-    (defseries "The IT Crowd" :kevin)
     (defseries "The Jeselnik Offensive" :kevin)
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
@@ -850,6 +852,7 @@ Catch up series to a specific episode:
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Top of the Lake" :anh+kevin)
     (defseries "Tosh.0" :kevin)
+    (defseries "True Detective" :kevin)
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
@@ -896,7 +899,7 @@ Catch up series to a specific episode:
     (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
     (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
     (defseries "8 Out of 10 Cats Does Countdown"
-        :btn-adrian+kevin :quality :high-any-source :catch-up "S02E01")
+        :btn-adrian+kevin :quality :high-any-source)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

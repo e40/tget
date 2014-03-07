@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.3")
+(defvar *tget-version* "2.5.4")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -815,6 +815,7 @@ Behavior modifying arguments:
     --learn
     --reset
     --root data-directory
+    --verbose or -v
 ")
 
 (defvar *help*
@@ -976,6 +977,11 @@ effects:
 
   Change the data directory, the defaults is $HOME/.tget.d/
 
+* `--verbose` or `-v`
+
+  Verbose mode.  For now, it makes `--dump-episodes` print detailed
+  information on episodes.
+
 Examples:
 
 Toss current database and catch up on shows released in the last 180 days
@@ -1089,7 +1095,7 @@ Catch up series to a specific episode:
   (setq *global-gc-behavior* :auto)
   (labels
       ((done () (exit 0 :quiet t))
-       (doit ()
+       (doit (&aux verbose)
 	 (system:with-command-line-arguments
 	     (("help" :long help)
 	      
@@ -1120,8 +1126,11 @@ Catch up series to a specific episode:
 	      ("feed-interval" :long feed-interval :required-companion)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
-	      ("root" :long root :required-companion))
+	      ("root" :long root :required-companion)
+	      ("verbose" :long verbose-long)
+	      ("v" :short verbose-short))
 	     (extra-args :usage *usage*)
+	   (setq verbose (or verbose-short verbose-long))
 	   (when help
 	     (format t "~a~&" *usage*)
 	     (format t "~a~&" *help*)
@@ -1274,7 +1283,9 @@ Catch up series to a specific episode:
 	      then (dolist (ep (query-episode
 				:series-name
 				(canonicalize-series-name dump-episodes)))
-		     (describe ep))
+		     (if* verbose
+			then (describe ep)
+			else (format t "~a~%" ep)))
 		   (done)
 	    elseif delete-episodes
 	      then (dolist (ep (query-episode

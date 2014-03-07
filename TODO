@@ -2,6 +2,9 @@ TODO:
 
 high:
 
+- moving a series from one group to another results in 
+  There is a duplicate defseries for "Shark Tank".
+
 - remove episodes when a series is removed
 
   - during a compact, delete all episodes not associated with any
