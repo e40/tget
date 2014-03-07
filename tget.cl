@@ -75,7 +75,7 @@
   (require :datetime)
   (require :shell)
   (require :aserve)
-  (require :acache "acache-2.1.22.fasl")
+  (require :acache "acache-2.2.2.fasl")
   (require :autozoom))
 
 (defpackage :user
@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.4")
+(defvar *tget-version* "2.5.5")
 )
 (defvar *schema-version*
     ;; 1 == initial version
