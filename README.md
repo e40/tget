@@ -778,6 +778,9 @@ Catch up series to a specific episode:
     ;;          the group download path -- this is a hack to make Plex Media
     ;;          Server see episodes of The Daily Show and The Colbert Report.
     
+    (defseries "Misfits" :kevin :remove t)
+    (defseries "The Jeselnik Offensive" :kevin :remove t)
+    
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer (2009)" :kevin)
@@ -814,7 +817,6 @@ Catch up series to a specific episode:
     (defseries "Mad Men" :kevin)
     (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin)
     (defseries "Midsomer Murders" :anh)
-    (defseries "Misfits" :kevin)
     (defseries "Mob City" :kevin)
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Motive" :kevin)
@@ -840,7 +842,6 @@ Catch up series to a specific episode:
     	   :date-based t)
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
-    (defseries "The Jeselnik Offensive" :kevin)
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
     (defseries "The Newsroom (2012)" :kevin)
