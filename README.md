@@ -1,4 +1,4 @@
-# tget 2.5.5 - torrent get
+# tget 2.5.7 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -778,9 +778,6 @@ Catch up series to a specific episode:
     ;;          the group download path -- this is a hack to make Plex Media
     ;;          Server see episodes of The Daily Show and The Colbert Report.
     
-    (defseries "Misfits" :kevin :remove t)
-    (defseries "The Jeselnik Offensive" :kevin :remove t)
-    
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer (2009)" :kevin)
@@ -793,6 +790,7 @@ Catch up series to a specific episode:
     (defseries "Childrens Hospital (US)" :kevin)
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :anh+kevin)
+    (defseries "Cosmos: A Spacetime Odyssey" :adrian+kevin)
     (defseries "Doc Martin" :anh+kevin)
     (defseries "Downton Abbey" :anh)
     (defseries "Dracula (2013)" :kevin)
@@ -804,7 +802,7 @@ Catch up series to a specific episode:
     (defseries "Hannibal" :anh+kevin)
     (defseries "Hell on Wheels" :kevin)
     (defseries "Homeland" :kevin :delay 0) ;; immediate download
-    (defseries "Intelligence (US)" :kevin)
+    (defseries "Intelligence (US)" :adrian+kevin)
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
     (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
@@ -822,6 +820,7 @@ Catch up series to a specific episode:
     (defseries "Motive" :kevin)
     (defseries "Mythbusters" :adrian+kevin)
     (defseries "NCIS" :adrian+kevin)
+    (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :adrian+kevin)
     (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
@@ -833,6 +832,7 @@ Catch up series to a specific episode:
     (defseries "Ridiculousness" :adrian+kevin)
     (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
+    (defseries "Sirens (2014)" :kevin :catch-up "S01E01")
     (defseries "The Americans (2013)" :kevin)
     (defseries "The Blacklist" :adrian+kevin)
     (defseries "The Burn" :kevin)

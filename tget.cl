@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.5")
+(defvar *tget-version* "2.5.7")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -609,7 +609,8 @@
     (setq series
       (if* old
 	 then (when (not (eq group (series-group old)))
-		(.error "There is a duplicate defseries for ~s."
+		(warn "There is either a duplicate defseries for ~s ~
+ or series moved groups."
 			pretty-name))
 	      (when (string/= (series-name old) pretty-name)
 		(setf (series-pretty-name old) pretty-name))
@@ -1225,7 +1226,7 @@ Catch up series to a specific episode:
 
 	   (if* dump-all
 	      then (doclass (ep (find-class 'episode) :db *main*)
-		     (if* *verbose*
+		     (if* verbose
 			then (describe ep)
 			else (format t "~a~%" ep)))
 		   (done)
