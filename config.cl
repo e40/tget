@@ -68,7 +68,7 @@
 	  ;; Using "Favorite shows" feed means you have to maintain your
 	  ;; list of shows in *two* places, which I find very annoying.
 	  ;;
-	  "https://www.tvtorrents.com/..."
+	  "http://www.tvtorrents.com/..."
 	  interval))
 
 (defvar *tvt-rss* 'tvt-rss-feed)
@@ -176,6 +176,7 @@
 ;;          the group download path -- this is a hack to make Plex Media
 ;;          Server see episodes of The Daily Show and The Colbert Report.
 
+(defseries "24" :anh+kevin :catch-up "S08")
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin)
@@ -195,9 +196,10 @@
 (defseries "Dragons Den (UK)" :kevin)
 (defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin)
+(defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
-(defseries "Hannibal" :anh+kevin)
+(defseries "Hannibal" :kevin :delay 0) ;; immediate download
 (defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin :delay 0) ;; immediate download
 (defseries "Intelligence (US)" :adrian+kevin)
@@ -206,6 +208,8 @@
 (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
   ;; All there is on TVT
   :quality :indi)
+(defseries "Last Week Tonight with John Oliver" :kevin
+  :subdir "Last.Week.Tonight.With.John.Oliver")
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)
 (defseries "Louie" :kevin)
@@ -223,13 +227,16 @@
 (defseries "Nova" :adrian+kevin)
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
+(defseries "Penny Dreadful" :kevin :catch-up "S01E01" :remove t)
 (defseries "Person of Interest" :kevin)
 (defseries "Phineas and Furb" :adrian)
 (defseries "Ray Donovan" :kevin)
 (defseries "Rick and Morty" :adrian+kevin)
 (defseries "Ridiculousness" :adrian+kevin)
+(defseries "Rosemary's Baby" :anh+kevin)
 (defseries "Shark Tank" :kevin)
 (defseries "Sherlock" :kevin)
+(defseries "Silicon Valley" :kevin :catch-up "S01E01" :remove t)
 (defseries "Sirens (2014)" :kevin :catch-up "S01E01")
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Blacklist" :adrian+kevin)
@@ -238,7 +245,7 @@
 	   :date-based t)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
 	   :date-based t)
-(defseries "The Good Wife" :anh+kevin)
+(defseries "The Good Wife" :kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The Mentalist" :adrian+kevin)
 (defseries "The Neighbors (2012)" :adrian+kevin)
@@ -246,7 +253,7 @@
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-(defseries "The White Queen" :anh+kevin)
+(defseries "The White Queen" :kevin :remove t)
 (defseries "Top Gear (US)" :adrian+kevin :quality :high)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)

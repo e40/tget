@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="tget-257---torrent-get" class="anchor" href="#tget-257---torrent-get"><span class="octicon octicon-link"></span></a>tget 2.5.7 - torrent get</h1>
+<a name="user-content-tget-258---torrent-get" class="anchor" href="#tget-258---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.5.8 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -35,12 +35,12 @@ parsing only works (currently) with two sites (TVT, BTN).  I'm looking
 at adding more.</p>
 
 <h3>
-<a name="table-of-contents" class="anchor" href="#table-of-contents"><span class="octicon octicon-link"></span></a>Table of Contents</h3>
+<a name="user-content-table-of-contents" class="anchor" href="#table-of-contents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Table of Contents</h3>
 
 <p><strong><a href="#how-it-works">How it works</a></strong><br><strong><a href="#installation">Installation</a></strong><br><strong><a href="#getting-started">Getting started</a></strong><br><strong><a href="#configuration">Configuration</a></strong><br><strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br><strong><a href="#usage">Usage</a></strong><br><strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
 
 <h2>
-<a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works</h2>
+<a name="user-content-how-it-works" class="anchor" href="#how-it-works" aria-hidden="true"><span class="octicon octicon-link"></span></a>How it works</h2>
 
 <p><em>tget</em> has these basic phases:</p>
 
@@ -91,7 +91,7 @@ cross-platform BitTorrent client) or put in a specific directory
 watched by your BitTorrent client.  See the example configuration
 file for information on how to use either of these methods.</p></li>
 </ul><h2>
-<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+<a name="user-content-installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
 
 <p><em>tget</em> has been tested on Linux and Mac OS X and depends on two other
 software packages:</p>
@@ -120,7 +120,7 @@ are available and you need Allegro Common Lisp to build it.</p>
 file.</p>
 
 <h2>
-<a name="getting-started" class="anchor" href="#getting-started"><span class="octicon octicon-link"></span></a>Getting started</h2>
+<a name="user-content-getting-started" class="anchor" href="#getting-started" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting started</h2>
 
 <p>After installing the software, the next thing you need is a
 configuration file.  See the next section for information on
@@ -152,7 +152,7 @@ some environment variables used by the example configuration file.
 You can omit this part if you do not need any environment variables.</p>
 
 <h2>
-<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
+<a name="user-content-configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configuration</h2>
 
 <p>At the highest level, the configuration file defines these entities:</p>
 
@@ -181,7 +181,7 @@ but would accept a lower resolution of other shows.</p></li>
 It is fully annotated and is a good place to start.</p>
 
 <h3>
-<a name="set-torrent-handler-handler" class="anchor" href="#set-torrent-handler-handler"><span class="octicon octicon-link"></span></a><code>set-torrent-handler handler</code>
+<a name="user-content-set-torrent-handler-handler" class="anchor" href="#set-torrent-handler-handler" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>set-torrent-handler handler</code>
 </h3>
 
 <p>Define how <em>.torrent</em> files will be handled.  There are two choices:
@@ -199,7 +199,7 @@ the directory <code>~/Downloads/</code>.</p>
 define how to communicate with <em>transmission-remote</em>.</p>
 
 <h3>
-<a name="make-transmission-remote-handler-options" class="anchor" href="#make-transmission-remote-handler-options"><span class="octicon octicon-link"></span></a><code>make-transmission-remote-handler ...options...</code>
+<a name="user-content-make-transmission-remote-handler-options" class="anchor" href="#make-transmission-remote-handler-options" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>make-transmission-remote-handler ...options...</code>
 </h3>
 
 <p>The values for each option have direct correspondence to
@@ -289,7 +289,7 @@ directories exist.</p>
 pulled from the environment with <code>sys:getenv</code>.</p>
 
 <h3>
-<a name="defquality-key-priority-container-source-codec-resolution" class="anchor" href="#defquality-key-priority-container-source-codec-resolution"><span class="octicon octicon-link"></span></a><code>defquality &amp;key priority container source codec resolution</code>
+<a name="user-content-defquality-key-priority-container-source-codec-resolution" class="anchor" href="#defquality-key-priority-container-source-codec-resolution" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defquality &amp;key priority container source codec resolution</code>
 </h3>
 
 <p>The valid values for each keyword option (the names after <em>&amp;key</em>) are:</p>
@@ -324,7 +324,7 @@ Valid values:</p>
 </code></pre>
 
 <h3>
-<a name="defgroup-name-key-rss-url-debug-feed-delay-ratio-quality-download-path" class="anchor" href="#defgroup-name-key-rss-url-debug-feed-delay-ratio-quality-download-path"><span class="octicon octicon-link"></span></a><code>defgroup name &amp;key rss-url debug-feed delay ratio quality download-path</code>
+<a name="user-content-defgroup-name-key-rss-url-debug-feed-delay-ratio-quality-download-path" class="anchor" href="#defgroup-name-key-rss-url-debug-feed-delay-ratio-quality-download-path" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defgroup name &amp;key rss-url debug-feed delay ratio quality download-path</code>
 </h3>
 
 <p><code>name</code> -- the name of the group, a keyword (e.g. :bruce).</p>
@@ -353,7 +353,7 @@ the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.</p>
 
 <h3>
-<a name="defseries-name-group-key-delay-quality-catch-up-subdir-date-based" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir-date-based"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir date-based</code>
+<a name="user-content-defseries-name-group-key-delay-quality-catch-up-subdir-date-based" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir-date-based" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir date-based</code>
 </h3>
 
 <p>Required arguments:</p>
@@ -385,10 +385,10 @@ accounting for complete seasons.  This is useful for shows like
 and the episodes for these are ordered by date.</p>
 
 <h2>
-<a name="maintenance-tasks" class="anchor" href="#maintenance-tasks"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>
+<a name="user-content-maintenance-tasks" class="anchor" href="#maintenance-tasks" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>
 
 <h2>
-<a name="maintenance-task-making-the-database-smaller" class="anchor" href="#maintenance-task-making-the-database-smaller"><span class="octicon octicon-link"></span></a>Maintenance task: making the database smaller</h2>
+<a name="user-content-maintenance-task-making-the-database-smaller" class="anchor" href="#maintenance-task-making-the-database-smaller" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintenance task: making the database smaller</h2>
 
 <p>After some time, <em>tget</em> can slow down due to the database growing.  It
 has to do with how <em>tget</em> operates, temporarily storing episodes while
@@ -404,7 +404,7 @@ more efficient.  It will usually dramatically decrease the size of the
 database, if it's been in use for a month or more.</p>
 
 <h2>
-<a name="maintenance-task-adding-a-new-series" class="anchor" href="#maintenance-task-adding-a-new-series"><span class="octicon octicon-link"></span></a>Maintenance task: adding a new series</h2>
+<a name="user-content-maintenance-task-adding-a-new-series" class="anchor" href="#maintenance-task-adding-a-new-series" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintenance task: adding a new series</h2>
 
 <p>The easiest way to add a new series is to add it to the configuration
 file, like this:</p>
@@ -422,7 +422,7 @@ That would be:</p>
 and nothing before it.</p>
 
 <h2>
-<a name="maintenance-task-removing-a-series" class="anchor" href="#maintenance-task-removing-a-series"><span class="octicon octicon-link"></span></a>Maintenance task: removing a series</h2>
+<a name="user-content-maintenance-task-removing-a-series" class="anchor" href="#maintenance-task-removing-a-series" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintenance task: removing a series</h2>
 
 <p>There are two ways you can remove a series.</p>
 
@@ -443,7 +443,7 @@ series should be removed:</p>
 been run once.</p>
 
 <h2>
-<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+<a name="user-content-usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
 
 <p>Primary behavior determining arguments (one of these must be given):</p>
 
@@ -480,7 +480,7 @@ been run once.</p>
 </code></pre>
 
 <h3>
-<a name="usage-details" class="anchor" href="#usage-details"><span class="octicon octicon-link"></span></a>Usage details</h3>
+<a name="user-content-usage-details" class="anchor" href="#usage-details" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage details</h3>
 
 <p>The tget options are below.  When there is an argument naming series,
 these are canonicalized by removing single quotes and converting to lower
@@ -729,7 +729,7 @@ $ tget --catch-up-series "breaking bad s04"
 </code></pre>
 
 <h2>
-<a name="example-configuration-file" class="anchor" href="#example-configuration-file"><span class="octicon octicon-link"></span></a>Example configuration file</h2>
+<a name="user-content-example-configuration-file" class="anchor" href="#example-configuration-file" aria-hidden="true"><span class="octicon octicon-link"></span></a>Example configuration file</h2>
 
 <pre><code>;; Config file for tget
 
@@ -801,7 +801,7 @@ $ tget --catch-up-series "breaking bad s04"
       ;; Using "Favorite shows" feed means you have to maintain your
       ;; list of shows in *two* places, which I find very annoying.
       ;;
-      "https://www.tvtorrents.com/..."
+      "http://www.tvtorrents.com/..."
       interval))
 
 (defvar *tvt-rss* 'tvt-rss-feed)
@@ -909,6 +909,7 @@ $ tget --catch-up-series "breaking bad s04"
 ;;          the group download path -- this is a hack to make Plex Media
 ;;          Server see episodes of The Daily Show and The Colbert Report.
 
+(defseries "24" :anh+kevin :catch-up "S08")
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin)
@@ -928,9 +929,10 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Dragons Den (UK)" :kevin)
 (defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin)
+(defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
 (defseries "Game of Thrones" :kevin :delay 0) ;; immediate download
-(defseries "Hannibal" :anh+kevin)
+(defseries "Hannibal" :kevin :delay 0) ;; immediate download
 (defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin :delay 0) ;; immediate download
 (defseries "Intelligence (US)" :adrian+kevin)
@@ -939,6 +941,8 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
   ;; All there is on TVT
   :quality :indi)
+(defseries "Last Week Tonight with John Oliver" :kevin
+  :subdir "Last.Week.Tonight.With.John.Oliver")
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)
 (defseries "Louie" :kevin)
@@ -956,13 +960,16 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Nova" :adrian+kevin)
 (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
+(defseries "Penny Dreadful" :kevin :catch-up "S01E01" :remove t)
 (defseries "Person of Interest" :kevin)
 (defseries "Phineas and Furb" :adrian)
 (defseries "Ray Donovan" :kevin)
 (defseries "Rick and Morty" :adrian+kevin)
 (defseries "Ridiculousness" :adrian+kevin)
+(defseries "Rosemary's Baby" :anh+kevin)
 (defseries "Shark Tank" :kevin)
 (defseries "Sherlock" :kevin)
+(defseries "Silicon Valley" :kevin :catch-up "S01E01" :remove t)
 (defseries "Sirens (2014)" :kevin :catch-up "S01E01")
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Blacklist" :adrian+kevin)
@@ -971,7 +978,7 @@ $ tget --catch-up-series "breaking bad s04"
        :date-based t)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
        :date-based t)
-(defseries "The Good Wife" :anh+kevin)
+(defseries "The Good Wife" :kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The Mentalist" :adrian+kevin)
 (defseries "The Neighbors (2012)" :adrian+kevin)
@@ -979,7 +986,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-(defseries "The White Queen" :anh+kevin)
+(defseries "The White Queen" :kevin :remove t)
 (defseries "Top Gear (US)" :adrian+kevin :quality :high)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)

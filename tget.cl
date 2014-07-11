@@ -109,7 +109,7 @@
       net.rss:*uri-to-package*)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.7")
+(defvar *tget-version* "2.5.8")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2884,7 +2884,7 @@ transmission-remote ~a:~a ~
 	       ;; always use :xvid... :divx is little used and no reason to
 	       ;; make config files deal with it.
 	       :xvid)
-	  (and (match-re "(720p.*mkv|\\.mp4|x264|hdtv.*indi)" filename
+	  (and (match-re "(x264|720p.*mkv|\\.mp4|hdtv.*indi)" filename
 			 :case-fold t)
 	       :x264)))
     
@@ -2959,8 +2959,8 @@ transmission-remote ~a:~a ~
 		;; but it doesn't matter since I don't download seasons
 		:all
 	 elseif (match-re "special.*" des-episode :case-fold t)
-	   then :special
-	 elseif (=~ "^(\\d\\d)\\.(\\d)$" des-episode)
+	   then	:special
+	 elseif (=~ "^(\\d\\d)\\.(0?\\d)$" des-episode)
 	   then ;; e.g., 08.1 => return `8'
 		(parse-integer $1)
 	 elseif (=~ "^00\\.(\\d\\d)$" des-episode)
