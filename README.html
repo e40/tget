@@ -31,8 +31,8 @@ because the quality can be pretty crappy.  What I just described is
 not possible in <a href="http://flexget.com/" title="FlexGet">FlexGet</a>.  <em>tget</em> makes this pretty easy.</p>
 
 <p><em>tget</em> isn't nearly as functional as <a href="http://flexget.com/" title="FlexGet">FlexGet</a>, though, and the feed
-parsing only works (currently) with two sites (TVT, BTN).  I'm looking
-at adding more.</p>
+parsing only works (currently) with three sites (TVT, EZTV and BTN).
+I'm always looking at adding more.</p>
 
 <h3>
 <a name="user-content-table-of-contents" class="anchor" href="#table-of-contents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Table of Contents</h3>
@@ -353,7 +353,7 @@ the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.</p>
 
 <h3>
-<a name="user-content-defseries-name-group-key-delay-quality-catch-up-subdir-date-based" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir-date-based" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir date-based</code>
+<a name="user-content-defseries-name-group-key-delay-quality-catch-up-subdir-date-based-aliases" class="anchor" href="#defseries-name-group-key-delay-quality-catch-up-subdir-date-based-aliases" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defseries name group &amp;key delay quality catch-up subdir date-based aliases</code>
 </h3>
 
 <p>Required arguments:</p>
@@ -383,6 +383,14 @@ their names instead of episode numbers.  <em>The Daily Show</em> and
 accounting for complete seasons.  This is useful for shows like
 <em>The Daily Show</em> and <em>The Colbert Report</em>, which don't have seasons
 and the episodes for these are ordered by date.</p>
+
+<p><code>:aliases</code> -- a list of aliases for <code>name</code>. This feature exists
+because many sites use different names for series, <code>The Daily Show
+with Jon Stewart</code> vs. <code>The Daily Show</code>.
+Here's how you specify it:</p>
+
+<pre><code>:aliases ("The Daily Show")
+</code></pre>
 
 <h2>
 <a name="user-content-maintenance-tasks" class="anchor" href="#maintenance-tasks" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintenance tasks</h2>

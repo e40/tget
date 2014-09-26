@@ -19,8 +19,8 @@ because the quality can be pretty crappy.  What I just described is
 not possible in [FlexGet][2].  _tget_ makes this pretty easy.
 
 _tget_ isn't nearly as functional as [FlexGet][2], though, and the feed
-parsing only works (currently) with two sites (TVT, BTN).  I'm looking
-at adding more.
+parsing only works (currently) with three sites (TVT, EZTV and BTN).
+I'm always looking at adding more.
 
 ### Table of Contents
 **[How it works](#how-it-works)**  
@@ -285,7 +285,7 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality catch-up subdir date-based`
+### `defseries name group &key delay quality catch-up subdir date-based aliases`
 
 Required arguments:
 
@@ -314,6 +314,13 @@ _The Colbert Report_ are two examples of these types of shows.
 accounting for complete seasons.  This is useful for shows like
 _The Daily Show_ and _The Colbert Report_, which don't have seasons
 and the episodes for these are ordered by date.
+
+`:aliases` -- a list of aliases for `name`. This feature exists
+because many sites use different names for series, `The Daily Show
+with Jon Stewart` vs. `The Daily Show`.
+Here's how you specify it:
+
+    :aliases ("The Daily Show")
 
 ## Maintenance tasks
 
