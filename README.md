@@ -1,4 +1,4 @@
-# tget 2.6.0 - torrent get
+# tget 2.7 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -744,36 +744,38 @@ Catch up series to a specific episode:
     
     (defvar *eztv-rss* "http://ezrss.it/...")
     
+    (defvar *rss-urls* (list *tvt-rss* *eztv-rss*))
+    
     (defgroup :adrian
-        :rss-url (list *tvt-rss* *eztv-rss*)
+        :rss-url '#.*rss-urls*
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "adrian/" *download-root*))
     
     (defgroup :anh
-        :rss-url (list *tvt-rss* *eztv-rss*)
+        :rss-url '#.*rss-urls*
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "anh/" *download-root*))
     
     (defgroup :kevin
-        :rss-url (list *tvt-rss* *eztv-rss*)
+        :rss-url '#.*rss-urls*
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "kevin/" *download-root*))
     
     (defgroup :adrian+kevin
-        :rss-url (list *tvt-rss* *eztv-rss*)
+        :rss-url '#.*rss-urls*
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "adrian+kevin/" *download-root*))
     
     (defgroup :anh+kevin
-        :rss-url (list *tvt-rss* *eztv-rss*)
+        :rss-url '#.*rss-urls*
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
@@ -853,7 +855,8 @@ Catch up series to a specific episode:
     (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
     	   :date-based t)
     (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
-    	   :date-based t)
+    	   :date-based t
+    	   :aliases ("The Daily Show"))
     (defseries "The Good Wife" :kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")

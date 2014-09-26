@@ -9,7 +9,7 @@
 (setq *debug* t)
 (setq *feed-interval* 180)
 (setq *learn* t)
-(setq *verbose* t)
+(setq *verbose* 1)
 (setq *auto-backup* nil)
 
 (dolist (file '("rssreader.cl" "tget.cl" "t-tget.cl"))

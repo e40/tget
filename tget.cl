@@ -75,7 +75,16 @@
   (require :datetime)
   (require :shell)
   (require :aserve)
-  (require :acache "acache-2.2.2.fasl")
+  ;; Just changing acache from 2.2.2 to 3.0.0,
+  ;; timing for "make test" went from
+  ;;   real	0m38.629s
+  ;; to
+  ;;   real	1m3.279s
+  ;; 2.2.3's time is:
+  ;;   real	0m37.939s
+  ;;(require :acache "acache-2.2.2.fasl")
+  (require :acache "acache-2.2.3.fasl")
+  ;;(require :acache "acache-3.0.0.fasl")
   (require :autozoom))
 
 (defpackage :user
@@ -104,7 +113,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.6.0")
+(defvar *tget-version* "2.7")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -559,7 +568,7 @@
 		:download-path download-path)))))
 
 (defmacro defseries (name group &key delay quality remove catch-up subdir
-				     date-based)
+				     date-based aliases)
   (if* remove
      then `(forget-series ,name :noisy nil)
      else `(make-series
@@ -569,7 +578,8 @@
 	    ,@(when date-based `(:date-based ,date-based))
 	    ,@(when catch-up `(:catch-up ,catch-up))
 	    ,@(when delay `(:delay ,delay))
-	    ,@(when quality `(:quality ,quality)))))
+	    ,@(when quality `(:quality ,quality))
+	    ,@(when aliases `(:aliases ',aliases)))))
 
 (defun forget-series (name &key (noisy t))
   (let* ((series-name (canonicalize-series-name name))
@@ -581,9 +591,19 @@
      elseif noisy
        then (warn "Could not find series: ~s." name))))
 
-(defvar *all-series-names* (make-hash-table :size 777 :test #'equal))
+;; The following are not persistent and don't need to be.
+;; They are initialized by loading the config file and are
+;; used while processing episodes from the RSS feeds.
+(defvar *all-series-names*
+    (make-hash-table :size 777 :test #'equal))
 
-(defun make-series (&key name group delay quality catch-up subdir date-based
+(defvar *series-name-aliases*
+    ;; Key is a string naming a series, the value is the real name of the
+    ;; series.
+    (make-hash-table :size 777 :test #'equal))
+
+(defun make-series (&key name group delay quality catch-up subdir
+			 date-based aliases
 		    &aux series)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
@@ -605,6 +625,11 @@
       (or (null date-based)
 	  (eq 't date-based)
 	  (.error "Series date-based must be `t' or `nil': ~s." date-based)))
+    (when aliases
+      (or (null aliases)
+	  (dolist (alias aliases)
+	    (or (stringp alias)
+		(.error "Non-string series alias: ~s." alias)))))
     (setq series
       (if* old
 	 then (when (not (eq group (series-group old)))
@@ -631,6 +656,10 @@
 		  :subdir subdir
 		  :date-based date-based))))
     (setf (gethash pretty-name *all-series-names*) t)
+    (dolist (alias aliases)
+      ;; Enter the aliases to be used during RSS to EPISODE conversion.
+      (setf (gethash (canonicalize-series-name alias) *series-name-aliases*)
+	name))
     (when catch-up
       (catch-up-series (concatenate 'simple-string name " " catch-up)
 		       :series series))
@@ -1080,7 +1109,15 @@ Catch up series to a specific episode:
 
 (defvar *verbose*
     ;; Be noisy.  `nil' is used for cron mode.
-    t)
+    ;;  0 is not noisy.
+    ;;  1 is normal noisy
+    ;; >1 is debug-level noisy.
+    1)
+
+(defmacro with-verbosity (level &body forms)
+  `(when (>= *verbose* ,level)
+     (prog1 (progn ,@forms)
+       (force-output t))))
 
 (defvar *learn*
     ;; Don't download anything, just learn
@@ -1137,9 +1174,11 @@ Catch up series to a specific episode:
 	      ("reset" :long reset-database)
 	      ("root" :long root :required-companion)
 	      ("verbose" :long verbose-long)
-	      ("v" :short verbose-short))
+	      ("v" :short verbose-short :allow-multiple-options))
 	     (extra-args :usage *usage*)
 	   (setq verbose (or verbose-short verbose-long))
+	   (when (and verbose (not (numberp verbose)))
+	     (setq verbose 1))
 	   (when help
 	     (format t "~a~&" *usage*)
 	     (format t "~a~&" *help*)
@@ -1168,7 +1207,9 @@ Catch up series to a specific episode:
 		   (merge-pathnames "config.cl" *tget-data-directory*)))
 	   
 	   (setq *debug* debug-mode)
-	   (setq *verbose* (not quiet))
+	   (setq *verbose* (or verbose
+			       (when quiet 0)
+			       1))
 	   (setq *learn* learn-mode)
 	   
 	   (if* config-file
@@ -1228,7 +1269,7 @@ Catch up series to a specific episode:
 	       ;; no backtrace for this one
 	       (format t "~a~&" c)
 	       (exit 1 :quiet t)))
-	   (load config-file :verbose *verbose*)
+	   (load config-file :verbose (> *verbose* 0))
 	   (when (not *torrent-handler*)
 	     (usage "*torrent-handler* is not defined in config file."))
 	   (open-log-files)
@@ -1350,7 +1391,8 @@ Catch up series to a specific episode:
 
 (defun open-log-files (&key truncate)
   (when (and *log-file* (not *log-stream*))
-    (and *verbose* (format t ";; Opening ~a log file...~%" *log-file*))
+    (with-verbosity 1
+      (format t ";; Opening ~a log file...~%" *log-file*))
     (setq *log-stream*
       (open *log-file* :direction :output
 	    :if-exists (if truncate :supersede :append)
@@ -1358,7 +1400,7 @@ Catch up series to a specific episode:
     (format *log-stream* "~%;; ~a~%~%" (ut-to-date-time (get-universal-time))))
 	   
   (when (and *log-rss* (not *log-rss-stream*))
-    (and *verbose* (format t ";; Opening ~a rss log file...~%" *log-rss*))
+    (with-verbosity 1 (format t ";; Opening ~a rss log file...~%" *log-rss*))
     (setq *log-rss-stream*
       (open *log-rss* :direction :output
 	    ;; rss feed is too large to append
@@ -1709,7 +1751,7 @@ Catch up series to a specific episode:
 
 (defun close-tget-database ()
   (when *main*
-    (when *verbose* (format t ";; closing database...~%"))
+    (with-verbosity 1 (format t ";; closing database...~%"))
     (commit :db *main*)
     (close-database :db *main*)
     (setq *main* nil)
@@ -1721,8 +1763,16 @@ Catch up series to a specific episode:
 
 (push '(close-tget-database) sys:*exit-cleanup-forms*)
 
-(defun query-series-name-to-series (name)
-  (retrieve-from-index 'series 'name name :db *main*))
+(defun query-series-name-to-series (name &aux real-name)
+  (setq real-name (gethash name *series-name-aliases*))
+  (when real-name
+    (with-verbosity 2
+      (format t "Found alias ~s for ~s.~%" name real-name))
+    (setq name real-name))
+  (let ((s (retrieve-from-index 'series 'name name :db *main*)))
+    (with-verbosity 3
+      (format t "query-series-name-to-series: returning ~s~%" s))
+    (values s name)))
 
 (defun make-episode (&key transient
 			  full-title
@@ -1763,24 +1813,24 @@ Catch up series to a specific episode:
 				   then *temp*
 				   else *main*)))
 	    (make-instance 'episode 
-	      :transient transient
-	      :full-title full-title
-	      :torrent-url torrent-url
-	      :pub-date pub-date
-	      :type type
-	      :length length
-	      :series series
-	      :series-name series-name
-	      :title title
-	      :season season
-	      :episode episode
-	      :pretty-epnum pretty-epnum
-	      :repack repack
-	      :filename filename
-	      :container container
-	      :source source
-	      :codec codec
-	      :resolution resolution))))
+	       :transient transient
+	       :full-title full-title
+	       :torrent-url torrent-url
+	       :pub-date pub-date
+	       :type type
+	       :length length
+	       :series series
+	       :series-name series-name
+	       :title title
+	       :season season
+	       :episode episode
+	       :pretty-epnum pretty-epnum
+	       :repack repack
+	       :filename filename
+	       :container container
+	       :source source
+	       :codec codec
+	       :resolution resolution))))
 
 (defun query-episode (&key series-name
 			   season
@@ -1956,6 +2006,8 @@ Catch up series to a specific episode:
   ;; Now, we comb through the series for this group and look for matches
   ;; to download
   (dolist (series (query-group-to-series group))
+    (with-verbosity 2 (format t "processing series ~a...~%" series))
+    
     ;; Find any transient episodes that match the series name
     ;;
     ;; series-defined quality trumps group-defined quality.
@@ -2764,14 +2816,12 @@ transmission-remote ~a:~a ~
      ...
      (net.rss:item ...))))
   (let* ((lxml (if* url
-		  then (when *verbose*
+		  then (with-verbosity 1
 			 (format t ";; reading feed from ~a..."
-				 (net.uri:uri-host (net.uri:parse-uri url)))
-			 (force-output t))
+				 (net.uri:uri-host (net.uri:parse-uri url))))
 		       (prog1 (net.rss:read-feed url :timeout *http-timeout*)
-			 (when *verbose*
-			   (format t "done.~%")
-			   (force-output t)))
+			 (with-verbosity 1
+			   (format t "done.~%")))
 		elseif file
 		  then (net.rss::parse-feed (file-contents file))
 		  else (assert content)
@@ -3040,7 +3090,9 @@ transmission-remote ~a:~a ~
 			    des-season season
 			    des-episode episode))
       
-      (when (null (setq series (query-series-name-to-series series-name)))
+      (when (null
+	     (multiple-value-setq (series series-name)
+	       (query-series-name-to-series series-name)))
 	(return-from convert-rss-to-episode))
       ;; a series we care about...
       
@@ -3156,7 +3208,9 @@ Episode:\\s*(\\d+)?"
       (when (and (stringp season) (string/= "" season))
 	(setq season (parse-integer season)))
 
-      (when (or (null (setq series (query-series-name-to-series series-name)))
+      (when (or (null
+		 (multiple-value-setq (series series-name)
+		   (query-series-name-to-series series-name)))
 		(not (numberp season)))
 	(return-from convert-rss-to-episode))
       
@@ -3202,6 +3256,8 @@ Episode:\\s*(\\d+)?"
 	series-name season episode pretty-epnum repack container source
 	codec resolution)
     
+    (with-verbosity 4 (format t "EZTV: ~s~%" rss))
+    
     (multiple-value-bind (match whole
 			  des-series-name des-title
 			  ignore1
@@ -3227,6 +3283,7 @@ Episode:\\s*(\\d+)?"
        (des-episode-date
 	(when (string= "" des-episode-date)
 	  ;; No season or episode info, so go home
+	  (with-verbosity 2 (format t "EZTV: ignore1: ~a~%" series-name))
 	  (return-from convert-rss-to-episode))
 	(setq season (parse-integer des-year))
 	(setq episode
@@ -3253,31 +3310,38 @@ Episode:\\s*(\\d+)?"
 			    des-season season
 			    des-episode episode))
       
-      (when (null (setq series (query-series-name-to-series series-name)))
+      (with-verbosity 2 (format t "EZTV: query: ~a~%" series-name))
+      (when (null
+	     (multiple-value-setq (series series-name)
+	       (query-series-name-to-series series-name)))
+	(with-verbosity 2 (format t "EZTV: ignore2: ~a~%" series-name))
 	(return-from convert-rss-to-episode))
       ;; a series we care about...
       
-      (make-episode
-       :transient t
-       :full-title (rss-item-title rss)
-       :torrent-url (rss-item-link rss)
-       :pub-date (parse-rss20-date (rss-item-pub-date rss))
-       :type (rss-item-type rss)
-       :length (parse-integer (rss-item-length rss))
+      (let ((ep
+	     (make-episode
+	      :transient t
+	      :full-title (rss-item-title rss)
+	      :torrent-url (rss-item-link rss)
+	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
+	      :type (rss-item-type rss)
+	      :length (parse-integer (rss-item-length rss))
 
-       :series series
-       :series-name series-name
-       :title des-title
-       :season season
-       :episode episode
-       :pretty-epnum pretty-epnum
+	      :series series
+	      :series-name series-name
+	      :title des-title
+	      :season season
+	      :episode episode
+	      :pretty-epnum pretty-epnum
        
-       ;; container is always nil because the file extension is always
-       ;; .torrent
-       :container container
-       :source source
-       :codec codec
-       :resolution resolution))))
+	      ;; container is always nil because the file extension is always
+	      ;; .torrent
+	      :container container
+	      :source source
+	      :codec codec
+	      :resolution resolution)))
+	(with-verbosity 2 (format t "EZTV: consider ep: ~a~%" ep))
+	ep))))
 
 (defmethod convert-rss-to-episode ((type (eql :dailytvtorrents.org)) rss)
   (error "not done yet")
@@ -3616,8 +3680,13 @@ Episode:\\s*(\\d+)?"
     (princ *log-prefix* *log-stream*)
     (apply #'format *log-stream* format-string args)
     (fresh-line *log-stream*))
-   (*verbose*
+   ((> *verbose* 0)
     (apply #'format t format-string args)
     (fresh-line t)))
+
+  (when (> *verbose* 1) ;; also print to t
+    (apply #'format t format-string args)
+    (fresh-line t))
+  
   ;; Return t so this function can be used in logic chains.
   t)

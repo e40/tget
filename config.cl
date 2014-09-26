@@ -137,36 +137,38 @@
 
 (defvar *eztv-rss* "http://ezrss.it/...")
 
+(defvar *rss-urls* (list *tvt-rss* *eztv-rss*))
+
 (defgroup :adrian
-    :rss-url (list *tvt-rss* *eztv-rss*)
+    :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
 (defgroup :anh
-    :rss-url (list *tvt-rss* *eztv-rss*)
+    :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
 (defgroup :kevin
-    :rss-url (list *tvt-rss* *eztv-rss*)
+    :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :adrian+kevin
-    :rss-url (list *tvt-rss* *eztv-rss*)
+    :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
 (defgroup :anh+kevin
-    :rss-url (list *tvt-rss* *eztv-rss*)
+    :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
@@ -246,7 +248,8 @@
 (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
 	   :date-based t)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
-	   :date-based t)
+	   :date-based t
+	   :aliases ("The Daily Show"))
 (defseries "The Good Wife" :kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
