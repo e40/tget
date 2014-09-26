@@ -103,13 +103,8 @@
 
 (in-package :user)
 
-;; For eztv.it's RSS
-(push (cons "http://xmlns.ezrss.it/0.1/"
-	    :net.rss)
-      net.rss:*uri-to-package*)
-
 (eval-when (compile eval load)
-(defvar *tget-version* "2.5.8")
+(defvar *tget-version* "2.6.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -127,7 +122,8 @@
     ;;      "Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
     ;; 9 == added `subdir' slot to series
     ;; 10 == added `date-based' slot to series
-    10)
+    ;; 11 == `group-rss-url' is now a list
+    11)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -275,7 +271,7 @@
 (defclass* group (:conc-name t :print nil :init nil)
   ;;e.g. :kevin
   (name :index :any-unique)
-  rss-url
+  rss-url ;; a list of URLs
   delay
   debug-feed ;; formerly the unused `transmission-client'
   ratio
@@ -437,7 +433,8 @@
   pub-date
   description
   type
-  length)
+  length
+  fileName)
 
 (defstruct schema
   version
@@ -552,7 +549,9 @@
        else (let ((*allegrocache* *main*))
 	      (make-instance 'group
 		:name name
-		:rss-url rss-url
+		:rss-url (if* (consp rss-url)
+			    then rss-url
+			    else (list rss-url))
 		:debug-feed debug-feed
 		:delay delay
 		:ratio ratio
@@ -751,10 +750,13 @@
 
 (defun check-rss-url (rss-url)
   (and rss-url
-       (or (symbolp rss-url)
-	   (and (stringp rss-url)
-		(match-re "^http" rss-url))
-	   (.error "Bad rss-url: ~s." rss-url))))
+       (and (dolist (u (if (consp rss-url) rss-url (list rss-url)))
+	      (if* (or (symbolp u)
+		       (and (stringp u)
+			    (match-re "^http" u)))
+		 thenret
+		 else (return t)))
+	    (.error "Bad rss-url: ~s." rss-url))))
 
 (defun check-delay (delay)
   (and delay
@@ -800,6 +802,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-all
     --dump-complete-to
     --dump-episodes series-name
+    --dump-groups
     --dump-orphans
     --dump-series series-name
     --dump-stats
@@ -890,6 +893,10 @@ The following are arguments controlling primary behavior:
 * `--dump-episodes series-name`
 
   Dump all episode objects matching series name `series-name` to stdout.
+
+* `--dump-groups`
+
+  Dump group objects.  Used for debugging only.
 
 * `--dump-orphans`
 
@@ -1113,6 +1120,7 @@ Catch up series to a specific episode:
 	      ("dump-all" :long dump-all)
 	      ("dump-complete-to" :long dump-complete-to)
 	      ("dump-episodes" :long dump-episodes :required-companion)
+	      ("dump-groups" :long dump-groups)
 	      ("dump-orphans" :long dump-orphans)
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-stats" :long dump-stats)
@@ -1207,6 +1215,7 @@ Catch up series to a specific episode:
 				   :if-does-not-exist
 				   (if* (or dump-all dump-complete-to
 					    dump-stats dump-series
+					    dump-groups
 					    delete-orphans dump-orphans
 					    dump-episodes delete-episodes
 					    delete-series
@@ -1287,6 +1296,10 @@ Catch up series to a specific episode:
 		     (if* verbose
 			then (describe ep)
 			else (format t "~a~%" ep)))
+		   (done)
+	    elseif dump-groups
+	      then (doclass (group (find-class 'group) :db *main*)
+		     (describe group))
 		   (done)
 	    elseif delete-episodes
 	      then (dolist (ep (query-episode
@@ -1667,6 +1680,20 @@ Catch up series to a specific episode:
 	      s)))
   (tget-commit *main*))
 
+
+(defmethod db-upgrade ((version (eql 10)))
+  ;; The change from 10 to 11: made `group-rss-url' a list
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+
+  (format t ";;   Update group objects (rss-url is a list)...~%")
+  (doclass (g (find-class 'group) :db *main*)
+    (when (and (slot-boundp g 'rss-url)
+	       (not (consp (group-rss-url g))))
+      (setf (group-rss-url g)
+	(list (group-rss-url g)))))
+  (tget-commit *main*))
+
 (defun clean-database (&key check)
   ;; clean database:
   ;; - all eps are not part of a known series
@@ -1866,7 +1893,8 @@ Catch up series to a specific episode:
     120)
 
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
-			    ep-printer)
+			    ep-printer
+			    group-process)
   (tget-commit *main*)
   (tget-commit *temp*)
   (doclass (group (find-class 'group) :db *main*)
@@ -1888,14 +1916,24 @@ Catch up series to a specific episode:
       ;; query against it.  When I removed non-interesting instances I got
       ;; errors due to accessing slots of deleted objects.  :(
       ;;
-      (handler-case
-	  (mapcar 'rss-to-episode (fetch-feed group))
-	(net.rss:feed-error (c)
-	  (format t "~&~a~%" c)
-	  ;; reduce *http-timeout* dramatically, since we already got an
-	  ;; error
-	  (setq *http-timeout* 30)
-	  (go next-feed)))
+      (setq group-process nil)
+      (dolist (rss-url (if* (consp (group-rss-url group))
+			  then (group-rss-url group)
+			  else (list (group-rss-url group))))
+	(handler-case
+	    (prog1 (mapcar 'rss-to-episode
+			   (fetch-feed rss-url (group-debug-feed group)))
+	      (setq group-process t))
+	  (net.rss:feed-error (c)
+	    (format t "~&~a~%" c)
+	    ;; reduce *http-timeout* dramatically, since we already got an
+	    ;; error
+	    (setq *http-timeout* 30))))
+      (when (null group-process)
+	;; None of the feeds for this group worked, so skip to next
+	(go next-feed))
+      
+      ;; Process the eps we just read from the feed.
       (tget-commit *main*)
       (tget-commit *temp*)
     
@@ -2683,9 +2721,7 @@ transmission-remote ~a:~a ~
     ;; An alist of (feed-url . rss-objects)
     nil)
 
-(defun fetch-feed (group
-		   &aux (thing (group-rss-url group))
-			temp url)
+(defun fetch-feed (thing debug &aux temp url)
   ;; Retrieve the rss feed from URL and return a list of net.rss:item's
   ;;
   ;; Cache the feed results.  We don't want to hit the feed 5-10 times in a
@@ -2703,11 +2739,11 @@ transmission-remote ~a:~a ~
      then (@log "using cached feed for ~a" url)
 	  (cdr temp)
      else (let ((res
-		 (if* (and *debug* (group-debug-feed group))
+		 (if* (and *debug* debug)
 		    then ;; while debugging, use a static version of the
 			 ;; feed, so we don't hammer the server.
 			 (@log "using static feed for ~a" url)
-			 (feed-to-rss-objects :file (group-debug-feed group))
+			 (feed-to-rss-objects :file debug)
 		    else (@log "read feed for ~a" url)
 			 (feed-to-rss-objects :url url))))
 	    (push (cons url res) *cached-feeds*)
@@ -2771,7 +2807,8 @@ transmission-remote ~a:~a ~
 			     net.rss:description
 			     net.rss:link
 			     net.rss:pubDate
-			     net.rss:title)
+			     net.rss:title
+			     net.rss:fileName)
 		       :test #'eq))
 	  (when (eq 'net.rss:pubDate sym) (setq sym 'pub-date))
 	  (push (intern (symbol-name sym) *kw-package*)
@@ -3160,7 +3197,8 @@ Episode:\\s*(\\d+)?"
 
 (defmethod convert-rss-to-episode ((type (eql :ezrss.it)) rss)
   (let ((des (rss-item-description rss))
-	series uri filename
+	(filename (rss-item-fileName rss))
+	series
 	series-name season episode pretty-epnum repack container source
 	codec resolution)
     
@@ -3200,12 +3238,6 @@ Episode:\\s*(\\d+)?"
 
       (setq des-series-name (canonicalize-series-name des-series-name))
 
-      ;; Extract the filename from the rss-item-link.  The extension is
-      ;; .torrent, which is useless to us, but it's better than nothing.
-      (setq uri (net.uri:parse-uri
-		 (replace-re (rss-item-link rss) "[\\[\\]]" "")))
-      (setq filename (file-namestring (pathname (net.uri:uri-path uri))))
-	
       (multiple-value-setq (series-name season episode repack container
 			    source codec resolution)
 	(extract-episode-info-from-filename filename))

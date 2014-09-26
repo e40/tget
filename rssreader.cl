@@ -47,6 +47,10 @@
 
 		     #:feed-error
 		     
+		     ;; for EZTV:
+		     #:torrent
+		     #:fileName
+		     
 		     #:*uri-to-package*
 		     ))
 
@@ -73,6 +77,9 @@
      (cons  "http://purl.org/rss/1.0/"
 	    :net.rss)
      
+     ;; For EZTV
+     (cons "http://xmlns.ezrss.it/0.1/"
+	   :net.rss)
      ))
   
   
@@ -140,25 +147,33 @@
 
 (defun process-rss-body (body rdfp) 
   (mapcar 
-   #'(lambda (ch)
-       `(channel
-	 ,@(mapcar
-	    #'(lambda (it)
-		`(,(car it) ,@(big-stringify (cdr it))))
-	    (find-not-items 'item (cdr ch)))
-	 (all-items ,@(mapcar 
-		       #'(lambda (it)
-			   `(item
-			     ,@(mapcar #'(lambda (vv)
-					   `(,(car vv)
-					     ,@(big-stringify (cdr vv))))
-				       (find-conses (cdr it)))))
-		       (find-items 'item 
-				   (if* rdfp
-				      then (cdr body) ; found in main body
-				      else (cdr ch)) ; found in channel
-				   )
-		       ))))
+   (lambda (ch)
+     `(channel
+       ,@(mapcar
+	  (lambda (it)
+	    `(,(car it) ,@(big-stringify (cdr it))))
+	  (find-not-items 'item (cdr ch)))
+       (all-items
+	,@(mapcar
+	   (lambda (it
+		    &aux (torrent (find-items 'torrent it))
+			 ;; EZTV hack:
+			 (fileName
+			  (when torrent
+			    (car (find-items 'fileName (car torrent))))))
+	     `(item
+	       ,@(mapcar
+		  (lambda (vv)
+		    `(,(car vv)
+		      ,@(big-stringify (cdr vv))))
+		  (find-conses (cdr it)))
+	       ,@(when fileName (list fileName))))
+	   (find-items 'item 
+		       (if* rdfp
+			  then ;; found in main body
+			       (cdr body)
+			  else ;; found in channel
+			       (cdr ch)))))))
    (find-items 'channel body)))
   
 			 

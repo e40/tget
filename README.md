@@ -1,4 +1,4 @@
-# tget 2.5.8 - torrent get
+# tget 2.6.0 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -380,6 +380,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-all
     --dump-complete-to
     --dump-episodes series-name
+    --dump-groups
     --dump-orphans
     --dump-series series-name
     --dump-stats
@@ -467,6 +468,10 @@ The following are arguments controlling primary behavior:
 * `--dump-episodes series-name`
 
   Dump all episode objects matching series name `series-name` to stdout.
+
+* `--dump-groups`
+
+  Dump group objects.  Used for debugging only.
 
 * `--dump-orphans`
 
@@ -656,7 +661,7 @@ Catch up series to a specific episode:
     ;; you'll get any episodes released in this period of time.  And, for the
     ;; initial installation, you can specify a really high interval (on the
     ;; command line, not here), to populate your database with your shows.
-    (setq *feed-interval* 14)
+    (setq *feed-interval* 21)
     
     ;; This function is given as the value of the defgroup :rss-url option.
     ;; The function is called, when tget needs to fetch the feed, with the
@@ -737,36 +742,38 @@ Catch up series to a specific episode:
          then :low
          else :normal))
     
+    (defvar *eztv-rss* "http://ezrss.it/...")
+    
     (defgroup :adrian
-        :rss-url *tvt-rss*
+        :rss-url (list *tvt-rss* *eztv-rss*)
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "adrian/" *download-root*))
     
     (defgroup :anh
-        :rss-url *tvt-rss*
+        :rss-url (list *tvt-rss* *eztv-rss*)
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "anh/" *download-root*))
     
     (defgroup :kevin
-        :rss-url *tvt-rss*
+        :rss-url (list *tvt-rss* *eztv-rss*)
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "kevin/" *download-root*))
     
     (defgroup :adrian+kevin
-        :rss-url *tvt-rss*
+        :rss-url (list *tvt-rss* *eztv-rss*)
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
         :download-path (merge-pathnames "adrian+kevin/" *download-root*))
     
     (defgroup :anh+kevin
-        :rss-url *tvt-rss*
+        :rss-url (list *tvt-rss* *eztv-rss*)
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
@@ -785,6 +792,7 @@ Catch up series to a specific episode:
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight")
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin)
+    (defseries "Black Jesus" :kevin :catch-up "S01E03")
     (defseries "Black Mirror" :kevin)
     (defseries "Boardwalk Empire" :kevin)
     (defseries "Brooklyn Nine-Nine" :kevin)
@@ -796,6 +804,7 @@ Catch up series to a specific episode:
     (defseries "Downton Abbey" :anh)
     (defseries "Dracula (2013)" :kevin)
     (defseries "Dragons Den (UK)" :kevin)
+    (defseries "Drunk History" :kevin :catch-up "S02")
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin)
     (defseries "Fargo" :kevin)
@@ -804,7 +813,7 @@ Catch up series to a specific episode:
     (defseries "Hannibal" :kevin :delay 0) ;; immediate download
     (defseries "Hell on Wheels" :kevin)
     (defseries "Homeland" :kevin :delay 0) ;; immediate download
-    (defseries "Intelligence (US)" :adrian+kevin)
+    (defseries "Intruders" :kevin :catch-up "S01E02")
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
     (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
@@ -822,15 +831,14 @@ Catch up series to a specific episode:
     (defseries "Mob City" :kevin)
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Motive" :kevin)
-    (defseries "Mythbusters" :adrian+kevin)
     (defseries "NCIS" :adrian+kevin)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :adrian+kevin)
     (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
     (defseries "Parks and Recreation" :adrian+kevin)
-    (defseries "Penny Dreadful" :kevin :catch-up "S01E01" :remove t)
     (defseries "Person of Interest" :kevin)
+    (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
     (defseries "Phineas and Furb" :adrian)
     (defseries "Ray Donovan" :kevin)
     (defseries "Rick and Morty" :adrian+kevin)
@@ -838,24 +846,23 @@ Catch up series to a specific episode:
     (defseries "Rosemary's Baby" :anh+kevin)
     (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
-    (defseries "Silicon Valley" :kevin :catch-up "S01E01" :remove t)
-    (defseries "Sirens (2014)" :kevin :catch-up "S01E01")
+    (defseries "Sirens (2014)" :kevin)
     (defseries "The Americans (2013)" :kevin)
     (defseries "The Blacklist" :adrian+kevin)
-    (defseries "The Burn" :kevin)
+    (defseries "The Burn" :kevin :remove t)
     (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
     	   :date-based t)
     (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
     	   :date-based t)
     (defseries "The Good Wife" :kevin)
     (defseries "The Graham Norton Show" :kevin)
+    (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
     (defseries "The Newsroom (2012)" :kevin)
     (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-    (defseries "The White Queen" :kevin :remove t)
     (defseries "Top Gear (US)" :adrian+kevin :quality :high)
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Top of the Lake" :anh+kevin)
@@ -864,7 +871,7 @@ Catch up series to a specific episode:
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
-    (defseries "Would I Lie To You" :adrian+kevin)
+    (defseries "Would I Lie To You?" :adrian+kevin :catch-up "S08E01")
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; BTN
