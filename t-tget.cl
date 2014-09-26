@@ -482,4 +482,40 @@
 	  (test '(6 . 2) (series-complete-to (episode-series ep))
 		:test #'equal
 		:fail-info "test 6.5"))))
+    
+;;;; inconsistent naming: switching from ep numbering & date numbering.  If
+;;;; ep #'s are there, use those
+    #+ignore
+
+;;;; need to figure out the right way to deal with this one....
+    
+;;;; maybe signal a warning when an ep-based name is found for a date-based
+;;;; series??? (or vice versa)
+    
+    (let ((e1 (convert-rss-to-episode
+	       :tvtorrents.com
+	       #S(rss-item :source :tvtorrents.com
+			   :title "Last Week Tonight with John Oliver - 1x14 - Episode 14 (.mp4) (Repack)"
+			   :link "http://torrent.tvtorrents.com/FetchTorrentServlet?info_hash=3a88c4a7c21d1b2b1eec230ab941254ab3aa269f&digest=0a8994688db11176c1a3ec73737ed3d0cfccf25a&hash=c4811c3cd8c978b652b9964e44b01ad99982ba6f"
+			   :guid nil
+			   :comments "http://www.tvtorrents.com/loggedin/torrent.do?info_hash=3a88c4a7c21d1b2b1eec230ab941254ab3aa269f"
+			   :pub-date "Tue, 12 Aug 2014 05:49:03 +0000"
+			   :description "Show Name:Last Week Tonight with John Oliver; Show Title: Episode 14 (.mp4) (Repack); Season: 1; Episode: 14; Filename: Last.Week.Tonight.With.John.Oliver.2014.08.10.REPACK.HDTV.x264-BAJSKORV.mp4;"
+			   :type "application/x-bittorrent"
+			   :length "201587214")))
+	  (e2 (convert-rss-to-episode
+	       :tvtorrents.com
+	       #S(rss-item :source :tvtorrents.com
+			   :title "Last Week Tonight with John Oliver - 1x15 - Episode 15 (720p .mkv)"
+			   :link "http://torrent.tvtorrents.com/FetchTorrentServlet?info_hash=4d1b44b442ccdba4ba24e9d1dfe3394ca3d9dd82&digest=0a8994688db11176c1a3ec73737ed3d0cfccf25a&hash=2c1c500c1fd2fc45a7af0886b379a35488c31086"
+			   :guid nil
+			   :comments "http://www.tvtorrents.com/loggedin/torrent.do?info_hash=4d1b44b442ccdba4ba24e9d1dfe3394ca3d9dd82"
+			   :pub-date "Mon, 18 Aug 2014 09:34:40 +0000"
+			   :description "Show Name:Last Week Tonight with John Oliver; Show Title: Episode 15 (720p .mkv); Season: 1; Episode: 15; Filename: Last.Week.Tonight.With.John.Oliver.S01E15.720p.HDTV.x264-BATV.mkv;"
+			   :type "application/x-bittorrent"
+			   :length "902990079")))
+	  )
+      )
+    
+    
     ))
