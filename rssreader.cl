@@ -89,7 +89,7 @@
   ((http-code :initarg :http-code :reader feed-error-httpcode
 	      :initform nil)))
 
-(defun read-feed (url &key timeout)
+(defun read-feed (url &key timeout verbose)
   ;;
   ;;* exported
   ;;
@@ -108,10 +108,19 @@
     (declare (ignore headers))
     
     (if* (not (eq 200 code))
-       then (error 'feed-error
-		   :http-code code
-		   :format-control "Accessing url ~s gave http response code ~s"
-		   :format-arguments (list url code)))
+       then (if* verbose
+	       then (error
+		     'feed-error
+		     :http-code code
+		     :format-control "Accessing URL ~s gave response ~s"
+		     :format-arguments (list url code))
+	       else (error
+		     'feed-error
+		     :http-code code
+		     :format-control "Accessing feed from ~s gave response ~s"
+		     :format-arguments (list (net.uri:uri-host
+					      (net.uri:parse-uri url))
+					     code))))
     
     (parse-feed content)))
 

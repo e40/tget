@@ -113,7 +113,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.7")
+(defvar *tget-version* "2.7.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2819,7 +2819,8 @@ transmission-remote ~a:~a ~
 		  then (with-verbosity 1
 			 (format t ";; reading feed from ~a..."
 				 (net.uri:uri-host (net.uri:parse-uri url))))
-		       (prog1 (net.rss:read-feed url :timeout *http-timeout*)
+		       (prog1 (net.rss:read-feed url :timeout *http-timeout*
+						 :verbose (> *verbose* 1))
 			 (with-verbosity 1
 			   (format t "done.~%")))
 		elseif file
