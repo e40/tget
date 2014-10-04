@@ -7,21 +7,42 @@
 #  BTN requires 24 hours, so add 3 hours slop, just in case
 seedmin=$(( 3600 * 27 )) 
 
-# Be noisy
-verbose=xxx
 ###############################################################################
 
 set -eu
 
-temp=/tmp/temp$$
-temp2=/tmp/temp2$$
-rm -f $temp $temp2
-trap "/bin/rm -f $temp $temp2" 0
+###############################################################################
 
-function die()
+function usage()
 {
-    echo $* 1>&2
+    if test -n "${*-}"; then
+	echo "Error: $*" 1>&2
+    fi
+    cat 1>&2 <<EOF
+Usage: $0 [-r] [-q]
+
+-r :: remove torrents that are "done"
+-q :: only print essential information
+
+Torrents are "done" that are finished seeding or have seeded
+for the minimum amount of time ($(print_time $seedmin)).
+EOF
     exit 1
+}
+
+function errordie()
+{
+    if [ -n "${*-}" ]; then
+	echo "Error: $*" 1>&2
+    fi
+    exit 1
+}
+
+function print_time()
+{
+    local i=$1
+    ((i/=60, i/=60, i/=24, days=i%24))
+    echo ${days}d $(date -u -d @$1 +"%Hh %Mm %Ss")
 }
 
 function tm()
@@ -39,18 +60,33 @@ function float_ge()
 	return 1
     fi
 }
-float_ge 1.04 1.04 || die float_ge failed test 1
-float_ge 1.041 1.04 || die float_ge failed test 1
-float_ge 1.05 1.04 || die float_ge failed test 1
-float_ge 1.04 1.041 && die float_ge failed test 1
-float_ge 1.04 1.0401 && die float_ge failed test 1
-float_ge 1.03999 1.04 && die float_ge failed test 1
+float_ge 1.04 1.04 || errordie float_ge failed test 1
+float_ge 1.041 1.04 || errordie float_ge failed test 2
+float_ge 1.05 1.04 || errordie float_ge failed test 3
+float_ge 1.04 1.041 && errordie float_ge failed test 4
+float_ge 1.04 1.0401 && errordie float_ge failed test 5
+float_ge 1.03999 1.04 && errordie float_ge failed test 6
+
+cron=
+quiet=
+remove=
+
+while [ $# -gt 0 ]; do
+    case $1 in
+	--help) usage ;;
+	-r) remove=$1 ;;
+	-q) quiet=$1 ;;
+	-*) usage ;;
+	*)  usage ;;
+    esac
+    shift
+done
 
 function remove_torrent()
 {
-    return 0
-
-##### eventually:
+    if [ ! "$remove" ]; then
+	return 0
+    fi
 
     if tm -t $1 -r > $temp2 2>&1; then
 	:
@@ -65,12 +101,12 @@ function remove_torrent()
     fi
 }
 
-function print_time()
-{
-    local i=$1
-    ((i/=60, i/=60, i/=24, days=i%24))
-    echo $days days and $(date -u -d @$1 +"%T")
-}
+###############################################################################
+
+temp=/tmp/temp$$
+temp2=/tmp/temp2$$
+rm -f $temp $temp2
+trap "/bin/rm -f $temp $temp2" 0
 
 now=$(date +"%s")
 # Our timezone
@@ -78,22 +114,13 @@ zone=$(date +"%Z")
 
 if tm -t all -si > $temp; then
     dsr=$(grep 'Default seed ratio limit:' $temp | awk '{print $5}')
-    #echo Default seed ratio is $dsr
 else
-    die transmission failed 1
+    errordie transmission failed 1
 fi
 
 if ! tm -t all --info > $temp; then
-    die transmission failed 2
+    errordie transmission failed 2
 fi
-
-# The fields we need for each torrent
-#  Id:
-#  Name:
-#  Percent Done:
-#  Ratio: 
-#  Ratio Limit:
-#  Date finished:
 
 state=START
 
@@ -108,10 +135,9 @@ while read line; do
 	word1=
     fi
 
-    #echo word0=$word0
     case $state in
 	START) # we must be at the start of an entry
-	    [ "$word0" != "NAME" ] && die expected NAME
+	    [ "$word0" != "NAME" ] && errordie expected NAME
 	    state=ID
 	    continue
 	    ;;
@@ -134,7 +160,7 @@ while read line; do
 	    ;;
 	PDONE)
 	    [ "$word0" != "Percent" ] && continue
-	    [ "$word1" != "Done:" ] && die expected done:
+	    [ "$word1" != "Done:" ] && errordie expected Done:
 	    if [ "${a[2]}" = "100%" ]; then
 		state=RATIO
 	    else
@@ -151,7 +177,7 @@ while read line; do
 	    ;;
 	RATIOLIM)
 	    [ "$word0" != "Ratio" ] && continue
-	    [ "$word1" != "Limit:" ] && die expected done:
+	    [ "$word1" != "Limit:" ] && errordie expected Limit:
 	    if [ "${a[2]}" = "Default" ]; then
 		ratio_limit=$dsr
 	    else
@@ -179,7 +205,7 @@ while read line; do
 	    # transmission-remote doesn't give us a "seeding complete"
 	    # indication, so we use "Ratio" >= "Ratio Limit".
 	    if float_ge $ratio $ratio_limit; then
-		echo -e "Seeding is complete for:\\n  $name\\n"
+		echo -e "Seeding is complete for (ratio is $ratio):\\n  $name\\n"
 		remove_torrent $id $name
 		state=SKIP
 		continue
@@ -192,7 +218,7 @@ while read line; do
 	    if [ $seedsecs -gt $seedmin ]; then
 		echo -e "Torrent has seeded enough ($(print_time $seedsecs)):\\n  $name\\n"
 		remove_torrent $id $name
-	    elif [ "$verbose" ]; then
+	    elif [ ! "$quiet" ]; then
 		left=$(($seedmin - $seedsecs))
 		echo -e "Torrent has $(print_time $left) of seeding left:\\n  $name\\n"
 	    fi
@@ -204,6 +230,6 @@ done <<< "$(cat $temp)"
 
 case $state in
     START|SKIP) ;;
-    *)  die expected state START got $state
+    *)  errordie expected state START or SKIP got $state
 	;;
 esac
