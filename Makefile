@@ -60,6 +60,7 @@ build: FORCE
 ifdef INSTALL_CONFIG_FILE
 	cp -p $(INSTALL_CONFIG_FILE) tget/config.cl
 endif
+	cp -p seedstatus.sh tget
 	@if [ README.md -nt README.html ]; then \
 	    echo Building README.html; \
 	    ./markdown-to-html.cl; \
