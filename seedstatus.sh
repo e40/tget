@@ -223,7 +223,9 @@ while read line; do
 		remove_torrent $id $name
 	    elif [ ! "$quiet" ]; then
 		left=$(($seedmin - $seedsecs))
-		echo -e "Torrent has $(print_time $left) of seeding left:\\n  $name\\n"
+		echo -e "Incomplete:\\n  $name"
+		echo -e "    seeding time left: $(print_time $left)"
+		echo -e "    ratio $ratio, target $ratio_limit"
 	    fi
 	    state=SKIP
 	    continue
