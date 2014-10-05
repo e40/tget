@@ -165,6 +165,9 @@ while read line; do
 		state=RATIO
 	    else
 		# Not finished, so skip it
+		if [ ! "$quiet" ]; then
+		    echo -e "Torrent is not finished (${a[2]})\\n  $name\\n"
+		fi
 		state=SKIP
 	    fi
 	    continue
