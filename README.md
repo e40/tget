@@ -1,4 +1,4 @@
-# tget 2.7.1 - torrent get
+# tget 2.7.2 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -808,8 +808,8 @@ Catch up series to a specific episode:
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight")
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin)
-    (defseries "Black Jesus" :kevin :catch-up "S01E03")
     (defseries "Black Mirror" :kevin)
+    (defseries "Black-ish" :adrian+kevin :catch-up "S01E01")
     (defseries "Boardwalk Empire" :kevin-ppv)
     (defseries "Brooklyn Nine-Nine" :kevin)
     (defseries "Childrens Hospital (US)" :kevin)
@@ -818,7 +818,6 @@ Catch up series to a specific episode:
     (defseries "Cosmos: A Spacetime Odyssey" :adrian+kevin)
     (defseries "Doc Martin" :anh+kevin)
     (defseries "Downton Abbey" :anh)
-    (defseries "Dracula (2013)" :kevin)
     (defseries "Dragons Den (UK)" :kevin)
     (defseries "Drunk History" :kevin :catch-up "S02")
     (defseries "Eagleheart" :adrian+kevin)
@@ -832,9 +831,6 @@ Catch up series to a specific episode:
     (defseries "Intruders" :kevin :catch-up "S01E02")
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
-    (defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
-      ;; All there is on TVT
-      :quality :indi)
     (defseries "Last Week Tonight with John Oliver" :kevin-ppv
       :subdir "Last.Week.Tonight.With.John.Oliver")
     (defseries "Longmire" :kevin)
@@ -844,10 +840,7 @@ Catch up series to a specific episode:
     (defseries "Mad Men" :kevin)
     (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin)
     (defseries "Midsomer Murders" :anh)
-    (defseries "Mob City" :kevin)
     (defseries "Modern Family" :adrian+kevin)
-    (defseries "Motive" :kevin)
-    (defseries "NCIS" :adrian+kevin)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :adrian+kevin)
@@ -855,23 +848,19 @@ Catch up series to a specific episode:
     (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
     (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
-    (defseries "Phineas and Furb" :adrian)
     (defseries "Ray Donovan" :kevin-ppv)
     (defseries "Rick and Morty" :adrian+kevin)
     (defseries "Ridiculousness" :adrian+kevin)
-    (defseries "Rosemary's Baby" :anh+kevin)
     (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
     (defseries "Sirens (2014)" :kevin)
     (defseries "The Americans (2013)" :kevin)
-    (defseries "The Blacklist" :adrian+kevin)
-    (defseries "The Burn" :kevin :remove t)
     (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
     	   :date-based t)
     (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
     	   :date-based t
     	   :aliases ("The Daily Show"))
-    (defseries "The Good Wife" :kevin)
+    (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Mentalist" :adrian+kevin)

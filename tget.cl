@@ -113,7 +113,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.7.1")
+(defvar *tget-version* "2.7.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -1942,9 +1942,16 @@ Catch up series to a specific episode:
     ;; If it won't respond in this number of seconds, give up
     120)
 
+;; If a feed gets this many errors, then we skip it
+(defvar *error-skip-count* 2)
+
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
 			    ep-printer
-			    group-process)
+			    group-process
+			    temp
+			    (skip-count
+			     ;; (feed . count)
+			     '()))
   (tget-commit *main*)
   (tget-commit *temp*)
   (doclass (group (find-class 'group) :db *main*)
@@ -1970,15 +1977,20 @@ Catch up series to a specific episode:
       (dolist (rss-url (if* (consp (group-rss-url group))
 			  then (group-rss-url group)
 			  else (list (group-rss-url group))))
+	(when (null (setq temp (assoc rss-url skip-count :test #'string=)))
+	  (push (setq temp (cons rss-url 0)) skip-count))
 	(handler-case
-	    (prog1 (mapcar 'rss-to-episode
-			   (fetch-feed rss-url (group-debug-feed group)))
-	      (setq group-process t))
+	    (when (< (cdr temp) *error-skip-count*)
+	      (prog1 (mapcar 'rss-to-episode
+			     (fetch-feed rss-url (group-debug-feed group)))
+		(setq group-process t)))
 	  (net.rss:feed-error (c)
 	    (format t "~&~a~%" c)
 	    ;; reduce *http-timeout* dramatically, since we already got an
 	    ;; error
-	    (setq *http-timeout* 30))))
+	    (setq *http-timeout* 30)
+	    ;; incf skip-count
+	    (incf (cdr temp)))))
       (when (null group-process)
 	;; None of the feeds for this group worked, so skip to next
 	(go next-feed))

@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="user-content-tget-271---torrent-get" class="anchor" href="#tget-271---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.7.1 - torrent get</h1>
+<a name="user-content-tget-272---torrent-get" class="anchor" href="#tget-272---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.7.2 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -37,7 +37,13 @@ I'm always looking at adding more.</p>
 <h3>
 <a name="user-content-table-of-contents" class="anchor" href="#table-of-contents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Table of Contents</h3>
 
-<p><strong><a href="#how-it-works">How it works</a></strong><br><strong><a href="#installation">Installation</a></strong><br><strong><a href="#getting-started">Getting started</a></strong><br><strong><a href="#configuration">Configuration</a></strong><br><strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br><strong><a href="#usage">Usage</a></strong><br><strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
+<p><strong><a href="#how-it-works">How it works</a></strong><br>
+<strong><a href="#installation">Installation</a></strong><br>
+<strong><a href="#getting-started">Getting started</a></strong><br>
+<strong><a href="#configuration">Configuration</a></strong><br>
+<strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br>
+<strong><a href="#usage">Usage</a></strong><br>
+<strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
 
 <h2>
 <a name="user-content-how-it-works" class="anchor" href="#how-it-works" aria-hidden="true"><span class="octicon octicon-link"></span></a>How it works</h2>
@@ -49,7 +55,9 @@ I'm always looking at adding more.</p>
 <li><p>fetching the RSS feeds defined by the configuration file, and</p></li>
 <li><p>downloading torrent files for episodes never seen before, which meet
 the criteria defined by the configuration file.</p></li>
-</ul><p>To accomplish the above, <em>tget</em> maintains a database of series and
+</ul>
+
+<p>To accomplish the above, <em>tget</em> maintains a database of series and
 episodes, with various data about them.</p>
 
 <p>Here are some details about the above phases:</p>
@@ -90,7 +98,9 @@ command line tool used to control <a href="http://www.transmissionbt.com/" title
 cross-platform BitTorrent client) or put in a specific directory
 watched by your BitTorrent client.  See the example configuration
 file for information on how to use either of these methods.</p></li>
-</ul><h2>
+</ul>
+
+<h2>
 <a name="user-content-installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
 
 <p><em>tget</em> has been tested on Linux and Mac OS X and depends on two other
@@ -177,7 +187,9 @@ you want to download.  A series is associated with a group, at a
 minimum, and can override the quality of what you want to download.
 For example, you may want to download <em>720p</em> versions of <em>Top Gear</em>,
 but would accept a lower resolution of other shows.</p></li>
-</ul><p>That's the big picture.  There is an example configuration file below.
+</ul>
+
+<p>That's the big picture.  There is an example configuration file below.
 It is fully annotated and is a good place to start.</p>
 
 <h3>
@@ -213,11 +225,13 @@ like this:</p>
 <p>The <code>:host</code> part must come before the value.</p>
 
 <table>
-<thead><tr>
+<thead>
+<tr>
 <th align="center">keyword(s)</th>
 <th align="center">
 <em>transmission-remote</em> argument</th>
-</tr></thead>
+</tr>
+</thead>
 <tbody>
 <tr>
 <td align="center">
@@ -266,7 +280,9 @@ like this:</p>
 <td align="center">See below</td>
 </tr>
 </tbody>
-</table><p>The <code>:ssh-user</code> and <code>:ssh-identity</code> are the user and identity file for
+</table>
+
+<p>The <code>:ssh-user</code> and <code>:ssh-identity</code> are the user and identity file for
 SSH.  They are used to SSH to the remote machine and make sure
 directories exist.</p>
 
@@ -502,7 +518,9 @@ original form.</p>
 
 <p>Print full help text and exit.</p>
 </li>
-</ul><p>The following are arguments controlling primary behavior:</p>
+</ul>
+
+<p>The following are arguments controlling primary behavior:</p>
 
 <ul>
 <li>
@@ -606,7 +624,9 @@ downloaded episode and incrementing it by 1.</p>
 <p>Note: this has no effect on date-based series.  See the <code>:date-based</code>
 option to <code>defseries</code>.</p>
 </li>
-</ul><p>The following options augment the options above or have the stated side
+</ul>
+
+<p>The following options augment the options above or have the stated side
 effects:</p>
 
 <ul>
@@ -630,6 +650,7 @@ companion argument:</p>
 <li>
 <code>schema-update</code> - when the schema changes</li>
 </ul>
+
 <p>The default is to make backups for all conditions above.</p>
 </li>
 <li>
@@ -697,7 +718,9 @@ backup to be performed before the reset.</p>
 <p>Verbose mode.  For now, it makes <code>--dump-episodes</code> print detailed
 information on episodes.</p>
 </li>
-</ul><p>Examples:</p>
+</ul>
+
+<p>Examples:</p>
 
 <p>Toss current database and catch up on shows released in the last 180 days
 marking them all as `downloaded'</p>
@@ -941,8 +964,8 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight")
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin)
-(defseries "Black Jesus" :kevin :catch-up "S01E03")
 (defseries "Black Mirror" :kevin)
+(defseries "Black-ish" :adrian+kevin :catch-up "S01E01")
 (defseries "Boardwalk Empire" :kevin-ppv)
 (defseries "Brooklyn Nine-Nine" :kevin)
 (defseries "Childrens Hospital (US)" :kevin)
@@ -951,7 +974,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Cosmos: A Spacetime Odyssey" :adrian+kevin)
 (defseries "Doc Martin" :anh+kevin)
 (defseries "Downton Abbey" :anh)
-(defseries "Dracula (2013)" :kevin)
 (defseries "Dragons Den (UK)" :kevin)
 (defseries "Drunk History" :kevin :catch-up "S02")
 (defseries "Eagleheart" :adrian+kevin)
@@ -965,9 +987,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Intruders" :kevin :catch-up "S01E02")
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin)
-(defseries "Kung Fu Panda: Legends of Awesomeness" :adrian
-  ;; All there is on TVT
-  :quality :indi)
 (defseries "Last Week Tonight with John Oliver" :kevin-ppv
   :subdir "Last.Week.Tonight.With.John.Oliver")
 (defseries "Longmire" :kevin)
@@ -977,10 +996,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Mad Men" :kevin)
 (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin)
 (defseries "Midsomer Murders" :anh)
-(defseries "Mob City" :kevin)
 (defseries "Modern Family" :adrian+kevin)
-(defseries "Motive" :kevin)
-(defseries "NCIS" :adrian+kevin)
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :adrian+kevin)
@@ -988,23 +1004,19 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
 (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
-(defseries "Phineas and Furb" :adrian)
 (defseries "Ray Donovan" :kevin-ppv)
 (defseries "Rick and Morty" :adrian+kevin)
 (defseries "Ridiculousness" :adrian+kevin)
-(defseries "Rosemary's Baby" :anh+kevin)
 (defseries "Shark Tank" :kevin)
 (defseries "Sherlock" :kevin)
 (defseries "Sirens (2014)" :kevin)
 (defseries "The Americans (2013)" :kevin)
-(defseries "The Blacklist" :adrian+kevin)
-(defseries "The Burn" :kevin :remove t)
 (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
        :date-based t)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
        :date-based t
        :aliases ("The Daily Show"))
-(defseries "The Good Wife" :kevin)
+(defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin)
 (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
 (defseries "The Mentalist" :adrian+kevin)
@@ -1066,6 +1078,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "8 Out of 10 Cats Does Countdown"
     :btn-adrian+kevin :quality :high-any-source)
 </code></pre>
+
 </div>
 </body>
 </html>
