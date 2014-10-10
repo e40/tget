@@ -1,11 +1,20 @@
 #! /bin/bash
+#
+# Determine seed status and possibly remove torrents from Transmission.
+#
+# TODO:
+#  - BTN season torrents must be seeded for 1 week... how to tell
+#    them apart from the rest???
+#  - MMA-TRACKER needs longer than 24 hours to seem, often.
+#    It would be nice to seed those for a 4 days.
 
 ###############################################################################
 ## user tweakable variables
 
 # Minimum seed time in seconds
-#  BTN requires 24 hours, so add 3 hours slop, just in case
-seedmin=$(( 3600 * 27 )) 
+#  BTN requires 24 hours, seasons 7 days
+#  MMA Tracker is hard to fully seed
+seedmin=$(( 3600 * 24 * 7 )) 
 
 ###############################################################################
 
@@ -74,6 +83,10 @@ remove=
 while [ $# -gt 0 ]; do
     case $1 in
 	--help) usage ;;
+	--info)
+	    tm -t all --info
+	    exit 0
+	    ;;
 	-r) remove=$1 ;;
 	-q) quiet=$1 ;;
 	-*) usage ;;
@@ -183,6 +196,8 @@ while read line; do
 	    [ "$word1" != "Limit:" ] && errordie expected Limit:
 	    if [ "${a[2]}" = "Default" ]; then
 		ratio_limit=$dsr
+	    elif [ "${a[2]}" = "-1.00" ]; then
+		ratio_limit=9999.0
 	    else
 		ratio_limit=${a[2]}
 	    fi
@@ -223,9 +238,10 @@ while read line; do
 		remove_torrent $id $name
 	    elif [ ! "$quiet" ]; then
 		left=$(($seedmin - $seedsecs))
-		echo -e "Incomplete:\\n  $name"
+		echo -e "$name"
+		echo -e "  Incomplete:"
 		echo -e "    seeding time left: $(print_time $left)"
-		echo -e "    ratio $ratio, target $ratio_limit"
+		echo -e "    ratio $ratio, target $ratio_limit\\n"
 	    fi
 	    state=SKIP
 	    continue
