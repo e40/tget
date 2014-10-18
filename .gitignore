@@ -2,10 +2,7 @@
 *.in
 *.lxml
 *.out
-/BUILD/
 /Makefile.local
-/RPMS/
-/SRPMS/
 /archive.after
 /archive.before
 /build.tmp
@@ -16,3 +13,5 @@
 /tget/
 /ep.log
 /rss.log
+/bittorrent/
+/seedstatus/
