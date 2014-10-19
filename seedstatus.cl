@@ -46,7 +46,7 @@
   ;;
   (dolist (line (tm "-t" "all" "--info"))
     (setq words (split-re " +" line))
-    ;;(format t "~s line=~s~%" state words)
+    (and *debug* (format t "~s line=~s~%" state words))
    :top
     (ecase state
       (:start
