@@ -1,4 +1,4 @@
-# tget 2.8.0 - torrent get
+# tget 2.8.1 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in

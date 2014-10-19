@@ -85,9 +85,7 @@
   ;;(require :acache "acache-2.2.2.fasl")
   (require :acache "acache-2.2.3.fasl")
   ;;(require :acache "acache-3.0.0.fasl")
-  (require :autozoom)
-  
-  (load "bittorrent/bittorrent_full.fasl"))
+  (require :autozoom))
 
 (defpackage :user
   (:use #:excl #:util.date-time #:excl.shell)
@@ -115,7 +113,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.8.0")
+(defvar *tget-version* "2.8.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2497,22 +2495,10 @@ transmission-remote ~a:~a ~
 
 (defun manual-add-file (torrent)
   ;; This attempts to add TORRENT manually.
-  (let* ((dict (bdecode-file torrent))
-	 (info (or (dict-get "info" dict)
-		   (error "couldn't find info in torrent")))
-	 (pub-date (excl.osi:unix-to-universal-time
-		    (dict-get "creation date" dict)))
-	 ;; Don't use this.  See comment below.
-	 ;;(filename (dict-get "name" info))
-	 (length (dict-get "length" info))
-	 series)
+  (let (series)
     (multiple-value-bind (series-name season episode repack container
 			  source codec resolution)
-	(extract-episode-info-from-filename
-	 ;; Use `torrent' instead of `filename' because we have control
-	 ;; over the format of `torrent' and can change it if it doesn't
-	 ;; work.
-	 (file-namestring torrent))
+	(extract-episode-info-from-filename (file-namestring torrent))
       (declare (ignore repack))
       (when (null
 	     (multiple-value-setq (series series-name)
@@ -2526,9 +2512,9 @@ transmission-remote ~a:~a ~
        :transient t
        :full-title series-name
        :torrent-url (namestring torrent) ;; can be a URL or filename
-       :pub-date pub-date
+       :pub-date nil
        :type :manual
-       :length length
+       :length nil
 
        :series series
        :series-name series-name
