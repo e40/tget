@@ -85,7 +85,9 @@
   ;;(require :acache "acache-2.2.2.fasl")
   (require :acache "acache-2.2.3.fasl")
   ;;(require :acache "acache-3.0.0.fasl")
-  (require :autozoom))
+  (require :autozoom)
+  
+  (load "bittorrent/bittorrent_full.fasl"))
 
 (defpackage :user
   (:use #:excl #:util.date-time #:excl.shell)
@@ -113,7 +115,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.7.2")
+(defvar *tget-version* "2.8.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -820,6 +822,7 @@
 Primary behavior determining arguments (one of these must be given):
 
     --run
+    --add
     --catch-up   
     --catch-up-series series-episode-name
     --check-database
@@ -870,6 +873,14 @@ The following are arguments controlling primary behavior:
 
   The primary mode of operation, whereby RSS feeds are retrieved, searched
   for new episodes and those episode torrents downloaded.
+
+* `--add directory`
+
+  Manually add the `.torrent` files in `directory`.  This circumvents any
+  matching and assumes they episodes should be downloaded.  The series name,
+  episode and season numbers are taken directly from the file name.  If
+  the information cannot be extracted, you can rename the files to suit
+  `tget`.
 
 * `--catch-up`
 
@@ -1145,6 +1156,7 @@ Catch up series to a specific episode:
 	     (("help" :long help)
 	      
 ;;;; primary arguments (determine behavior)
+	      ("add" :long add-mode :required-companion)
 	      ("run" :long run-mode)
 	      ("catch-up" :long catch-up-mode)
 	      ("catch-up-series" :long catch-up-series :required-companion)
@@ -1371,6 +1383,30 @@ Catch up series to a specific episode:
 	    elseif compact
 	      then ;; already did that, just exit
 		   (done)
+	    elseif add-mode
+	      then (when (not (probe-file add-mode))
+		     (usage "--add requires an existing directory argument"))
+		   (let ((torrent-files 
+			  (directory
+				(merge-pathnames
+				 #p(:type "torrent")
+				 (pathname-as-directory add-mode))))
+			 (episodes '())
+			 ep)
+		     (dolist (torrent torrent-files)
+		       (with-verbosity 1
+			 (format t ";; Manually adding ~a~%"
+				 (file-namestring torrent)))
+		       (setq ep (manual-add-file torrent))
+		       (when ep (push ep episodes)))
+		     
+		     (download-episodes (query-group-name-to-group :manual)
+					episodes
+					(lambda (ep) (format t "~&~a~%" ep)))
+		     (dolist (ep episodes)
+		       (delete-instance ep))
+		     (tget-commit *temp*)
+		     (tget-commit *main*))
 	    elseif run-mode
 	      then (process-groups)
 	      else (usage "no primary arguments given."))
@@ -1764,6 +1800,8 @@ Catch up series to a specific episode:
 (push '(close-tget-database) sys:*exit-cleanup-forms*)
 
 (defun query-series-name-to-series (name &aux real-name)
+  (with-verbosity 3
+    (format t "query-series-name-to-series: have ~s~%" name))
   (setq real-name (gethash name *series-name-aliases*))
   (when real-name
     (with-verbosity 2
@@ -1773,6 +1811,12 @@ Catch up series to a specific episode:
     (with-verbosity 3
       (format t "query-series-name-to-series: returning ~s~%" s))
     (values s name)))
+
+(defun query-group-name-to-group (name)
+  (let ((g (retrieve-from-index 'group 'name name :db *main*)))
+    (with-verbosity 3
+      (format t "query-group-name-to-group: returning ~s~%" g))
+    (values g name)))
 
 (defun make-episode (&key transient
 			  full-title
@@ -1977,6 +2021,11 @@ Catch up series to a specific episode:
       (dolist (rss-url (if* (consp (group-rss-url group))
 			  then (group-rss-url group)
 			  else (list (group-rss-url group))))
+	(when (null rss-url)
+	  ;; A group with a null :rss-url, which could be a :manual feed.
+	  ;; Ignore it.
+	  (go :skip))
+	
 	(when (null (setq temp (assoc rss-url skip-count :test #'string=)))
 	  (push (setq temp (cons rss-url 0)) skip-count))
 	(handler-case
@@ -1990,7 +2039,9 @@ Catch up series to a specific episode:
 	    ;; error
 	    (setq *http-timeout* 30)
 	    ;; incf skip-count
-	    (incf (cdr temp)))))
+	    (incf (cdr temp))))
+       :skip
+	)
       (when (null group-process)
 	;; None of the feeds for this group worked, so skip to next
 	(go next-feed))
@@ -2442,6 +2493,57 @@ transmission-remote ~a:~a ~
 	      (transmission-host obj)
 	      stdout stderr)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun manual-add-file (torrent)
+  ;; This attempts to add TORRENT manually.
+  (let* ((dict (bdecode-file torrent))
+	 (info (or (dict-get "info" dict)
+		   (error "couldn't find info in torrent")))
+	 (pub-date (excl.osi:unix-to-universal-time
+		    (dict-get "creation date" dict)))
+	 ;; Don't use this.  See comment below.
+	 ;;(filename (dict-get "name" info))
+	 (length (dict-get "length" info))
+	 series)
+    (multiple-value-bind (series-name season episode repack container
+			  source codec resolution)
+	(extract-episode-info-from-filename
+	 ;; Use `torrent' instead of `filename' because we have control
+	 ;; over the format of `torrent' and can change it if it doesn't
+	 ;; work.
+	 (file-namestring torrent))
+      (declare (ignore repack))
+      (when (null
+	     (multiple-value-setq (series series-name)
+	       (query-series-name-to-series series-name)))
+	(with-verbosity 1
+	  (format t "Manual add: unknown series: ~a~%" series-name))
+	(return-from manual-add-file))
+      ;; a series we care about...
+      
+      (make-episode
+       :transient t
+       :full-title series-name
+       :torrent-url (namestring torrent) ;; can be a URL or filename
+       :pub-date pub-date
+       :type :manual
+       :length length
+
+       :series series
+       :series-name series-name
+       :title series-name
+       :season season
+       :episode episode
+       :pretty-epnum (season-and-episode-to-pretty-epnum season episode)
+       
+       :container container
+       :source source
+       :codec codec
+       :resolution resolution))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ssh-command-output (user identity host command-line
 			   &rest args &key &allow-other-keys)
   (apply
@@ -2506,7 +2608,9 @@ transmission-remote ~a:~a ~
 	(if* epnum
 	   thenret
 	   else *max-epnum*))
-      (update-complete-to series season epnum :verbose t :force t))))
+      (update-complete-to series season epnum :verbose t :force t)
+      ;; This needs to be reset, too:
+      (setf (series-discontinuous-episodes series) nil))))
 
 (defvar *re-name+season* "^(.*)(\\s|\\.+)s([0-9]{2,3})")
 (defvar *re-ep-range* "e([0-9]{2,3}).?e([0-9]{2,3})")
@@ -2924,6 +3028,9 @@ transmission-remote ~a:~a ~
 	uncut)
     (declare (ignore-if-unused whole))
 
+    (with-verbosity 4
+      (format t "extract-episode-info-from-filename ~a...~%" filename))
+    
 ;;;; series-name, season, episode
     ;; Start with the series-name, since if we can't get that then we go
     ;; home and the other things don't matter.
@@ -2933,6 +3040,8 @@ transmission-remote ~a:~a ~
 				     :junk-allowed t))
     (when (null series-name)
       ;; we tried... let the info be collected in some other way
+      (with-verbosity 4
+	(format t "  couldn't parse season and ep, aborting~%"))
       (return-from extract-episode-info-from-filename nil))
 
     (setq uncut (match-re "\\.uncut\\." filename :case-fold t))
@@ -2968,6 +3077,8 @@ transmission-remote ~a:~a ~
 	(setq container nil))
       (when (and container
 		 (not (member container *valid-containers* :test #'eq)))
+	(with-verbosity 4
+	  (format t "  ignore invalid container: ~a~%" container))
 	(@log "ignoring invalid container: ~s" container)
 	(setq container nil)))
 
@@ -2997,6 +3108,9 @@ transmission-remote ~a:~a ~
 	 then :1080p
 	 else :sd))
 
+    (with-verbosity 4
+      (format t "  success: ~a ~a ~a~%" series-name season episode))
+    
     (values series-name season episode
 	    (match-re "\\.(repack|proper)\\." filename :case-fold t)
 	    container source codec resolution)))

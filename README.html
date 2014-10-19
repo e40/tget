@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="user-content-tget-272---torrent-get" class="anchor" href="#tget-272---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.7.2 - torrent get</h1>
+<a name="user-content-tget-280---torrent-get" class="anchor" href="#tget-280---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.8.0 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -472,6 +472,7 @@ been run once.</p>
 <p>Primary behavior determining arguments (one of these must be given):</p>
 
 <pre><code>--run
+--add
 --catch-up   
 --catch-up-series series-episode-name
 --check-database
@@ -528,6 +529,15 @@ original form.</p>
 
 <p>The primary mode of operation, whereby RSS feeds are retrieved, searched
 for new episodes and those episode torrents downloaded.</p>
+</li>
+<li>
+<p><code>--add directory</code></p>
+
+<p>Manually add the <code>.torrent</code> files in <code>directory</code>.  This circumvents any
+matching and assumes they episodes should be downloaded.  The series name,
+episode and season numbers are taken directly from the file name.  If
+the information cannot be extracted, you can rename the files to suit
+<code>tget</code>.</p>
 </li>
 <li>
 <p><code>--catch-up</code></p>
@@ -907,7 +917,11 @@ $ tget --catch-up-series "breaking bad s04"
 
 (defvar *eztv-rss* "http://ezrss.it/...")
 
-(defvar *rss-urls* (list *tvt-rss* *eztv-rss*))
+(defvar *btn-rss* "https://broadcasthe.net/...")
+
+(defvar *rss-urls* (list *tvt-rss* *eztv-rss* *btn-rss*))
+
+(defvar *ppv-rss-urls* (list *tvt-rss* *btn-rss*))
 
 (defgroup :adrian
     :rss-url '#.*rss-urls*
@@ -931,7 +945,7 @@ $ tget --catch-up-series "breaking bad s04"
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :kevin-ppv ;; don't use public trackers for this
-    :rss-url *tvt-rss*
+    :rss-url '#.*ppv-rss-urls*
     :debug-feed *tvt-debug-feed*
     :delay *tvt-delay*
     :quality 'my-quality
@@ -951,6 +965,13 @@ $ tget --catch-up-series "breaking bad s04"
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
+(defgroup :manual
+    :rss-url nil
+    :debug-feed nil
+    :delay 0
+    :quality 'my-quality
+    :download-path (merge-pathnames "kevin/" *download-root*))
+
 ;; Use ... :catch-up "S01E02" ... to start a series after the 1st ep
 ;; Use ... :remove t ... to delete a series
 ;; Use ... :subdir "dirname" ... to put the episodes into a subdirectory of
@@ -965,13 +986,13 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin)
 (defseries "Black Mirror" :kevin)
-(defseries "Black-ish" :adrian+kevin :catch-up "S01E01")
+(defseries "Black-ish" :adrian+kevin :catch-up "S01E01"
+       :aliases ("Blackish"))
 (defseries "Boardwalk Empire" :kevin-ppv)
 (defseries "Brooklyn Nine-Nine" :kevin)
 (defseries "Childrens Hospital (US)" :kevin)
 (defseries "Community" :adrian+kevin)
 (defseries "Curb your Enthusiasm" :anh+kevin)
-(defseries "Cosmos: A Spacetime Odyssey" :adrian+kevin)
 (defseries "Doc Martin" :anh+kevin)
 (defseries "Downton Abbey" :anh)
 (defseries "Dragons Den (UK)" :kevin)
@@ -999,8 +1020,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Modern Family" :adrian+kevin)
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
 (defseries "Nathan for You" :adrian+kevin)
-(defseries "Nova" :adrian+kevin)
-(defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
+(defseries "Nova" :kevin)
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
 (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
@@ -1033,7 +1053,8 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
 (defseries "White Collar" :anh+kevin)
-(defseries "Would I Lie To You?" :adrian+kevin :catch-up "S08E01")
+(defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
+       :aliases ("Would I Lie To You"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BTN
@@ -1076,7 +1097,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
 (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
 (defseries "8 Out of 10 Cats Does Countdown"
-    :btn-adrian+kevin :quality :high-any-source)
+    :btn-kevin :quality :high-any-source)
 </code></pre>
 
 </div>

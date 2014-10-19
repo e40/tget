@@ -33,6 +33,8 @@ config.cl: tget-config/config.cl
 all:	default test
 
 build: FORCE
+	test -d bittorrent || git clone https://github.com/e40/bittorrent
+	cd bittorrent; make
 	rm -fr tget build.tmp
 	cat deliver.cl >> build.tmp
 	$(runlisp)
@@ -105,6 +107,11 @@ else
 	@echo There is no DESTDIR defined in Makefile.
 	@exit 1
 endif
+
+###############################################################################
+
+tags: FORCE
+	etags *.cl bittorrent/*.cl
 
 ###############################################################################
 FORCE:

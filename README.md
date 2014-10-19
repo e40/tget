@@ -1,4 +1,4 @@
-# tget 2.7.2 - torrent get
+# tget 2.8.0 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -376,6 +376,7 @@ been run once.
 Primary behavior determining arguments (one of these must be given):
 
     --run
+    --add
     --catch-up   
     --catch-up-series series-episode-name
     --check-database
@@ -423,6 +424,14 @@ The following are arguments controlling primary behavior:
 
   The primary mode of operation, whereby RSS feeds are retrieved, searched
   for new episodes and those episode torrents downloaded.
+
+* `--add directory`
+
+  Manually add the `.torrent` files in `directory`.  This circumvents any
+  matching and assumes they episodes should be downloaded.  The series name,
+  episode and season numbers are taken directly from the file name.  If
+  the information cannot be extracted, you can rename the files to suit
+  `tget`.
 
 * `--catch-up`
 
@@ -751,7 +760,11 @@ Catch up series to a specific episode:
     
     (defvar *eztv-rss* "http://ezrss.it/...")
     
-    (defvar *rss-urls* (list *tvt-rss* *eztv-rss*))
+    (defvar *btn-rss* "https://broadcasthe.net/...")
+    
+    (defvar *rss-urls* (list *tvt-rss* *eztv-rss* *btn-rss*))
+    
+    (defvar *ppv-rss-urls* (list *tvt-rss* *btn-rss*))
     
     (defgroup :adrian
         :rss-url '#.*rss-urls*
@@ -775,7 +788,7 @@ Catch up series to a specific episode:
         :download-path (merge-pathnames "kevin/" *download-root*))
     
     (defgroup :kevin-ppv ;; don't use public trackers for this
-        :rss-url *tvt-rss*
+        :rss-url '#.*ppv-rss-urls*
         :debug-feed *tvt-debug-feed*
         :delay *tvt-delay*
         :quality 'my-quality
@@ -795,6 +808,13 @@ Catch up series to a specific episode:
         :quality 'my-quality
         :download-path (merge-pathnames "anh+kevin/" *download-root*))
     
+    (defgroup :manual
+        :rss-url nil
+        :debug-feed nil
+        :delay 0
+        :quality 'my-quality
+        :download-path (merge-pathnames "kevin/" *download-root*))
+    
     ;; Use ... :catch-up "S01E02" ... to start a series after the 1st ep
     ;; Use ... :remove t ... to delete a series
     ;; Use ... :subdir "dirname" ... to put the episodes into a subdirectory of
@@ -809,13 +829,13 @@ Catch up series to a specific episode:
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin)
     (defseries "Black Mirror" :kevin)
-    (defseries "Black-ish" :adrian+kevin :catch-up "S01E01")
+    (defseries "Black-ish" :adrian+kevin :catch-up "S01E01"
+    	   :aliases ("Blackish"))
     (defseries "Boardwalk Empire" :kevin-ppv)
     (defseries "Brooklyn Nine-Nine" :kevin)
     (defseries "Childrens Hospital (US)" :kevin)
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :anh+kevin)
-    (defseries "Cosmos: A Spacetime Odyssey" :adrian+kevin)
     (defseries "Doc Martin" :anh+kevin)
     (defseries "Downton Abbey" :anh)
     (defseries "Dragons Den (UK)" :kevin)
@@ -843,8 +863,7 @@ Catch up series to a specific episode:
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
-    (defseries "Nova" :adrian+kevin)
-    (defseries "Oliver Stone's Untold History of the United States" :adrian+kevin)
+    (defseries "Nova" :kevin)
     (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
     (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
@@ -877,7 +896,8 @@ Catch up series to a specific episode:
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
     (defseries "White Collar" :anh+kevin)
-    (defseries "Would I Lie To You?" :adrian+kevin :catch-up "S08E01")
+    (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
+    	   :aliases ("Would I Lie To You"))
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; BTN
@@ -920,7 +940,7 @@ Catch up series to a specific episode:
     (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
     (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
     (defseries "8 Out of 10 Cats Does Countdown"
-        :btn-adrian+kevin :quality :high-any-source)
+        :btn-kevin :quality :high-any-source)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
