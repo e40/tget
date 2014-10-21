@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="user-content-tget-281---torrent-get" class="anchor" href="#tget-281---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.8.1 - torrent get</h1>
+<a name="user-content-tget-290---torrent-get" class="anchor" href="#tget-290---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.9.0 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -887,6 +887,12 @@ $ tget --catch-up-series "breaking bad s04"
 
 (defquality :indi :resolution :sd)
 
+(defquality :x264-hdtv-mp4
+    :priority 60
+    :container :mp4
+    :source :hdtv
+    :codec *codec-x264*)
+
 ;; This is a user-defined quality function.
 
 (defun my-quality (episode)
@@ -894,13 +900,15 @@ $ tget --catch-up-series "breaking bad s04"
   ;; If that's not available, then download :high quality after 12 hours
   ;; and :low quality after 2 days.  There are still some shows that never
   ;; get anything but :low, for some episodes.
-  (if* (and (null
-         ;; See if there is an episode with :normal quality.  The
-         ;; :transient keyword is important, since it restricts the
-         ;; search to episodes we have *not* downloaded yet.
-         (query-episode :episode episode :quality :normal :transient t))
-        (eq :high (episode-quality episode))
-        (&gt;= (hours-available episode) 12))
+  (if* (=~ "broadcasthe.net" (episode-torrent-url episode))
+     then :x264-hdtv-mp4
+   elseif (and (null
+        ;; See if there is an episode with :normal quality.  The
+        ;; :transient keyword is important, since it restricts the
+        ;; search to episodes we have *not* downloaded yet.
+        (query-episode :episode episode :quality :normal :transient t))
+           (eq :high (episode-quality episode))
+           (&gt;= (hours-available episode) 12))
      then ;; :normal quality is not available and the :high quality episode
       ;; has been available for 12 hours, then return...
       :high
@@ -1059,11 +1067,16 @@ $ tget --catch-up-series "breaking bad s04"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BTN
 
+(defvar *btn-my-series-feed*
+    "https://broadcasthe.net/...")
+
+(defvar *btn-debug-feed* "tget-test-data/btn.xml")
+
 ;; BTN quality is kinda funky and inconsistent.  Define some different
 ;; qualities for shows from them.
 
 (defquality :high-any-source
-    :priority 40
+    :priority 90
     :codec *codec-x264*
     :resolution :720p)
 
@@ -1072,11 +1085,6 @@ $ tget --catch-up-series "breaking bad s04"
     :container :mp4
     :source '(:pdtv :hdtv)
     :codec *codec-x264*)
-
-(defvar *btn-my-series-feed*
-    "https://broadcasthe.net/...")
-
-(defvar *btn-debug-feed* "tget-test-data/btn.xml")
 
 (defgroup :btn-adrian+kevin
     :rss-url *btn-my-series-feed*

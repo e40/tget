@@ -1,4 +1,4 @@
-# tget 2.8.1 - torrent get
+# tget 2.9.0 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -718,7 +718,7 @@ Catch up series to a specific episode:
     
     (defquality :high
         :priority 40
-        :source :hdtv
+        #|:source :hdtv|#			;allow any source
         :codec *codec-x264* 
         :resolution :720p)
     
@@ -730,6 +730,12 @@ Catch up series to a specific episode:
     
     (defquality :indi :resolution :sd)
     
+    (defquality :x264-hdtv-mp4
+        :priority 60
+        :container :mp4
+        :source :hdtv
+        :codec *codec-x264*)
+    
     ;; This is a user-defined quality function.
     
     (defun my-quality (episode)
@@ -737,13 +743,15 @@ Catch up series to a specific episode:
       ;; If that's not available, then download :high quality after 12 hours
       ;; and :low quality after 2 days.  There are still some shows that never
       ;; get anything but :low, for some episodes.
-      (if* (and (null
-    	     ;; See if there is an episode with :normal quality.  The
-    	     ;; :transient keyword is important, since it restricts the
-    	     ;; search to episodes we have *not* downloaded yet.
-    	     (query-episode :episode episode :quality :normal :transient t))
-    	    (eq :high (episode-quality episode))
-    	    (>= (hours-available episode) 12))
+      (if* (=~ "broadcasthe.net" (episode-torrent-url episode))
+         then :x264-hdtv-mp4
+       elseif (and (null
+    		;; See if there is an episode with :normal quality.  The
+    		;; :transient keyword is important, since it restricts the
+    		;; search to episodes we have *not* downloaded yet.
+    		(query-episode :episode episode :quality :normal :transient t))
+    	       (eq :high (episode-quality episode))
+    	       (>= (hours-available episode) 12))
          then ;; :normal quality is not available and the :high quality episode
     	  ;; has been available for 12 hours, then return...
     	  :high
@@ -902,24 +910,19 @@ Catch up series to a specific episode:
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; BTN
     
+    (defvar *btn-my-series-feed*
+        "https://broadcasthe.net/...")
+    
+    (defvar *btn-debug-feed* "tget-test-data/btn.xml")
+    
     ;; BTN quality is kinda funky and inconsistent.  Define some different
     ;; qualities for shows from them.
-    
-    (defquality :high-any-source
-        :priority 40
-        :codec *codec-x264*
-        :resolution :720p)
     
     (defquality :x264-?dtv-mp4
         :priority 10
         :container :mp4
         :source '(:pdtv :hdtv)
         :codec *codec-x264*)
-    
-    (defvar *btn-my-series-feed*
-        "https://broadcasthe.net/...")
-    
-    (defvar *btn-debug-feed* "tget-test-data/btn.xml")
     
     (defgroup :btn-adrian+kevin
         :rss-url *btn-my-series-feed*
@@ -935,12 +938,12 @@ Catch up series to a specific episode:
         :quality :normal
         :download-path (merge-pathnames "kevin/" *download-root*))
     
-    (defseries "Regular Show" :btn-adrian+kevin :quality :high-any-source)
-    (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
+    (defseries "Regular Show" :btn-adrian+kevin :quality :high)
+    (defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high)
     (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
     (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
     (defseries "8 Out of 10 Cats Does Countdown"
-        :btn-kevin :quality :high-any-source)
+        :btn-kevin :quality :high)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

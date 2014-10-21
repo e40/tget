@@ -2169,7 +2169,9 @@ Catch up series to a specific episode:
 		   (if* (eq (episode-quality ep)
 			    (series-quality series))
 		      then (@log "  quality == series override")
-		      else (@log "  quality != series override")
+		      else (@log "  quality (~a) != series override (~a)"
+				 (episode-quality ep)
+				 (series-quality series))
 			   nil)
 	    elseif (quality-acceptable-p ep quality)
 	      then (@log "  quality is good")
@@ -2951,6 +2953,12 @@ transmission-remote ~a:~a ~
 		   then (month-day-to-ordinal des-season $1 $2)
 		   else (.error "can't parse episode: ~s" des-episode))
 	   else (parse-integer des-episode)))
+      
+      ;; Don't do seasons or complete months
+      (when (or (eq :all des-episode)
+		(eq :complete-month des-episode)
+		(eq :special des-episode))
+	(return-from convert-rss-to-episode))
 
       (multiple-value-setq (series-name season episode repack container
 			    source codec resolution)
@@ -3010,7 +3018,10 @@ transmission-remote ~a:~a ~
 	(rss-title (rss-item-title rss))
 	series series-name pretty-epnum repack container
 	source codec resolution)
-
+    
+    ;; Don't have to worry about season packs in the BTN RSS feed since I
+    ;; exclude them specifically.
+    
     (when (not rss-des)
       ;; some sporting events have no description and only a title.  Ignore
       ;; these.
@@ -3029,15 +3040,15 @@ transmission-remote ~a:~a ~
     (setq repack (match-re "\\.repack\\." rss-title :case-fold t))
     
     (when (=~ #.(concatenate 'simple-string
-		  " ("
-		  (excl:list-to-delimited-string *valid-containers* "|")
-		  ") ")
-	      rss-title :case-fold t)
-      (setq container (intern (string-downcase $1) *kw-package*)))
-    
-    (when (=~ #.(concatenate 'simple-string
 		  " (?i:("
 		  (excl:list-to-delimited-string *valid-containers* "|")
+		  ")) ")
+	      rss-title #|:case-fold t|# ;; doesn't work
+	      )
+      (setq container (intern (string-downcase $1) *kw-package*)))
+    (when (=~ #.(concatenate 'simple-string
+		  " (?i:("
+		  (excl:list-to-delimited-string *valid-sources* "|")
 		  ")) ")
 	      rss-title #|:case-fold t|# ;; doesn't work
 	      )
@@ -3138,6 +3149,9 @@ Episode:\\s*(\\d+)?"
 	series
 	series-name season episode pretty-epnum repack container source
 	codec resolution)
+    
+    ;; Don't have to worry about season packs in the EZTZ RSS feed since
+    ;; there are none.
     
     (with-verbosity 4 (format t "EZTV: ~s~%" rss))
     
