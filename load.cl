@@ -12,7 +12,7 @@
 (setq *verbose* 1)
 (setq *auto-backup* nil)
 
-(dolist (file '("rssreader.cl" "tget.cl" "t-tget.cl"))
+(dolist (file '("rssreader.cl" "utils.cl" "tget.cl" "t-tget.cl"))
   (load (compile-file file)))
 
 (defun opendb (&key reset copy-db compact)

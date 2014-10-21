@@ -3,6 +3,7 @@
 
 (setq excl::*break-on-warnings* t)
 (load "bittorrent/bittorrent_full.fasl")
+(load (compile-file-if-needed "utils.cl"))
 (load (compile-file "transmission.cl"))
 (load (compile-file "seedstatus.cl"))
 
@@ -11,6 +12,7 @@
  "seedstatus/"
  '("bittorrent/bittorrent_full.fasl"
    "transmission.fasl"
+   "utils.fasl"
    "seedstatus.fasl")
  :restart-init-function 'main
  :application-administration '(:resource-command-line "-Q")

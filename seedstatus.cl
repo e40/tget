@@ -2,23 +2,30 @@
 (eval-when (compile eval load)
   (require :anydate)
   (require :osi)
-  (require :shell))
+  (require :shell)
+  (require :tget-utils "utils.fasl"))
 
 (defpackage :seedstatus
   (:use #:common-lisp
 	#:excl
 	#:excl.osi
-	#:excl.shell))
+	#:excl.shell)
+  (:import-from #:cl-user
+		#:with-verbosity
+		#:*verbose*))
 
 (in-package :seedstatus)
 
-(defvar *verbose* t)
-(defvar *debug* nil)
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; user tweakable variables
 
-;; Minimum seed time in seconds: 3 days
+;; Minimum seed time in seconds: 3 days, for torrents that don't have a
+;; tracker-specific rule that takes precedence over this value.
 (defparameter *seedmin* (* 3600 24 3))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar *debug* nil)
 
 (defun tm (&rest args)
   (multiple-value-bind (stdout stderr code)
@@ -84,15 +91,21 @@
   ;; set from info from transmission-remote
   id
   name
+  filename
   percent-done
   ratio
   ratio-limit
   date-finished
+  state
   tracker
   ;; calculated info
   seed-min-time				; nil or a number of seconds to seed
   seeded-for				; how much time seeded
   seed-for				; how much time left to seed
+  series-name
+  season				; season #
+  episode				; episode # or nil
+  seasonp				; (and season (not episode))
   )
 
 (defvar *now* nil)
@@ -109,27 +122,45 @@
 		   (return (read-from-string $1))))
 	       (error "Couldn't find the default seed ration limit")))
 	  btn
-	  mma-tracker)
-  (and *verbose*
-       (format t "Default seed ratio limit: ~,2f~%"
-	       default-seed-ratio))
-  
+	  mma-tracker
+	  print-done
+	  print-other)
+  (with-verbosity 2
+    (format t "Default seed ratio limit: ~,2f~%" default-seed-ratio))    
+
   (setq *now* (get-universal-time))
 
   (dolist (info (init-torrent-data))
     (let* ((data (cdr info))
+	   (name (get-torrent-info "Name" data))
 	   (torrent
 	    (make-torrent
 	     :id (car info)
-	     :name (get-torrent-info "Name" data)
+	     :name name
+	     :filename name
 	     :percent-done (get-torrent-info "Percent Done" data)
 	     :ratio (get-torrent-info "Ratio" data)
 	     :ratio-limit (get-torrent-info "Ratio Limit" data)
 	     :date-finished (get-torrent-info "Date finished" data
-					      :missing-ok t)))) 
+					      :missing-ok t)
+	     :state (get-torrent-info "State" data))))
+      (multiple-value-bind (series-name season episode)
+	  (user::extract-episode-info-from-filename (torrent-filename torrent)
+						    :episode-required nil)
+	(when series-name
+	  (let ((pretty (user::season-and-episode-to-pretty-epnum
+			 season episode)))
+	    (setf (torrent-name torrent)
+	      (format nil "~a ~a" series-name pretty)))
+	  (setf (torrent-series-name torrent) series-name)
+	  (setf (torrent-season torrent) season)
+	  (setf (torrent-episode torrent) episode)
+	  (setf (torrent-seasonp torrent) (and season (null episode)))))
+      
       (when (string/= "100%" (torrent-percent-done torrent))
 	;; skip it since it's not done
-	(and *verbose* (print-torrent torrent :incomplete))
+	(with-verbosity 1
+	  (push (cons torrent :incomplete) print-other))
 	(go :next))
       
 ;;;; Setup torrent data
@@ -155,11 +186,13 @@
 	  (- *now* (torrent-date-finished torrent))))
       
       (setf (torrent-tracker torrent)
-	(user::transmission-filename-to-tracker (torrent-name torrent)
+	(user::transmission-filename-to-tracker (torrent-filename torrent)
 						:debug *debug*))
       
-      (setq btn (match-re "broadcasthe.net" (torrent-tracker torrent)))
-      (setq mma-tracker (match-re "mma-tracker.net" (torrent-tracker torrent)))
+      (when (torrent-tracker torrent)
+	(setq btn (match-re "broadcasthe.net" (torrent-tracker torrent)))
+	(setq mma-tracker
+	  (match-re "mma-tracker.net" (torrent-tracker torrent))))
 
 ;;;; Use torrent data to determine status
       
@@ -170,37 +203,33 @@
 
       ;; Special seeding rules for some sites
       ;;
-      (if* (and btn (= -1.0 (torrent-ratio-limit torrent)))
-	 then ;; This torrent was downloaded with tget, so we know it's not
-	      ;; a season pack (with different seeding rules), set to seed
-	      ;; forever.  The BTN tracker and Transmission often disagree 
-	      ;; on the amount I've uploaded, so set ratio-limit to 1.5 to
-	      ;; be safe.
-	      (setf (torrent-ratio-limit torrent) 1.50)
-	      ;; The rules state you need to seed to 1:1 or 24 hours.  Give
-	      ;; it some slop, to make sure I don't get a H&R
-	      (setf (torrent-seed-min-time torrent) (* 3600 28))
-       elseif btn
-	 then ;; Torrent downloaded manually, and right now we have no way
-	      ;; of telling if it's a season pack or not.  We could do that
-	      ;; from the filename, but we'd need to be very careful to get
-	      ;; it right.  So, set the min seed time to a week + slop.
+      (if* btn
+	 then ;; The BTN tracker and Transmission often disagree on the
+	      ;; amount I've uploaded, so set ratio-limit to 1.5 to be
+	      ;; safe.
+	      (setf (torrent-ratio-limit torrent) 1.50))
+      
+      (if* (and btn (torrent-seasonp torrent))
+	 then ;; Seed for a week + slop 
 	      (setf (torrent-seed-min-time torrent)
 		(+ (* 3600 24 7)
 		   (* 3600 6)))
+       elseif btn
+	 then ;; The rules state you need to seed to 1:1 or 24 hours.  Give
+	      ;; it some slop, to make sure I don't get a H&R
+	      (setf (torrent-seed-min-time torrent) (* 3600 28))
        elseif mma-tracker
-	 then ;; Hard to seed stuff here, so set the seed time to 4 days
-	      ;; and the ratio-limit to 2.0, so I can get some credits
-	      ;; built up, in case I can seed.
-	      (setf (torrent-ratio-limit torrent) 2.0)
-	      (setf (torrent-seed-min-time torrent) (* 3600 24 4)))
+	 then ;; Hard to seed stuff here, so seed longer.
+	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
+	      (setf (torrent-ratio-limit torrent) 1.5))
       
       ;; First, determine if seeding is complete.
       ;; transmission-remote doesn't give us a "seeding complete"
       ;; indication, so we use "Ratio" >= "Ratio Limit".
-      (when (>= (torrent-ratio torrent)
-		(torrent-ratio-limit torrent))
-	(and *verbose* (print-torrent torrent :complete-ratio))
+      (when (or (>= (torrent-ratio torrent)
+		    (torrent-ratio-limit torrent))
+		(string= "Finished" (torrent-state torrent)))
+	(push (cons torrent :complete-ratio) print-done)
 	(remove-torrent torrent)
 	(go :next))
 
@@ -212,18 +241,88 @@
 	       ;; Prefer the torrent-specific value over the global one
 	       (torrent-seed-min-time torrent)
 	       *seedmin*))
-	 then (print-torrent torrent :complete-time)
+	 then (push (cons torrent :complete-time) print-done)
 	      (remove-torrent torrent)
-       elseif *verbose*
-	 then (setf (torrent-seed-for torrent)
-		(- (or (torrent-seed-min-time torrent) *seedmin*)
-		   (torrent-seeded-for torrent)))
-	      (print-torrent torrent :seeding)))
+	 else (with-verbosity 1
+		(setf (torrent-seed-for torrent)
+		  (- (or (torrent-seed-min-time torrent) *seedmin*)
+		     (torrent-seeded-for torrent)))
+		(push (cons torrent :seeding) print-other))))
    :next
-    ))
+    )
 
-(defun relative-time-formatter (seconds)
-  (if* (> seconds #.(* 3600 24))
+  (when print-done
+    (setq print-done (nreverse print-done))
+    (format t "These torrents are complete:~%~%")
+    (let ((header t))
+      (dolist (item print-done)
+	(destructuring-bind (torrent . status) item
+	  (print-torrent torrent status :brief t :header header)
+	  (setq header nil))) ))
+  
+  (when print-other
+    (setq print-other (nreverse print-other))
+    (format t "~%These torrents are incomplete:~%~%")
+    (let ((header t))
+      (dolist (item print-other)
+	(destructuring-bind (torrent . status) item
+	  (print-torrent torrent status :brief t :header header)
+	  (setq header nil))))))
+
+(defun print-torrent (torrent status
+		      &key brief header
+		      &aux (name (torrent-name torrent)))
+  (and *debug* (format t "~a~%" torrent))
+  (cond
+   (brief
+    (when header
+      (format t "~36a~6a~6a~12a~12a~%"
+	      "name" "%done" "ratio" "seeded" "left"))
+    (format t "~36a~6a~@[~6a~]~@[~12a~]~@[~12a~]~%"
+	    name
+	    (torrent-percent-done torrent)
+	    (when (not (eq :incomplete status))
+	      (format nil "~,2f" (torrent-ratio torrent)))
+	    (when (not (eq :incomplete status))
+	      (relative-time-formatter (torrent-seeded-for torrent)
+				       :brief t))
+	    (when (eq :seeding status)
+	      (relative-time-formatter (torrent-seed-for torrent)
+				       :brief t))))
+   (t
+    (format t "~%~a~%" name)
+    (ecase status
+      (:incomplete
+       (format t "  incomplete: ~a done~%" (torrent-percent-done torrent)))
+      (:complete-ratio
+       (format t "  COMPLETE: seeded to ~,2f (seeded for ~a)~%"
+	       (torrent-ratio torrent)
+	       (relative-time-formatter (torrent-seeded-for torrent))))
+      (:complete-time
+       (format t "  COMPLETE: seeded for ~a (ratio: ~,2f)~%"
+	       (relative-time-formatter (torrent-seeded-for torrent))
+	       (torrent-ratio torrent)))
+      (:seeding
+       (format t "  incomplete: ratio: ~,2f (target ~,2f)~%"
+	       (torrent-ratio torrent)
+	       (torrent-ratio-limit torrent))
+       (format t "              seeded for ~a~%"
+	       (relative-time-formatter (torrent-seeded-for torrent)))
+       (format t "              to go: ~a~%"
+	       (relative-time-formatter (torrent-seed-for torrent))))))))
+
+(defun relative-time-formatter (seconds &key brief)
+  (if* brief
+     then (if* (> seconds #.(* 3600 24))
+	     then (universal-time-to-string
+		   (+ *now* seconds)
+		   :relative *now*
+		   :format (ut-to-string-formatter "%Dd %2H:%2M:%2S"))
+	     else (universal-time-to-string
+		   (+ *now* seconds)
+		   :relative *now*
+		   :format (ut-to-string-formatter "%2H:%2M:%2S")))
+   elseif (> seconds #.(* 3600 24))
      then ;; more than a day, included days
 	  (universal-time-to-string
 	   (+ *now* seconds)
@@ -234,39 +333,15 @@
 	   :relative *now*
 	   :format (ut-to-string-formatter "%2H:%2M:%2S"))))
 
-(defun print-torrent (torrent status)
-  (and *debug* (format t "~a~%" torrent))
-  (format t "~%~a~%" (torrent-name torrent))
-  (ecase status
-    (:incomplete
-     (format t "  incomplete: ~a done~%" (torrent-percent-done torrent)))
-    (:complete-ratio
-     (format t "  COMPLETE: seeded to ~,2f (seeded for ~a)~%"
-	     (torrent-ratio torrent)
-	     (relative-time-formatter (torrent-seeded-for torrent))))
-    (:complete-time
-     (format t "  COMPLETE: seeded for ~a (ratio: ~,2f)~%"
-	     (relative-time-formatter (torrent-seeded-for torrent))
-	     (torrent-ratio torrent)))
-    (:seeding
-     (format t "  incomplete: ratio: ~,2f (target ~,2f)~%"
-	     (torrent-ratio torrent)
-	     (torrent-ratio-limit torrent))
-     (format t "              seeded for ~a~%"
-	     (relative-time-formatter (torrent-seeded-for torrent)))
-     (format t "              to go: ~a~%"
-	     (relative-time-formatter (torrent-seed-for torrent))))))
-
 (defparameter *remove* nil)
 
-(defun remove-torrent (torrent)
+(defun remove-torrent (torrent &aux res)
   (when *remove*
-    (error "remove-torrent: fix me")
-    (if* (tm "-t" (torrent-id torrent) "-r")
-       thenret
-       else (warn "~a: removing exited with a non-zero status..."))
-;;;;TODO: need to check for "success" in output of tm
-    ))
+    (if* (and (setq res (tm "-t" (torrent-id torrent) "-r"))
+	      (=~ "success" (car res)))
+       then t
+       else (error "Failed to remove ~a."
+		   (torrent-filename torrent)))))
 
 (defun get-torrent-info (key hash &key missing-ok)
   (or (gethash key hash)
@@ -276,11 +351,21 @@
 
 (defun user::main ()
   (system:with-command-line-arguments
-      ("dqr" debug quiet remove)
+      (("info" :long info)
+       ("v" :short verbose :allow-multiple-options)
+       ("d" :short debug)
+       ("q" :short quiet)
+       ("r" :short remove))
       (rest)
     (declare (ignore rest))
+    (when info
+      (dolist (line (tm "-t" "all" "--info"))
+	(format t "~a~%" line))
+      (exit 0))
     (when debug (setq *debug* t))
-    (when quiet (setq *verbose* nil))
+    (setq *verbose* (or verbose
+			(when quiet 0)
+			1))
     (when remove (setq *remove* t))
     (handler-case (seedstatus)
       (error (c)

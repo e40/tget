@@ -6,7 +6,7 @@
 (let ((*record-source-file-info* nil)
       (*load-source-file-info* nil)
       (excl::*break-on-warnings* t))
-  (dolist (file '("rssreader.cl" "tget.cl"))
+  (dolist (file '("rssreader.cl" "utils.cl" "tget.cl"))
     (load (compile-file file))))
 
 (generate-application
@@ -15,7 +15,7 @@
  (append (if* *debug*
 	    then '(:streamc :inspect :trace)
 	    else nil)
-	 '(:list2 :seq2 "rssreader.fasl" "tget.fasl"))
+	 '(:list2 :seq2 "rssreader.fasl" "utils.fasl" "tget.fasl"))
  :restart-init-function 'main
  :application-administration
  '(:resource-command-line "-Q")

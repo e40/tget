@@ -2,9 +2,6 @@ TODO:
 
 high:
 
-- moving a series from one group to another results in 
-  There is a duplicate defseries for "Shark Tank".
-
 - remove episodes when a series is removed
 
   - during a compact, delete all episodes not associated with any
@@ -69,10 +66,6 @@ medium:
   watched"
 
 low:
-
-- handle filename format "SxEE" (as opposed to SxxExx) -- some feeds
-  have this in the title... not really sure it's needed, since things
-  work as is
 
 - for URL fetch errors, only email once after N hours, or make it a
   config option what to do
