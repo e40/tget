@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a name="user-content-tget-290---torrent-get" class="anchor" href="#tget-290---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.9.0 - torrent get</h1>
+<a name="user-content-tget-291---torrent-get" class="anchor" href="#tget-291---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.9.1 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -875,7 +875,7 @@ $ tget --catch-up-series "breaking bad s04"
 
 (defquality :high
     :priority 40
-    :source :hdtv
+    #|:source :hdtv|#           ;allow any source
     :codec *codec-x264* 
     :resolution :720p)
 
@@ -1075,11 +1075,6 @@ $ tget --catch-up-series "breaking bad s04"
 ;; BTN quality is kinda funky and inconsistent.  Define some different
 ;; qualities for shows from them.
 
-(defquality :high-any-source
-    :priority 90
-    :codec *codec-x264*
-    :resolution :720p)
-
 (defquality :x264-?dtv-mp4
     :priority 10
     :container :mp4
@@ -1100,12 +1095,12 @@ $ tget --catch-up-series "breaking bad s04"
     :quality :normal
     :download-path (merge-pathnames "kevin/" *download-root*))
 
-(defseries "Regular Show" :btn-adrian+kevin :quality :high-any-source)
-(defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high-any-source)
+(defseries "Regular Show" :btn-adrian+kevin :quality :high)
+(defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high)
 (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
 (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
 (defseries "8 Out of 10 Cats Does Countdown"
-    :btn-kevin :quality :high-any-source)
+    :btn-kevin :quality :high)
 </code></pre>
 
 </div>
