@@ -25,6 +25,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defvar *remove* nil)
 (defvar *debug* nil)
 
 (defun tm (&rest args)
@@ -336,8 +337,6 @@
 	   (+ *now* seconds)
 	   :relative *now*
 	   :format (ut-to-string-formatter "%2H:%2M:%2S"))))
-
-(defparameter *remove* nil)
 
 (defun remove-torrent (torrent &aux res)
   (when *remove*
