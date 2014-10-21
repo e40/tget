@@ -212,12 +212,14 @@
       (if* (and btn (torrent-seasonp torrent))
 	 then ;; Seed for a week + slop 
 	      (setf (torrent-seed-min-time torrent)
-		(+ (* 3600 24 7)
-		   (* 3600 6)))
+		(* 3600 24 9))
        elseif btn
 	 then ;; The rules state you need to seed to 1:1 or 24 hours.  Give
 	      ;; it some slop, to make sure I don't get a H&R
-	      (setf (torrent-seed-min-time torrent) (* 3600 28))
+	      ;; NOTE: the BTN tracker is notorious for not counting seed
+	      ;;       time, so use 3d as the minimum time here to make
+	      ;;       sure we don't get a H&R
+	      (setf (torrent-seed-min-time torrent) (* 3600 24 3))
        elseif mma-tracker
 	 then ;; Hard to seed stuff here, so seed longer.
 	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
@@ -253,7 +255,9 @@
 
   (when print-done
     (setq print-done (nreverse print-done))
-    (format t "These torrents are complete:~%~%")
+    (if* *remove*
+       then (format t "These torrents were removed:~%~%")
+       else (format t "These torrents are complete:~%~%"))
     (let ((header t))
       (dolist (item print-done)
 	(destructuring-bind (torrent . status) item
