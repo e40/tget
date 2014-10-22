@@ -167,7 +167,8 @@
 ;;;; Setup torrent data
     
       (setf (torrent-ratio-limit torrent)
-	(if* (string= "Default" (torrent-ratio-limit torrent))
+	(if* (or (string= "Default" (torrent-ratio-limit torrent))
+		 (string= "Unlimited" (torrent-ratio-limit torrent)))
 	   then default-seed-ratio
 	   else (read-from-string (torrent-ratio-limit torrent))))
     
