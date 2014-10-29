@@ -284,7 +284,7 @@
     (when header
       (format t "~36a~6a~6a~12a~12a~%"
 	      "name" "%done" "ratio" "seeded" "left"))
-    (format t "~36a~6a~@[~6a~]~@[~12a~]~@[~12a~]~%"
+    (format t "~36a~6a~@[~6a~]~@[~12a~]~@[~12@a~]~%"
 	    name
 	    (torrent-percent-done torrent)
 	    (when (not (eq :incomplete status))
