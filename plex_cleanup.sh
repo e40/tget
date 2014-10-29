@@ -32,7 +32,7 @@ function usage()
 	echo "Error: $*" 1>&2
     fi
     cat 1>&2 <<EOF
-Usage: $0 [-v] [-r] [--unwatched file]
+Usage: $0 [-v] [-r]
 
 Remove files already watched in Plex that:
  1. are not seeding, and
@@ -46,7 +46,6 @@ Command line arguments:
 -v               :: print diagnostic information to aid in debugging this script
 -r               :: remove files -- without this argument, the files
                     that would be removed are just printed
---unwatched FILE :: mark FILE unwatched in the database
 EOF
     exit 1
 }
@@ -93,14 +92,8 @@ function seeding()
 function watched()
 {
     # ' is escaped in sqlite3 with another '
-    local file=$(echo "$1" | sed "s/\'/\'\'/g")
+    local file=$(printf '%q' "$1" | sed "s/\'/\'\'/g")
     local date now hours days
-
-    # ignore it if we're still seeding
-    if seeding $(basename "$file"); then
-	[ "$verbose" ] && echo "IGNORE: seeding"
-	return 0
-    fi
 
     # Plex Media Server uses SQLite3.
     cat <<EOF > $temp
@@ -118,10 +111,10 @@ EOF
     if date="$(sqlite3 -line -init $temp "$db" < /dev/null)"; then
 	:
     else
-	return 0
+	return 1
     fi
 
-    [ "$date" ] || return 0
+    [ "$date" ] || return 1
 
     # Convert the date from the Plex db to seconds
     date=$(date -j -f "%Y-%m-%d %H:%M:%S" "$date" +"%s")
@@ -132,40 +125,51 @@ EOF
     hours=$(( ( $now - $date ) / 3600 ))
 
     if [ $hours -lt $min_hours ]; then
-	[ "$verbose" ] && echo "IGNORE: watched $hours ago (< $min_hours)"
-	return 0
+	echo "watched $hours hours ago (< $min_hours)"
+	return 1
     fi
 
-    # Meets our criteria for removal
+    # Meets our time-based criteria for removal...
+
+    if seeding $(basename "$file"); then
+        # But ignore it if we're still seeding
+	echo "still seeding"
+	return 1
+    fi
 
     if [ $hours -gt 24 ]; then
 	echo watched $(( $hours / 24 )) days ago
     else
 	echo watched $hours hours ago
     fi
+    return 0
 }
 
 function process_directory()
 {
     local header="$2:"
     local files="$(find $1 '(' -name '*.avi' -o -name '*.mp4' -o -name '*.mkv' ')' -print)"
-    local efile
     local hours
     local header
     while read file; do
-	efile=$(printf '%q' "$file")
-	hours=$(watched "$efile")
-	if [ "$hours" ]; then
+	if hours=$(watched "$file"); then
 	    if [ "$remove" ]; then
-####TODO: when I'm confident, fix this:
-		echo would: rm "$file"
+		echo remove "$file"
 	    else
 		if [ "$header" ]; then
 		    echo "$header"
 		    header=
 		fi
-		echo "$(basename "$efile"): $hours"
+		echo "would remove $(basename "$file")"
+		echo "  reason: $hours"
 	    fi
+	elif [ ! "$hours" ]; then
+	    # Not watched
+	    :
+	elif [ "$verbose" ]; then
+	    # Watched, but not ready to remove for some reason
+	    echo "would NOT remove $(basename "$file")"
+	    echo "  reason: $hours"
 	fi
     done <<< "$files"
 }
