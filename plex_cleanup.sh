@@ -154,7 +154,7 @@ function process_directory()
     while read file; do
 	if hours=$(watched "$file"); then
 	    if [ "$remove" ]; then
-		echo remove "$file"
+		rm "$file"
 	    else
 		if [ "$header" ]; then
 		    echo "$header"
