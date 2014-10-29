@@ -2,12 +2,6 @@
 # Mac OS X 10.9 note: need newer bash than comes with 10.9
 # (for associative arrays "declare -A"), so I installed the Macports
 # one.
-#
-#TODO:
-# - items marked "unwatched" in the Plex web ui still have a viewed_at
-#   example: Intruders S01E01
-# - *some* partially watched items are coming up as watched
-#   example: The Bridge S01E01
 
 ###############################################################################
 # user tweaks:
@@ -110,21 +104,18 @@ function watched()
 
     # Plex Media Server uses SQLite3.
     cat <<EOF > $temp
-select viewed_at from metadata_item_views where id in
-(select id from metadata_item_views where guid in
+select last_viewed_at from metadata_item_settings
+where view_count > 0 AND guid in
   (select guid from metadata_items where id in
-     (select metadata_item_id from media_items where id in
-        (select media_item_id from media_parts
-    	   where file='$file'
-	)
-     )
-  )
-);
+    (select metadata_item_id from media_items where id in
+      (select media_item_id from media_parts
+        where file='$file'
+      )
+    )
+  );
 EOF
 
-    # For some reason, there are sometimes multiple dates in viewed_at,
-    # so just grab the last one with tail.
-    if date="$(sqlite3 -line -init $temp "$db" < /dev/null | tail -1)"; then
+    if date="$(sqlite3 -line -init $temp "$db" < /dev/null)"; then
 	:
     else
 	return 0
