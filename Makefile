@@ -94,6 +94,7 @@ seedstatus: FORCE
 	rm -fr seedstatus build.tmp
 	cat deliver_seedstatus.cl >> build.tmp
 	$(runlisp)
+	cp -p plex_cleanup.sh seedstatus/
 
 install_seedstatus: FORCE
 ifdef DESTDIR
