@@ -1,3 +1,4 @@
+;; seedstatus :: print the seeding status of torrents in Transmission
 
 (eval-when (compile eval load)
   (require :anydate)
@@ -99,6 +100,7 @@
   date-finished
   state
   tracker
+  tracker-seed-time
   ;; calculated info
   seed-min-time				; nil or a number of seconds to seed
   seeded-for				; how much time seeded
@@ -144,7 +146,8 @@
 	     :ratio-limit (get-torrent-info "Ratio Limit" data)
 	     :date-finished (get-torrent-info "Date finished" data
 					      :missing-ok t)
-	     :state (get-torrent-info "State" data))))
+	     :state (get-torrent-info "State" data)
+	     :tracker-seed-time (get-torrent-info "Seeding Time" data))))
       (multiple-value-bind (series-name season episode)
 	  (user::extract-episode-info-from-filename (torrent-filename torrent)
 						    :episode-required nil)
@@ -184,8 +187,17 @@
 		     (torrent-date-finished torrent))))
 
 	;; The number of seconds we have been seeding this torrent
-	(setf (torrent-seeded-for torrent)
-	  (- *now* (torrent-date-finished torrent))))
+	(if* (string= "Finished" (torrent-state torrent))
+	   then ;; done, so use the tracker's value
+		(when (not (=~ "\\((\\d+) seconds\\)"
+			       (torrent-tracker-seed-time torrent)))
+		  (error "Could not parse tracker 'Seeding Time': ~a."
+			 (torrent-tracker-seed-time torrent)))
+		(setf (torrent-seeded-for torrent)
+		  (parse-integer $1))
+					else ;; still seeding
+		(setf (torrent-seeded-for torrent)
+		  (- *now* (torrent-date-finished torrent)))))
       
       (setf (torrent-tracker torrent)
 	(user::transmission-filename-to-tracker (torrent-filename torrent)
