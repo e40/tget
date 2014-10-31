@@ -99,7 +99,9 @@
   ratio-limit
   date-finished
   state
+  hash
   tracker
+  tracker-char
   tracker-seed-time
   ;; calculated info
   seed-min-time				; nil or a number of seconds to seed
@@ -147,6 +149,7 @@
 	     :date-finished (get-torrent-info "Date finished" data
 					      :missing-ok t)
 	     :state (get-torrent-info "State" data)
+	     :hash (get-torrent-info "Hash" data)
 	     :tracker-seed-time (get-torrent-info "Seeding Time" data))))
       (multiple-value-bind (series-name season episode)
 	  (user::extract-episode-info-from-filename (torrent-filename torrent)
@@ -201,12 +204,17 @@
       
       (setf (torrent-tracker torrent)
 	(user::transmission-filename-to-tracker (torrent-filename torrent)
+						:hash (torrent-hash torrent)
 						:debug *debug*))
       
       (when (torrent-tracker torrent)
-	(setq btn (match-re "broadcasthe.net" (torrent-tracker torrent)))
-	(setq mma-tracker
-	  (match-re "mma-tracker.net" (torrent-tracker torrent))))
+	(when (setq btn (match-re "broadcasthe.net" (torrent-tracker torrent)))
+	  (setf (torrent-tracker-char torrent) "B"))
+	(when (setq mma-tracker
+		(match-re "mma-tracker.net" (torrent-tracker torrent)))
+	  (setf (torrent-tracker-char torrent) "M"))
+	(when (match-re "zoink" (torrent-tracker torrent))
+	  (setf (torrent-tracker-char torrent) "E")))
 
 ;;;; Use torrent data to determine status
       
@@ -294,9 +302,10 @@
   (cond
    (brief
     (when header
-      (format t "~43a~6a~6a~12a~12a~%"
-	      "name" "%done" "ratio" "seeded" "left"))
-    (format t "~43a~6a~@[~6a~]~@[~12a~]~@[~12@a~]~%"
+      (format t "~2a~43a~6a~6a~12a~12a~%"
+	      "T" "name" "%done" "ratio" "seeded" "left"))
+    (format t "~2a~43a~6a~@[~6a~]~@[~12a~]~@[~12@a~]~%"
+	    (or (torrent-tracker-char torrent) "")
 	    name
 	    (torrent-percent-done torrent)
 	    (when (not (eq :incomplete status))
