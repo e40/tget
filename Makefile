@@ -80,7 +80,7 @@ else
 endif
 
 clean: FORCE
-	rm -fr tget BUILD RPMS SRPMS BUILDROOT SPECS
+	rm -fr tget
 	rm -fr main.db*
 	rm -fr temp.db*
 	rm -f archive.before archive.after
@@ -88,21 +88,23 @@ clean: FORCE
 
 ###############################################################################
 
-seedstatus: FORCE
+tcleanup: FORCE
 	test -d bittorrent || git clone https://github.com/e40/bittorrent
 	cd bittorrent; make
-	rm -fr seedstatus build.tmp
-	cat deliver_seedstatus.cl >> build.tmp
+	rm -fr tcleanup build.tmp
+	cat deliver_tcleanup.cl >> build.tmp
 	$(runlisp)
-	cp -p plex_cleanup.sh seedstatus/
+ifdef TCLEANUP_CONFIG
+	cp -p $(TCLEANUP_CONFIG) tcleanup/tcleanup-config.cl
+endif
 
-install_seedstatus: FORCE
+install_tcleanup: FORCE
 ifdef DESTDIR
-	rm -fr $(DESTDIR)/lib/seedstatus.old
-	-mv $(DESTDIR)/lib/seedstatus $(DESTDIR)/lib/seedstatus.old
-	cp -rp seedstatus $(DESTDIR)/lib/seedstatus
-	rm -f $(DESTDIR)/bin/seedstatus
-	cd $(DESTDIR)/bin; ln -s $(DESTDIR)/lib/seedstatus/seedstatus .
+	rm -fr $(DESTDIR)/lib/tcleanup.old
+	-mv $(DESTDIR)/lib/tcleanup $(DESTDIR)/lib/tcleanup.old
+	cp -rp tcleanup $(DESTDIR)/lib/tcleanup
+	rm -f $(DESTDIR)/bin/tcleanup
+	cd $(DESTDIR)/bin; ln -s $(DESTDIR)/lib/tcleanup/tcleanup .
 else
 	@echo There is no DESTDIR defined in Makefile.
 	@exit 1

@@ -1,4 +1,6 @@
-;; seedstatus :: print the seeding status of torrents in Transmission
+;; tcleanup :: torrent maintenance does two things:
+;;  1. removes from Transmission torrents which are done seeding, and
+;;  2. removes videos from the filesystem which have been watched. 
 
 (eval-when (compile eval load)
   (require :anydate)
@@ -6,7 +8,7 @@
   (require :shell)
   (require :tget-utils "utils.fasl"))
 
-(defpackage :seedstatus
+(defpackage :tcleanup
   (:use #:common-lisp
 	#:excl
 	#:excl.osi
@@ -15,18 +17,33 @@
 		#:with-verbosity
 		#:*verbose*))
 
-(in-package :seedstatus)
+(in-package :tcleanup)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; user tweakable variables
+;; PART I: remove torrents from Transmission
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Minimum seed time in seconds: 3 days, for torrents that don't have a
-;; tracker-specific rule that takes precedence over this value.
-(defparameter *seedmin* (* 3600 24 3))
+;; variables from the config file
+
+(defvar *minimum-seed-seconds* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar *remove* nil)
+(defvar *config-file* (list "sys:tcleanup-config.cl" "~/.tcleanup.cl"))
+
+(defparameter *trackers* nil)
+
+(defstruct tracker
+  re
+  char
+  setter)
+
+(defmacro deftracker (re char setter)
+  `(push (make-tracker :re ,re :char ,char :setter ,setter)
+	 *trackers*))
+
+(defvar *remove-seeded* nil)
+(defvar *remove-watched* nil)
 (defvar *debug* nil)
 
 (defun tm (&rest args)
@@ -115,7 +132,9 @@
 
 (defvar *now* nil)
 
-(defun seedstatus
+(defvar *torrents* nil)
+
+(defun tcleanup-transmission
     (&aux (default-seed-ratio
 	      1.04
 	      ;; BOGUS: transmission-remote returns 1.04 as 1.0!! ARGH!!
@@ -126,14 +145,15 @@
 			   line)
 		   (return (read-from-string $1))))
 	       (error "Couldn't find the default seed ration limit")))
-	  btn
-	  mma-tracker
 	  print-done
 	  print-other)
+
   (with-verbosity 2
     (format t "Default seed ratio limit: ~,2f~%" default-seed-ratio))    
 
   (setq *now* (get-universal-time))
+  
+  (setq *torrents* (make-hash-table :size 777 :test #'equal))
 
   (dolist (info (init-torrent-data))
     (let* ((data (cdr info))
@@ -150,7 +170,12 @@
 					      :missing-ok t)
 	     :state (get-torrent-info "State" data)
 	     :hash (get-torrent-info "Hash" data)
-	     :tracker-seed-time (get-torrent-info "Seeding Time" data))))
+	     :tracker-seed-time (get-torrent-info "Seeding Time" data
+						  :missing-ok t))))
+      
+      ;; used by PART II
+      (setf (gethash name *torrents*) torrent)
+      
       (multiple-value-bind (series-name season episode)
 	  (user::extract-episode-info-from-filename (torrent-filename torrent)
 						    :episode-required nil)
@@ -206,47 +231,24 @@
 	(user::transmission-filename-to-tracker (torrent-filename torrent)
 						:hash (torrent-hash torrent)
 						:debug *debug*))
-      
-      (when (torrent-tracker torrent)
-	(when (setq btn (match-re "broadcasthe.net" (torrent-tracker torrent)))
-	  (setf (torrent-tracker-char torrent) "B"))
-	(when (setq mma-tracker
-		(match-re "mma-tracker.net" (torrent-tracker torrent)))
-	  (setf (torrent-tracker-char torrent) "M"))
-	(when (match-re "zoink" (torrent-tracker torrent))
-	  (setf (torrent-tracker-char torrent) "E")))
 
 ;;;; Use torrent data to determine status
       
       ;; Determine if this torrent is "done" and can be removed.
       ;; Usually this is if either 1) seeding is complete, or 2) we have
-      ;; seeded the torrent for *seedmin* seconds, but there are exceptions
-      ;; and complications.  See below for the exact rules.
-
-      ;; Special seeding rules for some sites
+      ;; seeded the torrent for *minimum-seed-seconds* seconds, but there
+      ;; are exceptions and complications.  See below for the exact rules.
+      
+      ;; Check for handlers for specific trackers.  If they are, give
+      ;; the handler the `torrent' object and let it possibly set
+      ;; various times.
       ;;
-      (if* btn
-	 then ;; The BTN tracker and Transmission often disagree on the
-	      ;; amount I've uploaded, so set ratio-limit to 1.5 to be
-	      ;; safe.
-	      (setf (torrent-ratio-limit torrent) 1.50))
-      
-      (if* (and btn (torrent-seasonp torrent))
-	 then ;; Seed for a week + slop 
-	      (setf (torrent-seed-min-time torrent)
-		(* 3600 24 9))
-       elseif btn
-	 then ;; The rules state you need to seed to 1:1 or 24 hours.  Give
-	      ;; it some slop, to make sure I don't get a H&R
-	      ;; NOTE: the BTN tracker is notorious for not counting seed
-	      ;;       time, so use 3d as the minimum time here to make
-	      ;;       sure we don't get a H&R
-	      (setf (torrent-seed-min-time torrent) (* 3600 24 3))
-       elseif mma-tracker
-	 then ;; Hard to seed stuff here, so seed longer.
-	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
-	      (setf (torrent-ratio-limit torrent) 1.5))
-      
+      (dolist (tracker *trackers*)
+	(when (match-re (tracker-re tracker) (torrent-tracker torrent)
+			:return nil)
+	  (setf (torrent-tracker-char torrent) (tracker-char tracker))
+	  (funcall (tracker-setter tracker) torrent)))
+
       ;; First, determine if seeding is complete.
       ;; transmission-remote doesn't give us a "seeding complete"
       ;; indication, so we use "Ratio" >= "Ratio Limit".
@@ -264,12 +266,12 @@
 	      (or
 	       ;; Prefer the torrent-specific value over the global one
 	       (torrent-seed-min-time torrent)
-	       *seedmin*))
+	       *minimum-seed-seconds*))
 	 then (push (cons torrent :complete-time) print-done)
 	      (remove-torrent torrent)
 	 else (with-verbosity 1
 		(setf (torrent-seed-for torrent)
-		  (- (or (torrent-seed-min-time torrent) *seedmin*)
+		  (- (or (torrent-seed-min-time torrent) *minimum-seed-seconds*)
 		     (torrent-seeded-for torrent)))
 		(push (cons torrent :seeding) print-other))))
    :next
@@ -277,7 +279,7 @@
 
   (when print-done
     (setq print-done (nreverse print-done))
-    (if* *remove*
+    (if* *remove-seeded*
        then (format t "These torrents were removed:~%~%")
        else (format t "These torrents are complete:~%~%"))
     (let ((header t))
@@ -302,11 +304,12 @@
   (cond
    (brief
     (when header
-      (format t "~2a~43a~6a~6a~12a~12a~%"
+      (format t "~2a~41a~6a~6a~12a~12a~%"
 	      "T" "name" "%done" "ratio" "seeded" "left"))
-    (format t "~2a~43a~6a~@[~6a~]~@[~12a~]~@[~12@a~]~%"
+    (format t "~2a~41a~6a~@[~6a~]~@[~12a~]~@[~12@a~]~%"
 	    (or (torrent-tracker-char torrent) "")
-	    name
+	    ;; truncate to 40
+	    (if (> (length name) 40) (subseq name 0 40) name)
 	    (torrent-percent-done torrent)
 	    (when (not (eq :incomplete status))
 	      (format nil "~,2f" (torrent-ratio torrent)))
@@ -361,12 +364,11 @@
 	   :format (ut-to-string-formatter "%2H:%2M:%2S"))))
 
 (defun remove-torrent (torrent &aux res)
-  (when *remove*
+  (when *remove-seeded*
     (if* (and (setq res (tm "-t" (torrent-id torrent) "-r"))
 	      (=~ "success" (car res)))
        then t
-       else (error "Failed to remove ~a."
-		   (torrent-filename torrent)))))
+       else (error "Failed to remove ~a." (torrent-filename torrent)))))
 
 (defun get-torrent-info (key hash &key missing-ok)
   (or (gethash key hash)
@@ -374,26 +376,178 @@
 	 then nil
 	 else (error "Couldn't find ~a in torrent data" key))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PART II: remove files which have been watched
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; variables from the config file
+
+(defvar *ignore-watched-within* nil)
+
+(defvar *watch-directories* nil)
+
+(defvar *plex-db*
+    "~/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db")
+
+(defun tcleanup-files (&aux files header)
+  (flet ((announce (format-string &rest args)
+	   (when header
+	     (format t "~a~%" header)
+	     (setq header nil))
+	   (apply #'format t format-string args)))
+  (or (probe-file *plex-db*)
+      (error "Couldn't find PMS database."))
+  (dolist (thing *watch-directories*)
+    (setq files nil)
+    (destructuring-bind (directory . label) thing
+      (map-over-directory
+       (lambda (p)
+	 (when (member (pathname-type p) '("avi" "mp4" "mkv") :test #'equalp)
+	   (push p files)))
+       (pathname-as-directory directory)
+       :recurse t
+       :include-directories nil)
+      (setq header (format nil "~a:" label))
+      (dolist (file files)
+	(multiple-value-bind (ready-to-remove reason) (watchedp file)
+	  (if* ready-to-remove
+	     then (if* *remove-watched*
+		     then (announce "rm ~a~%" file)
+			  (delete-file file)
+		     else (announce "YES ~a:~a~%"
+				    reason (file-namestring file)))
+	   elseif (null reason)
+	     thenret ;; not watched
+	   elseif *verbose* 
+	     then ;; Watched, but not ready to remove for some reason
+		  (announce "NO ~a:~a~%" reason (file-namestring file)))))))))
+
+(defun watchedp (file &aux (temp-file (sys:make-temp-file-name)))
+  ;; Return values are: ready-to-remove description
+  (unwind-protect
+      (let* ((sqlite-cmd
+	      ;; Use a vector so shell escaping isn't an issue
+	      (vector "sqlite3" "sqlite3" "-line"
+		      "-init" (namestring temp-file)
+		      (namestring (truename *plex-db*))))
+	     hours
+	     date)
+	(setf (file-contents temp-file)
+	  (format nil "~
+select s.last_viewed_at
+from media_parts p, media_items mi, metadata_items md,
+     metadata_item_settings s
+where p.file='~a' AND
+      mi.id = p.media_item_id AND
+      md.id = mi.metadata_item_id AND
+      md.guid = s.guid AND
+      s.view_count > 0;
+"
+		  (escape-for-sqlite file)))
+	(multiple-value-bind (stdout stderr exit-code)
+	    (command-output sqlite-cmd :input "" :whole t)
+	  (if* (/= 0 exit-code)
+	     then (error "~a." stderr)
+	   elseif (or (null stdout) (string= "" stdout))
+	     then (return-from watchedp nil))
+	  ;; Convert the date from the Plex db to seconds
+	  
+	  (or (setq date (excl:string-to-universal-time stdout))
+	      (error "couldn't convert date: ~a." stdout))
+	  
+	  (setq hours (truncate (/ (- *now* date) 3600)))
+	  
+	  (when (< hours *ignore-watched-within*)
+	    (return-from watchedp
+	      (values nil
+		      (format nil "~dh<~dh" hours *ignore-watched-within*))))
+
+	  ;; Meets our time-based criteria for removal...
+	  
+	  (when (seedingp (file-namestring file))
+	    (return-from watchedp (values nil "seeding")))
+	  
+	  (return-from watchedp
+	    (values
+	     t ;; yes, remove it
+	     (if* (> hours 24)
+		then (format nil ">~dd" (truncate (/ hours 24)))
+		else (format nil ">~dh" hours))))))
+    (ignore-errors (delete-file temp-file))))
+
+(defun escape-for-sqlite (filename)
+  ;; single quotes are doubled
+  (replace-re (namestring filename) "'" "''"))
+
+(defun seedingp (name)
+  (gethash name *torrents*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun user::main ()
   (system:with-command-line-arguments
-      (("info" :long info)
-       ("v" :short verbose :allow-multiple-options)
+      (("config" :long config-file :required-companion)
        ("d" :short debug)
+       ("info" :long info)
+       ("torrents-only" :long torrents-only)
        ("q" :short quiet)
-       ("r" :short remove))
+       ("remove-seeded" :long remove-seeded)
+       ("remove-watched" :long remove-watched)
+       ("v" :short verbose :allow-multiple-options))
       (rest)
-    (declare (ignore rest))
+    (and rest (error "extra arguments:~{ ~a~}." rest))
     (when info
       (dolist (line (tm "-t" "all" "--info"))
 	(format t "~a~%" line))
       (exit 0))
+    (when config-file (setq *config-file* (list config-file)))
     (when debug (setq *debug* t))
     (setq *verbose* (or verbose
 			(when quiet 0)
 			1))
-    (when remove (setq *remove* t))
-    (handler-case (seedstatus)
+    (when remove-seeded (setq *remove-seeded* t))
+    (when remove-watched (setq *remove-watched* t))
+    
+    (let ((*package* (load-time-value (find-package :tcleanup))))
+      (or (dolist (config-file *config-file*)
+	    (when (probe-file config-file)
+	      (handler-case (progn
+			      (load config-file :verbose nil) 
+			      (return t))
+		(error (c)
+		  (error "Error loading config file: ~a." c)))))
+	  (error "Could not find config file.")))
+    
+    ;; Error checking on config file:
+    ;;
+    ;; Part I:
+    (and (null *minimum-seed-seconds*)
+	 (error "*minimum-seed-seconds* is not defined in config file."))
+    (or (numberp *minimum-seed-seconds*)
+	(error "*minimum-seed-seconds* is not a number: ~s."
+	       *minimum-seed-seconds*))
+    ;;
+    ;; Part II:
+    (and (null *ignore-watched-within*)
+	 (error "*ignore-watched-within* is not defined in config file."))
+    (or (numberp *ignore-watched-within*)
+	(error "*ignore-watched-within* isnot a number: ~s."
+	       *ignore-watched-within*))
+    (and (null *watch-directories*)
+	 (error "*watch-directories* is not defined in config file."))
+
+    (handler-case (tcleanup-transmission)
+	  (error (c)
+	    (format t "Error: ~a" c)
+	    (exit 1)))
+
+    (when torrents-only (exit 0))
+    
+    (format t "~%")
+
+    (handler-case (tcleanup-files)
       (error (c)
 	(format t "Error: ~a" c)
 	(exit 1)))
+    
     (exit 0)))

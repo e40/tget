@@ -5,15 +5,15 @@
 (load "bittorrent/bittorrent_full.fasl")
 (load (compile-file-if-needed "utils.cl"))
 (load (compile-file "transmission.cl"))
-(load (compile-file "seedstatus.cl"))
+(load (compile-file "tcleanup.cl"))
 
 (generate-application
- "seedstatus"
- "seedstatus/"
+ "tcleanup"
+ "tcleanup/"
  '("bittorrent/bittorrent_full.fasl"
    "transmission.fasl"
    "utils.fasl"
-   "seedstatus.fasl")
+   "tcleanup.fasl")
  :restart-init-function 'main
  :application-administration '(:resource-command-line "-Q")
  :read-init-files nil			; don't read ACL init files
