@@ -389,95 +389,133 @@
 (defvar *plex-db*
     "~/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db")
 
-(defun tcleanup-files (&aux files header)
+(defvar *watched-hash-table*
+    ;; Hash table:
+    ;;   key=  :: path to video
+    ;;   value :: hours since video was watched
+    nil)
+
+(defvar *video-types* '("avi" "mp4" "mkv" "wmv"))
+
+(defun tcleanup-files (&aux (initial-newline t) header)
   (flet ((announce (format-string &rest args)
+	   (when initial-newline
+	     (format t "~%")
+	     (setq initial-newline nil))
 	   (when header
 	     (format t "~a~%" header)
 	     (setq header nil))
 	   (apply #'format t format-string args)))
+    ;; Initialize a hash table of watched videos.
+    ;;
+    (initialize-watched)
+  
+    (dolist (thing *watch-directories*)
+      (destructuring-bind (directory . label) thing
+	(setq header (format nil "~a:" label))
+	(map-over-directory
+	 (lambda (p)
+	   (cond
+	    ((member (pathname-type p) *video-types* :test #'equalp)
+	     (multiple-value-bind (ready-to-remove reason) (watchedp p)
+	       (if* ready-to-remove
+		  then (if* *remove-watched*
+			  then (announce "rm ~a~%" p)
+			       (delete-file p)
+			  else (announce "YES ~a:~a~%"
+					 reason (file-namestring p)))
+		elseif (null reason)
+		  thenret ;; not watched
+		  else (with-verbosity 1
+			 ;; Watched, but not ready to remove for some reason
+			 (announce "NO ~a:~a~%" reason (file-namestring p))))))
+	    ((equalp "srt" (pathname-type p))
+	     (when (not (dolist (type *video-types*)
+			  (when (probe-file (merge-pathnames
+					     (make-pathname :type type)
+					     p))
+			    (return t))))
+	       (if* *remove-watched*
+		  then (announce "rm ~a~%" p)
+		       (delete-file p)
+		  else (announce "YES: ~a~%" (file-namestring p)))))))
+
+	 (pathname-as-directory directory)
+	 :recurse t
+	 :include-directories nil)))))
+
+(defun initialize-watched (&aux (temp-file (sys:make-temp-file-name)))
   (or (probe-file *plex-db*)
       (error "Couldn't find PMS database."))
-  (dolist (thing *watch-directories*)
-    (setq files nil)
-    (destructuring-bind (directory . label) thing
-      (map-over-directory
-       (lambda (p)
-	 (when (member (pathname-type p) '("avi" "mp4" "mkv") :test #'equalp)
-	   (push p files)))
-       (pathname-as-directory directory)
-       :recurse t
-       :include-directories nil)
-      (setq header (format nil "~a:" label))
-      (dolist (file files)
-	(multiple-value-bind (ready-to-remove reason) (watchedp file)
-	  (if* ready-to-remove
-	     then (if* *remove-watched*
-		     then (announce "rm ~a~%" file)
-			  (delete-file file)
-		     else (announce "YES ~a:~a~%"
-				    reason (file-namestring file)))
-	   elseif (null reason)
-	     thenret ;; not watched
-	   elseif *verbose* 
-	     then ;; Watched, but not ready to remove for some reason
-		  (announce "NO ~a:~a~%" reason (file-namestring file)))))))))
-
-(defun watchedp (file &aux (temp-file (sys:make-temp-file-name)))
-  ;; Return values are: ready-to-remove description
+  
+  (setq *watched-hash-table*
+    (if* *watched-hash-table*
+       then (clrhash *watched-hash-table*)
+       else (make-hash-table :size 777 :test #'equal)))
   (unwind-protect
       (let* ((sqlite-cmd
 	      ;; Use a vector so shell escaping isn't an issue
 	      (vector "sqlite3" "sqlite3" "-line"
 		      "-init" (namestring temp-file)
 		      (namestring (truename *plex-db*))))
-	     hours
-	     date)
+	     lines)
 	(setf (file-contents temp-file)
 	  (format nil "~
-select s.last_viewed_at
-from media_parts p, media_items mi, metadata_items md,
-     metadata_item_settings s
-where p.file='~a' AND
-      mi.id = p.media_item_id AND
+select p.file,s.last_viewed_at
+from media_parts p, media_items mi, metadata_items md,metadata_item_settings s
+where mi.id = p.media_item_id AND
       md.id = mi.metadata_item_id AND
       md.guid = s.guid AND
-      s.view_count > 0;
-"
-		  (escape-for-sqlite file)))
+      s.view_count > 0;~%"))
 	(multiple-value-bind (stdout stderr exit-code)
 	    (command-output sqlite-cmd :input "" :whole t)
 	  (if* (/= 0 exit-code)
 	     then (error "~a." stderr)
 	   elseif (or (null stdout) (string= "" stdout))
-	     then (return-from watchedp nil))
-	  ;; Convert the date from the Plex db to seconds
+	     then ;; No watched shows??  I guess it's possible
+		  (return-from initialize-watched nil))
 	  
-	  (or (setq date (excl:string-to-universal-time stdout))
-	      (error "couldn't convert date: ~a." stdout))
-	  
-	  (setq hours (truncate (/ (- *now* date) 3600)))
-	  
-	  (when (< hours *ignore-watched-within*)
-	    (return-from watchedp
-	      (values nil
-		      (format nil "~dh<~dh" hours *ignore-watched-within*))))
+	  (when (not (setq lines (split-re "$" stdout :multiple-lines t)))
+	    (error "could not split sqlite3 output."))
 
-	  ;; Meets our time-based criteria for removal...
-	  
-	  (when (seedingp (file-namestring file))
-	    (return-from watchedp (values nil "seeding")))
-	  
-	  (return-from watchedp
-	    (values
-	     t ;; yes, remove it
-	     (if* (> hours 24)
-		then (format nil ">~dd" (truncate (/ hours 24)))
-		else (format nil ">~dh" hours))))))
-    (ignore-errors (delete-file temp-file))))
+	  (dolist (line lines)
+	    (when (=~ "^\s*$" line) (return))
+	    (when (not (=~ "\\s*(.*)\\|(.*)\\s*" line))
+	      (error "Could not parse sqlite3 output: ~a." line))
+	    (let* ((file $1)
+		   (date (or (excl:string-to-universal-time $2)
+			     (error "couldn't parse date: ~a." $2)))
+		   (hours (truncate (/ (- *now* date) 3600))))
+	      (setf (gethash file *watched-hash-table*) hours))))))
+    (ignore-errors (delete-file temp-file)))
 
+#+ignore ;; unused, keep tho
 (defun escape-for-sqlite (filename)
   ;; single quotes are doubled
   (replace-re (namestring filename) "'" "''"))
+
+(defun watchedp (p &aux (file (namestring p)))
+  ;; Return values are: ready-to-remove description
+
+  (let ((hours (gethash file *watched-hash-table*)))
+    (when (not hours) (return-from watchedp nil))
+	  
+    (when (< hours *ignore-watched-within*)
+      (return-from watchedp
+	(values nil
+		(format nil "~dh<~dh" hours *ignore-watched-within*))))
+
+    ;; Meets our time-based criteria for removal...
+	  
+    (when (seedingp (file-namestring file))
+      (return-from watchedp (values nil "seeding")))
+	  
+    (return-from watchedp
+      (values
+       t ;; yes, remove it
+       (if* (> hours 24)
+	  then (format nil ">~dd" (truncate (/ hours 24)))
+	  else (format nil ">~dh" hours))))))
 
 (defun seedingp (name)
   (gethash name *torrents*))
@@ -543,8 +581,6 @@ where p.file='~a' AND
 
     (when torrents-only (exit 0))
     
-    (format t "~%")
-
     (handler-case (tcleanup-files)
       (error (c)
 	(format t "Error: ~a" c)
