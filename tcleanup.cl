@@ -1,9 +1,6 @@
 ;; tcleanup :: torrent maintenance does two things:
 ;;  1. removes from Transmission torrents which are done seeding, and
 ;;  2. removes videos from the filesystem which have been watched. 
-;;
-;; TODO:
-;; 1. handle rar'd directories, which Plex plays as a single video
 
 (eval-when (compile eval load)
   (require :anydate)
@@ -441,7 +438,9 @@
 	       (if* *remove-watched*
 		  then (announce "rm ~a~%" p)
 		       (delete-file p)
-		  else (announce "YES: ~a~%" (file-namestring p)))))))
+		  else (announce "YES: ~a~%" (file-namestring p)))))
+	    ((equalp "rar" (pathname-type p))
+	     (announce "unwatchable rar file ~a~%" (file-namestring p)))))
 
 	 (pathname-as-directory directory)
 	 :recurse t
