@@ -55,7 +55,7 @@
   ;;
   (dolist (line (tm "-t" "all" "--info"))
     (setq words (split-re " +" line))
-    (and *debug* (format t "~s line=~s~%" state words))
+    ;;(and *debug* (format t "~s line=~s~%" state words))
    :top
     (ecase state
       (:start
@@ -298,7 +298,7 @@
 (defun print-torrent (torrent status
 		      &key brief header
 		      &aux (name (torrent-name torrent)))
-  (and *debug* (format t "~a~%" torrent))
+  (and *debug* (format t "~s~%" torrent))
   (cond
    (brief
     (when header
