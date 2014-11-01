@@ -440,7 +440,12 @@
 		       (delete-file p)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
 	    ((equalp "rar" (pathname-type p))
-	     (announce "unwatchable rar file ~a~%" (file-namestring p)))))
+	     (announce "unwatchable rar file ~a~%" (file-namestring p)))
+	    ((or (member (file-namestring p) '(".DS_Store") :test #'equalp)
+		 (equalp "iso" (pathname-type p)))
+	     ;; ignore files
+	     )
+	    (t (announce "unknown: ~a~%" (file-namestring p)))))
 
 	 (pathname-as-directory directory)
 	 :recurse t
