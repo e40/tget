@@ -215,7 +215,8 @@
 		     (torrent-date-finished torrent))))
 
 	;; The number of seconds we have been seeding this torrent
-	(if* (string= "Finished" (torrent-state torrent))
+	(if* (and (string= "Finished" (torrent-state torrent))
+		  (torrent-tracker-seed-time torrent))
 	   then ;; done, so use the tracker's value
 		(when (not (=~ "\\((\\d+) seconds\\)"
 			       (torrent-tracker-seed-time torrent)))
