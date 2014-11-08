@@ -6,6 +6,7 @@
   (require :anydate)
   (require :osi)
   (require :shell)
+  (require :autozoom)
   (require :tget-utils "utils.fasl"))
 
 (defpackage :tcleanup
@@ -217,14 +218,18 @@
 	;; The number of seconds we have been seeding this torrent
 	(if* (and (string= "Finished" (torrent-state torrent))
 		  (torrent-tracker-seed-time torrent))
-	   then ;; done, so use the tracker's value
+	   then ;; use the tracker's value of time seeded, if it's available
 		(when (not (=~ "\\((\\d+) seconds\\)"
 			       (torrent-tracker-seed-time torrent)))
 		  (error "Could not parse tracker 'Seeding Time': ~a."
 			 (torrent-tracker-seed-time torrent)))
 		(setf (torrent-seeded-for torrent)
 		  (parse-integer $1))
-					else ;; still seeding
+	   else ;; still seeding or done but tracker didn't tell us how
+		;; long it was seeded
+		(when (string= "Finished" (torrent-state torrent))
+		  (warn "tracker didn't tell us how long torrent seeded: ~s"
+			torrent))
 		(setf (torrent-seeded-for torrent)
 		  (- *now* (torrent-date-finished torrent)))))
       
@@ -530,68 +535,81 @@ where mi.id = p.media_item_id AND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define-condition tcleanup (error) ())
+
+(defun .error (format-string &rest format-arguments)
+  ;; This separates known tget errors from unexpected program errors.  All
+  ;; calls to error in this code should be to this function.  Any calls to
+  ;; error or cerror cause a stack trace.
+  (error 'tcleanup :format-control format-string
+	 :format-arguments format-arguments))
+
 (defun user::main ()
-  (system:with-command-line-arguments
-      (("config" :long config-file :required-companion)
-       ("d" :short debug)
-       ("info" :long info)
-       ("torrents-only" :long torrents-only)
-       ("q" :short quiet)
-       ("remove-seeded" :long remove-seeded)
-       ("remove-watched" :long remove-watched)
-       ("v" :short verbose :allow-multiple-options))
-      (rest)
-    (and rest (error "extra arguments:~{ ~a~}." rest))
-    (when info
-      (dolist (line (tm "-t" "all" "--info"))
-	(format t "~a~%" line))
-      (exit 0))
-    (when config-file (setq *config-file* (list config-file)))
-    (when debug (setq *debug* t))
-    (setq *verbose* (or verbose
-			(when quiet 0)
-			1))
-    (when remove-seeded (setq *remove-seeded* t))
-    (when remove-watched (setq *remove-watched* t))
+  (flet
+      ((doit ()
+	 (system:with-command-line-arguments
+	     (("config" :long config-file :required-companion)
+	      ("d" :short debug)
+	      ("info" :long info)
+	      ("torrents-only" :long torrents-only)
+	      ("q" :short quiet)
+	      ("remove-seeded" :long remove-seeded)
+	      ("remove-watched" :long remove-watched)
+	      ("v" :short verbose :allow-multiple-options))
+	     (rest)
+	   (and rest (.error "extra arguments:~{ ~a~}." rest))
+	   (when info
+	     (dolist (line (tm "-t" "all" "--info"))
+	       (format t "~a~%" line))
+	     (exit 0))
+	   (when config-file (setq *config-file* (list config-file)))
+	   (when debug (setq *debug* t))
+	   (setq *verbose* (or verbose
+			       (when quiet 0)
+			       1))
+	   (when remove-seeded (setq *remove-seeded* t))
+	   (when remove-watched (setq *remove-watched* t))
     
-    (let ((*package* (load-time-value (find-package :tcleanup))))
-      (or (dolist (config-file *config-file*)
-	    (when (probe-file config-file)
-	      (handler-case (progn
-			      (load config-file :verbose nil) 
-			      (return t))
-		(error (c)
-		  (error "Error loading config file: ~a." c)))))
-	  (error "Could not find config file.")))
+	   (let ((*package* (load-time-value (find-package :tcleanup))))
+	     (or (dolist (config-file *config-file*)
+		   (when (probe-file config-file)
+		     (progn (load config-file :verbose nil) 
+			    (return t))))
+		 (.error "Could not find config file.")))
     
-    ;; Error checking on config file:
-    ;;
-    ;; Part I:
-    (and (null *minimum-seed-seconds*)
-	 (error "*minimum-seed-seconds* is not defined in config file."))
-    (or (numberp *minimum-seed-seconds*)
-	(error "*minimum-seed-seconds* is not a number: ~s."
-	       *minimum-seed-seconds*))
-    ;;
-    ;; Part II:
-    (and (null *ignore-watched-within*)
-	 (error "*ignore-watched-within* is not defined in config file."))
-    (or (numberp *ignore-watched-within*)
-	(error "*ignore-watched-within* isnot a number: ~s."
-	       *ignore-watched-within*))
-    (and (null *watch-directories*)
-	 (error "*watch-directories* is not defined in config file."))
+	   ;; Error checking on config file:
+	   ;;
+	   ;; Part I:
+	   (and (null *minimum-seed-seconds*)
+		(.error "*minimum-seed-seconds* is not defined in config file."))
+	   (or (numberp *minimum-seed-seconds*)
+	       (.error "*minimum-seed-seconds* is not a number: ~s."
+		      *minimum-seed-seconds*))
+	   ;;
+	   ;; Part II:
+	   (and (null *ignore-watched-within*)
+		(.error
+		 "*ignore-watched-within* is not defined in config file."))
+	   (or (numberp *ignore-watched-within*)
+	       (.error "*ignore-watched-within* isnot a number: ~s."
+		      *ignore-watched-within*))
+	   (and (null *watch-directories*)
+		(.error "*watch-directories* is not defined in config file."))
 
-    (handler-case (tcleanup-transmission)
-	  (error (c)
-	    (format t "Error: ~a" c)
-	    (exit 1)))
-
-    (when torrents-only (exit 0))
+	   (tcleanup-transmission)
+	   (when torrents-only (exit 0))
+	   (tcleanup-files)
     
-    (handler-case (tcleanup-files)
-      (error (c)
-	(format t "Error: ~a" c)
-	(exit 1)))
+	   (exit 0))))
     
-    (exit 0)))
+    (if* *debug* ;; --debug on command line doesn't effect this test!
+       then (format t ";;;NOTE: debugging mode is on~%")
+	    (doit)
+       else (top-level.debug:with-auto-zoom-and-exit (*standard-output*)
+	      (handler-case (doit)
+		(tcleanup (c)
+		  ;; 'tcleanup errors don't get a backtrace, since those are
+		  ;; expected or, at least, planned for.  The unexpected
+		  ;; ones get the zoom.
+		  (format t "~&~a~&" c)
+		  (exit 1 :quiet t)))))))
