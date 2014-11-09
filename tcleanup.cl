@@ -1,6 +1,17 @@
 ;; tcleanup :: torrent maintenance does two things:
 ;;  1. removes from Transmission torrents which are done seeding, and
 ;;  2. removes videos from the filesystem which have been watched. 
+;;
+;; TODO:
+;; * items which are finished seeding and watched don't get removed,
+;;   probably because phase II doesn't know it was removed.
+;; * need to find some way to rename badly named torrents, ones that Plex
+;;   won't see.  Need to do it in a way that allows Transmission to
+;;   continue to seed.  Possibilities:
+;;     1. use the JSON-RPC interface to do it
+;;     2. use ssh and create a symlink with the correct name
+;;   (1) is preferred and I'm assuming (2) will work with Plex
+;; * move seeding but watched items to a folder that Plex won't see.
 
 (eval-when (compile eval load)
   (require :anydate)
@@ -217,6 +228,7 @@
 
 	;; The number of seconds we have been seeding this torrent
 	(if* (and (string= "Finished" (torrent-state torrent))
+		  ;; Only private trackers provide this:
 		  (torrent-tracker-seed-time torrent))
 	   then ;; use the tracker's value of time seeded, if it's available
 		(when (not (=~ "\\((\\d+) seconds\\)"
@@ -227,9 +239,6 @@
 		  (parse-integer $1))
 	   else ;; still seeding or done but tracker didn't tell us how
 		;; long it was seeded
-		(when (string= "Finished" (torrent-state torrent))
-		  (warn "tracker didn't tell us how long torrent seeded: ~s"
-			torrent))
 		(setf (torrent-seeded-for torrent)
 		  (- *now* (torrent-date-finished torrent)))))
       
@@ -508,21 +517,22 @@ where mi.id = p.media_item_id AND
   (replace-re (namestring filename) "'" "''"))
 
 (defun watchedp (p &aux (file (namestring p)))
+  ;; Return non-nil if the video given by P (a pathname) has been watched.
   ;; Return values are: ready-to-remove description
-
+  ;;
   (let ((hours (gethash file *watched-hash-table*)))
+    ;; Return if not watched
     (when (not hours) (return-from watchedp nil))
-	  
+    ;; Return if seeding
+    (when (seedingp (file-namestring file))
+      (return-from watchedp (values nil "seeding")))
+
     (when (< hours *ignore-watched-within*)
       (return-from watchedp
 	(values nil
 		(format nil "~dh<~dh" hours *ignore-watched-within*))))
 
-    ;; Meets our time-based criteria for removal...
-	  
-    (when (seedingp (file-namestring file))
-      (return-from watchedp (values nil "seeding")))
-	  
+    ;; Meets our time-based criteria for removal
     (return-from watchedp
       (values
        t ;; yes, remove it
@@ -550,9 +560,11 @@ where mi.id = p.media_item_id AND
 	 (system:with-command-line-arguments
 	     (("config" :long config-file :required-companion)
 	      ("d" :short debug)
+	      ("h" :short ignore-watched-within :required-companion)
 	      ("info" :long info)
 	      ("torrents-only" :long torrents-only)
 	      ("q" :short quiet)
+	      ("remove" :long remove-all)
 	      ("remove-seeded" :long remove-seeded)
 	      ("remove-watched" :long remove-watched)
 	      ("v" :short verbose :allow-multiple-options))
@@ -567,8 +579,11 @@ where mi.id = p.media_item_id AND
 	   (setq *verbose* (or verbose
 			       (when quiet 0)
 			       1))
-	   (when remove-seeded (setq *remove-seeded* t))
-	   (when remove-watched (setq *remove-watched* t))
+	   (if* remove-all
+	      then (setq *remove-seeded* t
+			 *remove-watched* t)
+	      else (when remove-seeded (setq *remove-seeded* t))
+		   (when remove-watched (setq *remove-watched* t)))
     
 	   (let ((*package* (load-time-value (find-package :tcleanup))))
 	     (or (dolist (config-file *config-file*)
@@ -576,6 +591,15 @@ where mi.id = p.media_item_id AND
 		     (progn (load config-file :verbose nil) 
 			    (return t))))
 		 (.error "Could not find config file.")))
+	   
+	   ;; Do after loading config file, so it can override the value
+	   ;; there
+	   (when ignore-watched-within
+	     (or (=~ "^\\d+$" ignore-watched-within)
+		 (.error "-h value should be a number: ~a."
+			 ignore-watched-within))
+	     (setq *ignore-watched-within*
+	       (parse-integer ignore-watched-within)))
     
 	   ;; Error checking on config file:
 	   ;;
@@ -602,7 +626,7 @@ where mi.id = p.media_item_id AND
     
 	   (exit 0))))
     
-    (if* *debug* ;; --debug on command line doesn't effect this test!
+    (if* *debug* ;; -d on command line doesn't effect this test!
        then (format t ";;;NOTE: debugging mode is on~%")
 	    (doit)
        else (top-level.debug:with-auto-zoom-and-exit (*standard-output*)

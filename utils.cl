@@ -279,7 +279,8 @@
 
 ;;;; container
     (when (=~ ".*\\.([A-Za-z0-9]+)$" filename)
-      (setq container (intern $1 (load-time-value (find-package :keyword))))
+      (setq container (intern (string-downcase $1)
+			      (load-time-value (find-package :keyword))))
       (when (eq :torrent container)
 	(setq container nil))
       (when (and container
