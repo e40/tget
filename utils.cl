@@ -31,6 +31,8 @@
   (if* (consp epnum)
      then (format nil "S~2,'0dE~2,'0d-E~2,'0d" season
 		  (car epnum) (cdr epnum))
+   elseif (null epnum)
+     then (format nil "S~2,'0d" season)
    elseif (not (numberp epnum))
      then (format nil "~d.~a" season epnum)
    elseif (> season 999)
@@ -246,7 +248,16 @@
 				     ;; other stuff after the epnum is OK
 				     :junk-allowed t))
     (when (null series-name)
-      ;; we tried... let the info be collected in some other way
+      (when (null episode-required)
+	;; See if this is a season pack, downloaded manually
+	(multiple-value-bind (match whole series-name season-string)
+	    (match-re "^(.*)\\s+-\\s+Season\\s+(\\d+)" filename :case-fold t)
+	  (declare (ignore whole))
+	  (when match
+	    (return-from extract-episode-info-from-filename
+	      (values series-name (parse-integer season-string))))))
+      
+      ;; we tried... let the info be collected in some other way 
       (with-verbosity 4
 	(format t "  couldn't parse season and ep, aborting~%"))
       (return-from extract-episode-info-from-filename nil))
