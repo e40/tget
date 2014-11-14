@@ -24,7 +24,7 @@
   :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
   :add-paused nil
   :trash-torrent-file t
-  :ratio "1.04"))
+  :ratio "1.1"))
 
 ;; An alternate method for downloading .torrent files: put them into a
 ;; specific directory, where your torrent client will see them.
@@ -210,13 +210,13 @@
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin)
-(defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight")
+(defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
+	   :aliases ("@midnight"))
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin)
 (defseries "Black Mirror" :kevin)
 (defseries "Black-ish" :adrian+kevin :catch-up "S01E01"
 	   :aliases ("Blackish"))
-(defseries "Boardwalk Empire" :kevin-ppv)
 (defseries "Brooklyn Nine-Nine" :kevin)
 (defseries "Childrens Hospital (US)" :kevin)
 (defseries "Community" :adrian+kevin)
@@ -316,7 +316,6 @@
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defseries "Regular Show" :btn-adrian+kevin :quality :high)
-(defseries "Spongebob Squarepants" :btn-adrian+kevin :quality :high)
 (defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
 (defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
 (defseries "8 Out of 10 Cats Does Countdown"
