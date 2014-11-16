@@ -3,15 +3,12 @@
 ;;  2. removes videos from the filesystem which have been watched. 
 ;;
 ;; TODO:
-;; * items which are finished seeding and watched don't get removed,
-;;   probably because phase II doesn't know it was removed.
 ;; * need to find some way to rename badly named torrents, ones that Plex
 ;;   won't see.  Need to do it in a way that allows Transmission to
 ;;   continue to seed.  Possibilities:
 ;;     1. use the JSON-RPC interface to do it
 ;;     2. use ssh and create a symlink with the correct name
 ;;   (1) is preferred and I'm assuming (2) will work with Plex
-;; * move seeding but watched items to a folder that Plex won't see.
 
 (eval-when (compile eval load)
   (require :anydate)
@@ -140,11 +137,16 @@
   season				; season #
   episode				; episode # or nil
   seasonp				; (and season (not episode))
+  removed				; non-nil if removed in pass I
   )
 
 (defvar *now* nil)
 
-(defvar *torrents* nil)
+(defvar *torrents*
+    ;; A list of torrents which are seeding.  It's created in pass I and
+    ;; used in pass II.  It maps the "Name" in the torrent file to a
+    ;; torrent structure object.
+    nil)
 
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
@@ -387,7 +389,8 @@
   (when *remove-seeded*
     (if* (and (setq res (tm "-t" (torrent-id torrent) "-r"))
 	      (=~ "success" (car res)))
-       then t
+       then (setf (torrent-removed torrent) t)
+	    t
        else (error "Failed to remove ~a." (torrent-filename torrent)))))
 
 (defun get-torrent-info (key hash &key missing-ok)
@@ -546,7 +549,8 @@ where mi.id = p.media_item_id AND
 	  else (format nil ">~dh" hours))))))
 
 (defun seedingp (name)
-  (gethash name *torrents*))
+  (let ((torrent (gethash name *torrents*)))
+    (and torrent (null (torrent-removed torrent)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -610,7 +614,8 @@ where mi.id = p.media_item_id AND
 	   ;;
 	   ;; Part I:
 	   (and (null *minimum-seed-seconds*)
-		(.error "*minimum-seed-seconds* is not defined in config file."))
+		(.error
+		 "*minimum-seed-seconds* is not defined in config file."))
 	   (or (numberp *minimum-seed-seconds*)
 	       (.error "*minimum-seed-seconds* is not a number: ~s."
 		      *minimum-seed-seconds*))
