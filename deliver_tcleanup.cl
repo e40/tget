@@ -23,7 +23,8 @@
  :purify nil
  :autoload-warning nil
  :include-debugger nil
- :include-tpl nil
+ :include-tpl t				; getting a backtrace on error
+					; needs this
  :include-ide nil
  :include-devel-env nil
  :include-compiler nil
