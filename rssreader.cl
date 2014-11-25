@@ -80,6 +80,9 @@
      ;; For EZTV
      (cons "http://xmlns.ezrss.it/0.1/"
 	   :net.rss)
+     ;; Yet another hack for EZTV.  WTF??
+     (cons "//xmlns.ezrss.it/0.1/"
+	   :net.rss)
      ))
   
   
@@ -135,11 +138,17 @@
   ;;
   ;; read the feed given by the url and return a feed value
   ;;
-  (let ((body (car 
+  (let ((body (car
+	       ;; parse-xml was crapping out on EZTV, so I switched to
+	       ;; parse-to-lxml on the advice of mm.  When I say
+	       ;; "crapping out" I mean crashing the lisp.
+	       #+ignore
 	       (let ((*package* (find-package :net.rss)))
-		 ;; parse-xml was crapping out on EZTV, so I switched to
-		 ;; parse-to-lxml on the advice of mm.  When I say
-		 ;; "crapping out" I mean crashing the lisp.
+		 (parse-xml content
+			    ;;The eztv.it feed requires this
+			    :external nil
+			    :uri-to-package *uri-to-package*))
+	       (let ((*package* (find-package :net.rss)))
 		 (net.xml.sax:parse-to-lxml
 		  content
 		  ;; needed for parse-to-lxml not parse-xml
