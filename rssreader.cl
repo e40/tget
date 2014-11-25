@@ -137,10 +137,16 @@
   ;;
   (let ((body (car 
 	       (let ((*package* (find-package :net.rss)))
-		 (parse-xml content
-			    ;;The eztv.it feed requires this
-			    :external nil
-			    :uri-to-package *uri-to-package*)))))
+		 ;; parse-xml was crapping out on EZTV, so I switched to
+		 ;; parse-to-lxml on the advice of mm.  When I say
+		 ;; "crapping out" I mean crashing the lisp.
+		 (net.xml.sax:parse-to-lxml
+		  content
+		  ;; needed for parse-to-lxml not parse-xml
+		  :package *package* 
+		  ;;The eztv.it feed requires this
+		  :external nil
+		  :uri-to-package *uri-to-package*)))))
     ;;(pprint body)
     ;;(setq *body* body)
     (if* (and (consp (car body))
