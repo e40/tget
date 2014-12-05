@@ -17,22 +17,30 @@
   (dolist (torrent-file (directory
 			 (merge-pathnames "*.torrent"
 					  *transmission-directory*)))
-  
-    (let* ((dict (bdecode-file torrent-file))
-	   (announce (dict-get "announce" dict))
-	   (info (dict-get "info" dict))
-	   (name (dict-get "name" info))
-	   ;; The hash prefix at the end of the .torrent filename
-	   hash-prefix)
-      ;; If the filename was renamed in Transmission, the simple
-      ;; `name' to `given-filename' test will fail.  We can salvage this by
-      ;; looking at the hash included in the filename.
-      (when (=~ "\\.([0-9a-fA-F]+)\\.torrent$" (file-namestring torrent-file))
-	(setq hash-prefix $1))
-      (when (or (string= name given-filename)
-		(and hash-prefix hash (match-re hash-prefix hash :return nil)))
-	(setf (gethash given-filename *filename-to-torrent-cache*)
-	  (setq temp
-	    (net.uri:uri-host (net.uri:parse-uri announce))))
-	(and debug (format t "~a: ~s~%" given-filename temp))
-	(return temp)))))
+    (if* (probe-file torrent-file)
+       then (let* ((dict (bdecode-file torrent-file))
+		   (announce (dict-get "announce" dict))
+		   (info (dict-get "info" dict))
+		   (name (dict-get "name" info))
+		   ;; The hash prefix at the end of the .torrent filename
+		   hash-prefix)
+	      ;; If the filename was renamed in Transmission, the simple
+	      ;; `name' to `given-filename' test will fail.  We can salvage
+	      ;; this by looking at the hash included in the filename.
+	      (when (=~ "\\.([0-9a-fA-F]+)\\.torrent$"
+			(file-namestring torrent-file))
+		(setq hash-prefix $1))
+	      (when (or (string= name given-filename)
+			(and hash-prefix
+			     hash
+			     (match-re hash-prefix hash :return nil)))
+		(setf (gethash given-filename *filename-to-torrent-cache*)
+		  (setq temp
+		    (net.uri:uri-host (net.uri:parse-uri announce))))
+		(and debug (format t "~a: ~s~%" given-filename temp))
+		(return temp)))
+       else ;; For reasons I don't understand, torrent-file sometimes
+	    ;; disappears. I'm sure it's not a race condition, because the
+	    ;; files that disappear always finished seeding some time
+	    ;; before we are executed.
+	    (warn "torrent file disappeared! ~a" torrent-file))))
