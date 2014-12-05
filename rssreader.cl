@@ -92,7 +92,8 @@
   ((http-code :initarg :http-code :reader feed-error-httpcode
 	      :initform nil)))
 
-(defun read-feed (url &key timeout verbose)
+(defun read-feed (url &key timeout verbose
+		  &aux (host (net.uri:uri-host (net.uri:parse-uri url))))
   ;;
   ;;* exported
   ;;
@@ -102,12 +103,12 @@
       (handler-case (do-http-request url :timeout timeout)
 	(socket-error (c)
 	  (error 'feed-error
-		 :format-control "Socket error from do-http-request: ~a"
-		 :format-arguments (list c)))
+		 :format-control "Socket error from do-http-request to ~a: ~a"
+		 :format-arguments (list host c)))
 	(error (c)
 	  (error 'feed-error
-		 :format-control "Error from do-http-request: ~a"
-		 :format-arguments (list c))))
+		 :format-control "Error from do-http-request to ~a: ~a"
+		 :format-arguments (list host c))))
     (declare (ignore headers))
     
     (if* (not (eq 200 code))
@@ -121,9 +122,7 @@
 		     'feed-error
 		     :http-code code
 		     :format-control "Accessing feed from ~s gave response ~s"
-		     :format-arguments (list (net.uri:uri-host
-					      (net.uri:parse-uri url))
-					     code))))
+		     :format-arguments (list host code))))
     
     (parse-feed content)))
 
