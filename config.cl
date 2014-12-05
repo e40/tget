@@ -120,18 +120,18 @@
   ;; If that's not available, then download :high quality after 12 hours
   ;; and :low quality after 2 days.  There are still some shows that never
   ;; get anything but :low, for some episodes.
-  (if* (=~ "broadcasthe.net" (episode-torrent-url episode))
-     then :x264-hdtv-mp4
-   elseif (and (null
-		;; See if there is an episode with :normal quality.  The
-		;; :transient keyword is important, since it restricts the
-		;; search to episodes we have *not* downloaded yet.
-		(query-episode :episode episode :quality :normal :transient t))
-	       (eq :high (episode-quality episode))
-	       (>= (hours-available episode) 12))
+  (if* (and (null
+	     ;; See if there is an episode with :normal quality.  The
+	     ;; :transient keyword is important, since it restricts the
+	     ;; search to episodes we have *not* downloaded yet.
+	     (query-episode :episode episode :quality :normal :transient t))
+	    (eq :high (episode-quality episode))
+	    (>= (hours-available episode) 12))
      then ;; :normal quality is not available and the :high quality episode
 	  ;; has been available for 12 hours, then return...
 	  :high
+   elseif (=~ "broadcasthe.net" (episode-torrent-url episode))
+     then :x264-hdtv-mp4
    elseif (and (null
 		;; See if there is an episode with :normal or :high
 		;; quality.
@@ -206,7 +206,7 @@
 ;;          the group download path -- this is a hack to make Plex Media
 ;;          Server see episodes of The Daily Show and The Colbert Report.
 
-(defseries "24" :anh+kevin :catch-up "S08")
+(defseries "24" :anh+kevin :catch-up "S08" :remove t)
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin)
@@ -216,7 +216,7 @@
 (defseries "Bear Grylls: Escape From Hell" :kevin)
 (defseries "Black Mirror" :kevin)
 (defseries "Black-ish" :adrian+kevin :catch-up "S01E01"
-	   :aliases ("Blackish"))
+	   :aliases ("Blackish") :remove t)
 (defseries "Brooklyn Nine-Nine" :kevin)
 (defseries "Childrens Hospital (US)" :kevin)
 (defseries "Community" :adrian+kevin)
@@ -243,7 +243,7 @@
 (defseries "Louie" :kevin)
 (defseries "Luther" :kevin)
 (defseries "Mad Men" :kevin)
-(defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin)
+(defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin :remove t)
 (defseries "Midsomer Murders" :anh)
 (defseries "Modern Family" :adrian+kevin)
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
@@ -273,7 +273,7 @@
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-(defseries "Top Gear (US)" :adrian+kevin :quality :high)
+(defseries "Top Gear (US)" :adrian+kevin :quality :high :remove t)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
