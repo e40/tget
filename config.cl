@@ -143,7 +143,7 @@
      then :low
      else :normal))
 
-(defvar *eztv-rss* "http://ezrss.it/...")
+(defvar *eztv-rss* "https://ezrss.it/...")
 
 (defvar *btn-rss* "https://broadcasthe.net/...")
 

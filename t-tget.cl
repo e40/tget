@@ -223,7 +223,26 @@
 	       :length "417684110"))))
       (test t (episode-p e))
       (test 4 (episode-season e))
-      (test 11 (episode-episode e)))))
+      (test 11 (episode-episode e)))
+    
+    
+    (let ((e
+	   (rss-to-episode
+	    (make-rss-item
+	     :source :broadcasthe.net
+	     :title "Black Mirror - S03E01 [ 2014 ] [ MKV | x264 | HDTV | 720p | Scene ] [ Uploader: Anonymous ]  [ Black.Mirror.S02.Special.White.Chirstmas.720p.HDTV.x264-TLA ] "
+	     :link "https://broadcasthe.net/..."
+	     :guid nil
+	     :comments ", Drama, SciFi, , fantasy, sciencefiction, "
+	     :pub-date "Wed, 17 Dec 2014 00:32:18 +0000"
+	     :description "Episode Name: White Christmas<br />Season: 3<br />Episode: 1<br />Aired: 2014-12-16<br /><br />Episode Overview:<br />This feature-length special consists of three interwoven stories. In a mysterious and remote snowy outpost, Matt and Potter share a Christmas meal, swapping creepy tales of their earlier lives in the outside world. Matt is a charismatic American trying to bring the reserved, secretive Potter out of his shell. But are both men who they appear to be?<br /><br />Episode Image <br />[img=http://thetvdb.com/banners/episodes/253463/5057304.jpg]"
+	     :type nil
+	     :length nil
+	     :fileName nil))))
+      (test t (episode-p e))
+      (test "black mirror" (episode-series-name e) :test #'string=)
+      (test 3 (episode-season e))
+      (test 1 (episode-episode e)))))
 
 (defun test-tget-complete-to ()
   (test-db-init)

@@ -110,7 +110,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.9.5")
+(defvar *tget-version* "2.9.6")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3074,9 +3074,10 @@ transmission-remote ~a:~a ~
     ;; rss-item-description, but weirdly, delimited by <br >/\n
     (multiple-value-bind (found whole des-title season episode)
 	(match-re
-	 "Episode Name:\\s*([^<]+)?<br />\\s*
-Season:\\s*(\\d+)?<br />\\s*
-Episode:\\s*(\\d+)?"
+	 #.(concatenate 'simple-string
+	     "Episode Name:\\s*([^<]+)?<br />\\s*"
+	     "Season:\\s*(\\d+)?<br />\\s*"
+	     "Episode:\\s*(\\d+)?")
 	 rss-des
 	 :case-fold t
 	 :multiple-lines t)
@@ -3098,6 +3099,12 @@ Episode:\\s*(\\d+)?"
 		  (setq season tit-season)
 		  (setq episode tit-episode))
 	   else (return-from convert-rss-to-episode)))
+      
+      (with-verbosity 5
+	(format t "BTN: rss-des=~s~%" rss-des)
+	(format t "BTN: des-title=~s season=~s ep=~s~%" des-title season
+		episode)
+	)
       
       (when (and (stringp season) (string/= "" season))
 	(setq season (parse-integer season)))

@@ -1,4 +1,4 @@
-# tget 2.9.5 - torrent get
+# tget 2.9.6 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -766,7 +766,7 @@ Catch up series to a specific episode:
          then :low
          else :normal))
     
-    (defvar *eztv-rss* "http://ezrss.it/...")
+    (defvar *eztv-rss* "https://ezrss.it/...")
     
     (defvar *btn-rss* "https://broadcasthe.net/...")
     
