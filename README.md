@@ -831,7 +831,6 @@ Catch up series to a specific episode:
     ;;          the group download path -- this is a hack to make Plex Media
     ;;          Server see episodes of The Daily Show and The Colbert Report.
     
-    (defseries "24" :anh+kevin :catch-up "S08" :remove t)
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer (2009)" :kevin)
@@ -840,8 +839,6 @@ Catch up series to a specific episode:
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin)
     (defseries "Black Mirror" :kevin)
-    (defseries "Black-ish" :adrian+kevin :catch-up "S01E01"
-    	   :aliases ("Blackish") :remove t)
     (defseries "Brooklyn Nine-Nine" :kevin)
     (defseries "Childrens Hospital (US)" :kevin)
     (defseries "Community" :adrian+kevin)
@@ -868,7 +865,6 @@ Catch up series to a specific episode:
     (defseries "Louie" :kevin)
     (defseries "Luther" :kevin)
     (defseries "Mad Men" :kevin)
-    (defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin :remove t)
     (defseries "Midsomer Murders" :anh)
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
@@ -898,7 +894,6 @@ Catch up series to a specific episode:
     (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-    (defseries "Top Gear (US)" :adrian+kevin :quality :high :remove t)
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Top of the Lake" :anh+kevin)
     (defseries "Tosh.0" :kevin)
