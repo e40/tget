@@ -110,7 +110,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.9.6")
+(defvar *tget-version* "2.9.7")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -152,6 +152,18 @@
     nil)
 (defvar *log-file*
     ;; If non-nil, a pathanme to log episode info
+    nil)
+(defvar *download-delay*
+    ;; The delay after something is available before it is considered for
+    ;; downloading.
+    nil)
+(defvar *download-hq-delay*
+    ;; The additional delay waiting to download a high quality ep while
+    ;; waiting for a normal quality one to become available
+    nil)
+(defvar *download-lq-delay*
+    ;; The additional delay waiting to download a low quality ep while
+    ;; waiting for a normal or high quality one to become available
     nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3025,6 +3037,8 @@ transmission-remote ~a:~a ~
     (when (not rss-des)
       ;; some sporting events have no description and only a title.  Ignore
       ;; these.
+      (with-verbosity 5
+	(format t "BTN: NULL rss-des... returning nil~5"))
       (return-from convert-rss-to-episode nil))
     
     ;; Show name must be extracted from the rss-item-title
@@ -3082,7 +3096,9 @@ transmission-remote ~a:~a ~
 	 :case-fold t
 	 :multiple-lines t)
       (declare (ignore whole))
-      (when (not found)
+      (when (or (not found)
+		(null des-title)
+		(null season))
 	;; If we can't parse the description, then we have nothing.
 	;; Log it and move on.
 	#+ignore ;; too many to log.  :(
@@ -3103,8 +3119,7 @@ transmission-remote ~a:~a ~
       (with-verbosity 5
 	(format t "BTN: rss-des=~s~%" rss-des)
 	(format t "BTN: des-title=~s season=~s ep=~s~%" des-title season
-		episode)
-	)
+		episode))
       
       (when (and (stringp season) (string/= "" season))
 	(setq season (parse-integer season)))

@@ -7,7 +7,7 @@ set -eu
 function tget {
     ./tget/tget --debug --root \
 	$PWD --db $PWD/main.db \
-	--config $PWD/tget-config/config.cl \
+	--config $PWD/tget-test-data/config.cl \
 	"$@"
 }
 

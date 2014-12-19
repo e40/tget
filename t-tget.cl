@@ -242,7 +242,29 @@
       (test t (episode-p e))
       (test "black mirror" (episode-series-name e) :test #'string=)
       (test 3 (episode-season e))
-      (test 1 (episode-episode e)))))
+      (test 1 (episode-episode e)))
+    
+    ;; Bad description, make sure title is correctly parsed
+    (let ((e
+	   (rss-to-episode
+	    (make-rss-item
+	     :source :broadcasthe.net
+             :title "The Daily Show with Jon Stewart - 2014.12.18 [ 2014 ] [ MKV | x264 | HDTV | 720p | Scene | FastTorrent ] [ Uploader: Mako ]  [ The.Daily.Show.2014.12.18.Chris.Rock.720p.HDTV.x264-BATV ] "
+             :link "https://broadcasthe.net/torrents.php?action=download&authkey=c435c406028ce61eed547c44198ee2f6&torrent_pass=cvkfpxhyfycntgv4jeyohrof4rjtl7km&id=461312"
+             :guid nil
+             :comments ", Comedy, talkshow, news, "
+             :pub-date "Fri, 19 Dec 2014 06:05:27 +0000"
+             :description "Episode Name: <br />Season: <br />Episode: <br />Aired: 2014.12.18<br /><br />Episode Overview:"
+             :type nil
+             :length nil
+             :fileName nil)
+	    )))
+      (test t (episode-p e))
+      (test "the daily show with jon stewart"
+	    (episode-series-name e) :test #'string=)
+      (test 2014 (episode-season e))
+      (test  352 (episode-episode e)))
+    ))
 
 (defun test-tget-complete-to ()
   (test-db-init)
@@ -448,22 +470,31 @@
   (with-tget-tests ()
 ;;;; weird naming:
     (test-make-eps
-     '("Vikings.S22E11E12.720p.HDTV.X264-DIMENSION.mkv" :hours 1
+     `("Vikings.S22E11E12.720p.HDTV.X264-DIMENSION.mkv"
+       :hours ,(- *download-delay* 0.5)
        :transient t))
     (test 0 (length *test-downloaded-episodes*)
 	  :fail-info "test 0")
 
 ;;;; should wait longer for :sd ep
     (test-make-eps
-     '("vikings.s01e01.repack.hdtv.x264-2hd.mp4" :hours 5.5 :transient t)
-     '("vikings.s01e01.720p.hdtv.x264-2hd.mkv" :hours 6.5 :transient t))
+     `("vikings.s01e01.repack.hdtv.x264-2hd.mp4"
+       :hours ,(- *download-delay* 0.5)
+       :transient t)
+     `("vikings.s01e01.720p.hdtv.x264-2hd.mkv"
+       :hours ,(+ *download-delay* (- *download-hq-delay* 0.5))
+       :transient t))
     (test 0 (length *test-downloaded-episodes*)
 	  :fail-info "test 1")
 
 ;;;; should download the :sd ep
     (test-make-eps
-     '("vikings.s01e01.repack.hdtv.x264-2hd.mp4" :hours 6.5 :transient t)
-     '("vikings.s01e01.720p.hdtv.x264-2hd.mkv" :hours 7.5 :transient t))
+     `("vikings.s01e01.repack.hdtv.x264-2hd.mp4"
+       :hours ,(+ *download-delay* 1.5)
+       :transient t)
+     `("vikings.s01e01.720p.hdtv.x264-2hd.mkv"
+       :hours ,(+ *download-delay* (+ *download-hq-delay* 0.5))
+       :transient t))
     (when (test 1 (length *test-downloaded-episodes*)
 		:fail-info "test 2.1")
       (test :sd (episode-resolution (car *test-downloaded-episodes*))
@@ -471,8 +502,12 @@
       
 ;;;; should download the repack
     (test-make-eps
-     '("vikings.s01e01.hdtv.x264-2hd.mp4" :hours 10 :transient nil)
-     '("vikings.s01e01.repack.hdtv.x264-2hd.mp4" :hours 6.5 :transient t))
+     `("vikings.s01e01.hdtv.x264-2hd.mp4"
+       :hours ,(+ *download-delay* 5)
+       :transient nil)
+     `("vikings.s01e01.repack.hdtv.x264-2hd.mp4"
+       :hours ,(+ *download-delay* 1.5)
+       :transient t))
     (when (test 1 (length *test-downloaded-episodes*)
 		:fail-info "test 3.1")
       (test t (episode-repack (car *test-downloaded-episodes*))
@@ -480,18 +515,25 @@
 
 ;;;; should NOT download the repack
     (test-make-eps
-     '("vikings.s01e01.hdtv.x264-2hd.mp4" :hours 10 :transient nil)
-     '("vikings.s01e01.REPACK.720p.hdtv.x264-2hd.mkv" :hours 7.5
+     `("vikings.s01e01.hdtv.x264-2hd.mp4"
+       :hours ,(+ *download-delay* 5)
+       :transient nil)
+     `("vikings.s01e01.REPACK.720p.hdtv.x264-2hd.mkv"
+       :hours ,(+ *download-delay* 2.5)
        :transient t))
     (test 0 (length *test-downloaded-episodes*)
 	  :fail-info "test 4")
 
 ;;;; should download the repack
     (test-make-eps
-     '("vikings.s01e01.hdtv.x264-2hd.mp4" :hours 10 :transient nil)
-     '("vikings.s01e01.REPACK.720p.hdtv.x264-2hd.mkv" :hours 7.5
+     `("vikings.s01e01.hdtv.x264-2hd.mp4"
+       :hours ,(+ *download-delay* 5)
+       :transient nil)
+     `("vikings.s01e01.REPACK.720p.hdtv.x264-2hd.mkv"
+       :hours ,(+ *download-delay* 2.5)
        :transient t)
-     '("vikings.s01e01.REPACK.hdtv.x264-2hd.mp4" :hours 6.5
+     `("vikings.s01e01.REPACK.hdtv.x264-2hd.mp4"
+       :hours ,(+ *download-delay* 1.5)
        :transient t))
     (when (test 1 (length *test-downloaded-episodes*)
 		:fail-info "test 5")
@@ -503,7 +545,9 @@
     (dolist (name '("Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
 		    "Mad.Men.S06E01E02.PROPER.HDTV.x264-2HD.mp4"
 		    "mad.men.s06e01e02.repack.hdtv.x264-2hd.mp4"))
-      (test-make-eps (list name :hours 7 :transient t))
+      (test-make-eps (list name
+			   :hours (+ *download-delay* 2)
+			   :transient t))
       (when (test 1 (length *test-downloaded-episodes*)
 		  :fail-info "test 6.1")
 	(let ((ep (car *test-downloaded-episodes*)))

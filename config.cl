@@ -38,16 +38,17 @@
     '(:x264 :h.264))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TVT
+;; Main TV shows
 
-;; Not all sites support the idea of a delay, but TVT does.
-;; It's a nice feature, because it allows you to delay "seeing" RSS items,
-;; to give the various downloads time to settle.  It reduces the chances of
-;; having to download repacks or propers (another name for repacks).
-;;
-;; The delay before a TVT episode is downloaded.  This cuts down on bogus
+;; The delay before an episode is downloaded.  This cuts down on bogus
 ;; episodes and the need to download a repack.
-(defvar *tvt-delay* 5)
+(setq *download-delay* 2)
+;; The additional delay waiting to download a high quality ep while
+;; waiting for a normal quality one to become available.
+(setq *download-hq-delay* 2)
+;; The additional delay waiting to download a low quality ep while
+;; waiting for a normal or high quality one to become available.
+(setq *download-lq-delay* 48)
 
 ;; Not all sites support the idea of a feed interval, but TVT does.
 ;; It's a nice feature, because if you decide to download a new series,
@@ -116,19 +117,17 @@
 ;; This is a user-defined quality function.
 
 (defun my-quality (episode)
-  ;; Download :normal quality immediately.
-  ;; If that's not available, then download :high quality after 12 hours
-  ;; and :low quality after 2 days.  There are still some shows that never
-  ;; get anything but :low, for some episodes.
   (if* (and (null
 	     ;; See if there is an episode with :normal quality.  The
 	     ;; :transient keyword is important, since it restricts the
 	     ;; search to episodes we have *not* downloaded yet.
 	     (query-episode :episode episode :quality :normal :transient t))
 	    (eq :high (episode-quality episode))
-	    (>= (hours-available episode) 12))
+	    (>= (hours-available episode) (+ *download-delay*
+					     *download-hq-delay*)))
      then ;; :normal quality is not available and the :high quality episode
-	  ;; has been available for 12 hours, then return...
+	  ;; has been available for a set amount of hours, then take this
+	  ;; one
 	  :high
    elseif (=~ "broadcasthe.net" (episode-torrent-url episode))
      then :x264-hdtv-mp4
@@ -139,7 +138,7 @@
 		 (query-episode :episode episode :quality :normal :transient t)
 		 (query-episode :episode episode :quality :high :transient t)))
 	       (eq :low (episode-quality episode))
-	       (>= (hours-available episode) 48))
+	       (>= (hours-available episode) *download-lq-delay*))
      then :low
      else :normal))
 
@@ -147,49 +146,52 @@
 
 (defvar *btn-rss* "https://broadcasthe.net/...")
 
-(defvar *rss-urls* (list *tvt-rss* *eztv-rss* *btn-rss*))
+(defvar *rss-urls* (list #+ignore *tvt-rss*
+			 #+ignore*eztv-rss*
+			 *btn-rss*))
 
-(defvar *ppv-rss-urls* (list *tvt-rss* *btn-rss*))
+(defvar *ppv-rss-urls* (list #+ignore *tvt-rss*
+			     *btn-rss*))
 
 (defgroup :adrian
     :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
-    :delay *tvt-delay*
+    :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
 (defgroup :anh
     :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
-    :delay *tvt-delay*
+    :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
 (defgroup :kevin
     :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
-    :delay *tvt-delay*
+    :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :kevin-ppv ;; don't use public trackers for this
     :rss-url '#.*ppv-rss-urls*
     :debug-feed *tvt-debug-feed*
-    :delay *tvt-delay*
+    :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :adrian+kevin
     :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
-    :delay *tvt-delay*
+    :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
 (defgroup :anh+kevin
     :rss-url '#.*rss-urls*
     :debug-feed *tvt-debug-feed*
-    :delay *tvt-delay*
+    :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
@@ -285,7 +287,7 @@
 	   :aliases ("Would I Lie To You"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; BTN
+;; BTN-only shows
 
 (defvar *btn-my-series-feed*
     "https://broadcasthe.net/...")
