@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-297---torrent-get" class="anchor" href="#tget-297---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.9.7 - torrent get</h1>
+<a id="user-content-tget-298---torrent-get" class="anchor" href="#tget-298---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 2.9.8 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -927,7 +927,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defvar *btn-rss* "https://broadcasthe.net/...")
 
 (defvar *rss-urls* (list #+ignore *tvt-rss*
-             #+ignore*eztv-rss*
+             #+ignore *eztv-rss*
              *btn-rss*))
 
 (defvar *ppv-rss-urls* (list #+ignore *tvt-rss*
@@ -988,7 +988,6 @@ $ tget --catch-up-series "breaking bad s04"
 ;;          the group download path -- this is a hack to make Plex Media
 ;;          Server see episodes of The Daily Show and The Colbert Report.
 
-(defseries "24" :anh+kevin :catch-up "S08" :remove t)
 (defseries "8 Out of 10 Cats" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin)
@@ -997,8 +996,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin)
 (defseries "Black Mirror" :kevin)
-(defseries "Black-ish" :adrian+kevin :catch-up "S01E01"
-       :aliases ("Blackish") :remove t)
 (defseries "Brooklyn Nine-Nine" :kevin)
 (defseries "Childrens Hospital (US)" :kevin)
 (defseries "Community" :adrian+kevin)
@@ -1025,7 +1022,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Louie" :kevin)
 (defseries "Luther" :kevin)
 (defseries "Mad Men" :kevin)
-(defseries "Marvel's Agents of S.H.I.E.L.D" :adrian+kevin :remove t)
 (defseries "Midsomer Murders" :anh)
 (defseries "Modern Family" :adrian+kevin)
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
@@ -1055,7 +1051,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
-(defseries "Top Gear (US)" :adrian+kevin :quality :high :remove t)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)

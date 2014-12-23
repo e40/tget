@@ -147,7 +147,7 @@
 (defvar *btn-rss* "https://broadcasthe.net/...")
 
 (defvar *rss-urls* (list #+ignore *tvt-rss*
-			 #+ignore*eztv-rss*
+			 #+ignore *eztv-rss*
 			 *btn-rss*))
 
 (defvar *ppv-rss-urls* (list #+ignore *tvt-rss*

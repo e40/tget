@@ -510,10 +510,13 @@
     ;; DD.MM.  The latter is rare, but does occur.
     ;; Only thing we can do is look for a month > 12
     ;; and reverse them.  <sigh>
-    (when (> month 12)
-      (let ((temp month))
-	(setq month day
-	      day temp)))
+    (if* (and (> month 12)
+	      (> day 12))
+       then (setq month 12)
+     elseif (> month 12)
+       then (let ((temp month))
+	      (setq month day
+		    day temp)))
     (date-time-yd-day
      (date-time (format nil "~a-~2,'0d-~2,'0d"
 			year month day)))))
