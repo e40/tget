@@ -260,16 +260,18 @@
       ;; the handler the `torrent' object and let it possibly set
       ;; various times.
       ;;
-      (when (dolist (tracker *trackers* t)
-	      (when (match-re (tracker-re tracker) (torrent-tracker torrent)
-			      :return nil)
-		(setf (torrent-tracker-char torrent) (tracker-char tracker))
-		(funcall (tracker-setter tracker) torrent)
-		(return nil)))
-	;; Didn't match a tracker
-	(warn "Couldn't match tracker (~a) for ~a."
-	      (torrent-tracker torrent)
-	      (torrent-name torrent)))
+      (if* (null (torrent-tracker torrent))
+	 thenret ;; (warn "null tracker: ~a" torrent)
+       elseif (dolist (tracker *trackers* t)
+		(when (match-re (tracker-re tracker) (torrent-tracker torrent)
+				:return nil)
+		  (setf (torrent-tracker-char torrent) (tracker-char tracker))
+		  (funcall (tracker-setter tracker) torrent)
+		  (return nil)))
+	 then ;; Didn't match a tracker
+	      (warn "Couldn't match tracker (~a) for ~a."
+		    (torrent-tracker torrent)
+		    (torrent-name torrent)))
 
       ;; First, determine if seeding is complete.
       ;; transmission-remote doesn't give us a "seeding complete"
