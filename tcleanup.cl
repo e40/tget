@@ -111,8 +111,9 @@
        (setf (gethash $1 torrent-data) $2)))
    :next
     )
-    
-  (push (cons id torrent-data) res)
+
+  (when (and id torrent-data)
+    (push (cons id torrent-data) res))
   (nreverse res))
 
 (defstruct torrent
