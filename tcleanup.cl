@@ -202,7 +202,12 @@
 	  (setf (torrent-series-name torrent) series-name)
 	  (setf (torrent-season torrent) season)
 	  (setf (torrent-episode torrent) episode)
-	  (setf (torrent-seasonp torrent) (and season (null episode)))))
+	  (setf (torrent-seasonp torrent)
+	    (and season
+		 (null episode)
+		 ;; episode might be null if this is a special:
+		 (not (match-re "special" (torrent-filename torrent)
+				:case-fold t :return nil))))))
       
       (when (string/= "100%" (torrent-percent-done torrent))
 	;; skip it since it's not done
