@@ -473,7 +473,8 @@
 	    ((equalp "rar" (pathname-type p))
 	     (announce "unwatchable rar file ~a~%" (file-namestring p)))
 	    ((or (member (file-namestring p) '(".DS_Store") :test #'equalp)
-		 (equalp "iso" (pathname-type p)))
+		 (member (pathname-type p) '("iso" "nfo")
+			 :test #'equalp))
 	     ;; ignore files
 	     )
 	    (t (announce "unknown: ~a~%" (file-namestring p)))))

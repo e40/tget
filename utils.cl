@@ -297,8 +297,9 @@
       (when (and container
 		 (not (member container *valid-containers* :test #'eq)))
 	(with-verbosity 4
-	  (format t "  ignore invalid container: ~a~%" container))
-	(@log "ignoring invalid container: ~s" container)
+	  (format t "  ignore invalid container for ~s: ~a~%"
+		  filename container)
+	  (@log "ignoring invalid container for ~s: ~s" filename container))
 	(setq container nil)))
 
 ;;;; source
