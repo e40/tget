@@ -42,42 +42,25 @@
 
 ;; The delay before an episode is downloaded.  This cuts down on bogus
 ;; episodes and the need to download a repack.
-(setq *download-delay* 2)
+(setq *download-delay* 1)
 ;; The additional delay waiting to download a high quality ep while
 ;; waiting for a normal quality one to become available.
-(setq *download-hq-delay* 2)
+(setq *download-hq-delay* 1)
 ;; The additional delay waiting to download a low quality ep while
 ;; waiting for a normal or high quality one to become available.
-(setq *download-lq-delay* 48)
+(setq *download-lq-delay* 24)
 
-;; Not all sites support the idea of a feed interval, but TVT does.
+;; Not all sites support the idea of a feed interval.
 ;; It's a nice feature, because if you decide to download a new series,
 ;; you'll get any episodes released in this period of time.  And, for the
 ;; initial installation, you can specify a really high interval (on the
 ;; command line, not here), to populate your database with your shows.
 (setq *feed-interval* 21)
 
-;; This function is given as the value of the defgroup :rss-url option.
-;; The function is called, when tget needs to fetch the feed, with the
-;; value *feed-interval* or the command line override for that variable
-;; (the --interval argument).
-(defun tvt-rss-feed (interval)
-  (format nil "~a&interval=~d+days"
-	  ;; This is the "Recent torrents" feed instead of the "Favorite
-	  ;; shows" feed I was using before.
-	  ;;
-	  ;; Using "Favorite shows" feed means you have to maintain your
-	  ;; list of shows in *two* places, which I find very annoying.
-	  ;;
-	  "http://www.tvtorrents.com/..."
-	  interval))
-
-(defvar *tvt-rss* 'tvt-rss-feed)
-
 ;; When --debug is given on the command line, the debug version is used,
 ;; and that's what this is.  No need to bombard the RSS server with
 ;; requests while debugging.
-(defvar *tvt-debug-feed* "tget-test-data/tvt.xml")
+(defvar *debug-feed* "tget-test-data/debug.xml")
 
 ;; This is how you define names for qualities you care about.
 ;;
@@ -144,53 +127,56 @@
 
 (defvar *eztv-rss* "https://ezrss.it/...")
 
+(defvar *freshon-rss*
+    "https://freshon.tv/...")
+
 (defvar *btn-rss* "https://broadcasthe.net/...")
 
-(defvar *rss-urls* (list #+ignore *tvt-rss*
+(defvar *rss-urls* (list *freshon-rss*
 			 #+ignore *eztv-rss*
 			 *btn-rss*))
 
-(defvar *ppv-rss-urls* (list #+ignore *tvt-rss*
+(defvar *ppv-rss-urls* (list *freshon-rss*
 			     *btn-rss*))
 
 (defgroup :adrian
     :rss-url '#.*rss-urls*
-    :debug-feed *tvt-debug-feed*
+    :debug-feed *debug-feed*
     :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
 (defgroup :anh
     :rss-url '#.*rss-urls*
-    :debug-feed *tvt-debug-feed*
+    :debug-feed *debug-feed*
     :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
 (defgroup :kevin
     :rss-url '#.*rss-urls*
-    :debug-feed *tvt-debug-feed*
+    :debug-feed *debug-feed*
     :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :kevin-ppv ;; don't use public trackers for this
     :rss-url '#.*ppv-rss-urls*
-    :debug-feed *tvt-debug-feed*
+    :debug-feed *debug-feed*
     :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :adrian+kevin
     :rss-url '#.*rss-urls*
-    :debug-feed *tvt-debug-feed*
+    :debug-feed *debug-feed*
     :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
 (defgroup :anh+kevin
     :rss-url '#.*rss-urls*
-    :debug-feed *tvt-debug-feed*
+    :debug-feed *debug-feed*
     :delay *download-delay*
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))

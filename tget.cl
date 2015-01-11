@@ -110,7 +110,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "2.9.8")
+(defvar *tget-version* "3.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2830,7 +2830,7 @@ transmission-remote ~a:~a ~
 	 (items (cdr (find 'net.rss:all-items channel :key #'car))))
     (multiple-value-bind (match whole source-name)
 	(match-re
-	 "(tvtorrents\\.com|broadcasthe\\.net|ezrss\\.it|dailytvtorrents\\.org)"
+	 "(tvtorrents\\.com|freshon\\.tv|broadcasthe\\.net|ezrss\\.it)"
 	 source)
       (declare (ignore whole))
       (when (not match) (.error "don't grok the feed source: ~s." source))
@@ -3266,9 +3266,81 @@ transmission-remote ~a:~a ~
 	(with-verbosity 2 (format t "EZTV: consider ep: ~a~%" ep))
 	ep))))
 
-(defmethod convert-rss-to-episode ((type (eql :dailytvtorrents.org)) rss)
-  (error "not done yet")
-  rss)
+
+(defmethod convert-rss-to-episode ((type (eql :freshon.tv)) rss)
+  ;; Freshon (aka TvT) has a very brief RSS entry for each show.  The
+  ;; `title' and `description' are all that we have, and the `description'
+  ;; seems to be a superset of `title', but it doesn't offer much info that
+  ;; is useful (seeders and leechers).  So, we only use the title.
+  (let* ((title (rss-item-title rss))
+	 (filename title)
+	 series
+	 torrent-url)
+    
+    (when (null filename)
+      ;; nothing to go on...
+      (return-from convert-rss-to-episode))
+    
+    ;; Don't have to worry about season packs in the EZTZ RSS feed since
+    ;; there are none.
+    
+    (with-verbosity 4 (format t "TvT: ~s~%" rss))
+    
+    (multiple-value-bind (series-name season episode repack container
+			  source codec resolution)
+	(extract-episode-info-from-filename filename)
+
+      (or repack
+	  ;; See if it's a repack/proper from the title
+	  (setq repack
+	    (match-re " (repack|proper) " (rss-item-title rss)
+		      :case-fold t)))
+
+      (with-verbosity 2 (format t "TvT: query: ~a~%" series-name))
+      (when (null (multiple-value-setq (series series-name)
+		    (query-series-name-to-series series-name)))
+	(with-verbosity 2 (format t "TvT: ignore2: ~a~%" series-name))
+	(return-from convert-rss-to-episode))
+      ;; a series we care about...
+      
+      ;; Calculate the download URL, because they don't give it to us!
+      ;; WTF??
+      (let* ((given (net.uri:parse-uri (rss-item-link rss)))
+	     (id (cdr (assoc "id"
+			 (net.aserve:form-urlencoded-to-query
+			  (net.uri:uri-query given))
+			 :test #'string=))))
+	(when (null id) (return-from convert-rss-to-episode))
+	(setq torrent-url
+	  (format nil "~a://~a/download.php?id=~a&type=torrent"
+		  (net.uri:uri-scheme given)
+		  (net.uri:uri-host given)
+		  id))
+	(with-verbosity 2 (format t "TvT: URL=~a~%" torrent-url)))
+      
+      (let ((ep
+	     (make-episode
+	      :transient t
+	      :full-title (rss-item-title rss)
+	      :torrent-url torrent-url
+	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
+	      :type (rss-item-type rss)
+
+	      :series series
+	      :series-name series-name
+	      :title title
+	      :season season
+	      :episode episode
+	      :pretty-epnum (season-and-episode-to-pretty-epnum season episode)
+       
+	      ;; container is always nil because the file extension is always
+	      ;; .torrent
+	      :container container
+	      :source source
+	      :codec codec
+	      :resolution resolution)))
+	(with-verbosity 2 (format t "TvT: consider ep: ~a~%" ep))
+	ep))))
 
 (defun check-episode-data (des-series-name series-name
 			   des-season season
