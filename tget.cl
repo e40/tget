@@ -110,7 +110,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "3.0")
+(defvar *tget-version* "3.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3274,8 +3274,7 @@ transmission-remote ~a:~a ~
   ;; is useful (seeders and leechers).  So, we only use the title.
   (let* ((title (rss-item-title rss))
 	 (filename title)
-	 series
-	 torrent-url)
+	 series)
     
     (when (null filename)
       ;; nothing to go on...
@@ -3303,26 +3302,11 @@ transmission-remote ~a:~a ~
 	(return-from convert-rss-to-episode))
       ;; a series we care about...
       
-      ;; Calculate the download URL, because they don't give it to us!
-      ;; WTF??
-      (let* ((given (net.uri:parse-uri (rss-item-link rss)))
-	     (id (cdr (assoc "id"
-			 (net.aserve:form-urlencoded-to-query
-			  (net.uri:uri-query given))
-			 :test #'string=))))
-	(when (null id) (return-from convert-rss-to-episode))
-	(setq torrent-url
-	  (format nil "~a://~a/download.php?id=~a&type=torrent"
-		  (net.uri:uri-scheme given)
-		  (net.uri:uri-host given)
-		  id))
-	(with-verbosity 2 (format t "TvT: URL=~a~%" torrent-url)))
-      
       (let ((ep
 	     (make-episode
 	      :transient t
 	      :full-title (rss-item-title rss)
-	      :torrent-url torrent-url
+	      :torrent-url (rss-item-link rss)
 	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
 	      :type (rss-item-type rss)
 
