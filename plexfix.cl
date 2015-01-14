@@ -64,7 +64,7 @@
 		      series-name year month day type)
 	 else (format nil "~a.S~2,'0dE~2,'0d.~a"
 		      series-name season episode type)))
-    (with-verbosity 2
+    (with-verbosity 1
       (format stream "OLD name: ~a~%" filename)
       (format stream "NEW name: ~a~%" new-name))
 
@@ -110,7 +110,7 @@
        (doit (&aux torrent-dir torrent-name)
 	 (system:with-command-line-arguments
 	     (("d" :short debug)
-	      ("m" :short email :required-companion)
+	      ("m" :short no-email)
 	      ("n" :short no-execute)
 	      ("q" :short quiet)
 	      ("v" :short verbose :allow-multiple-options))
@@ -128,7 +128,7 @@
 	   (setq *verbose* (or verbose
 			       (when quiet 0)
 			       1))
-	   (when (and (not debug) email)
+	   (when (and (not debug) (not no-email))
 	     (setq stream (make-string-output-stream)))
 	   (plexfix stream (car rest)))))
 
