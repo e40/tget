@@ -423,7 +423,11 @@
 
 (defun parse-name-season-and-episode (thing &key episode-required
 						 (junk-allowed t))
-  (let* ((normal-re
+  ;; Parse THING to extract and return values for SERIES-NAME, SEASON and
+  ;; EPISODE.  A fourth value indicates whether Plex Media Server (PMS)
+  ;; will fail to see the file, if THING is interpreted as a filename.
+  (let* ((pms-fail nil)
+	 (normal-re
 	  (if* episode-required
 	     then (if* junk-allowed
 		     then *alt0-name-season-ep-re-t-t*
@@ -463,7 +467,8 @@
 	 then (setq episode (parse-integer epnum))
        elseif (null episode-required)
 	 thenret
-	 else (error "Should not get here")))
+	 else (error "Should not get here"))
+      (values series-name season episode))
      
      ;; Do date1-re and date2-re before alt1-re and alt2-re because the
      ;; latter will give false positives for date-based episode naming.
@@ -474,23 +479,30 @@
 	  (match-re re thing :case-fold t))
 	(when match (return t)))
       (when (= 2 (length year)) ;; fix the broken year
+	(setq pms-fail t)
 	(setq year (concatenate 'simple-string "20" year)))
       (setq season (parse-integer year))
       (setq episode
 	(if* (equalp "all" day)
 	   then :all
 	   else ;; use the ordinal day of the year
-		(month-day-to-ordinal year month day))))
+		(month-day-to-ordinal year month day)))
+      (values series-name season episode pms-fail year month day))
      
-     ((dolist (re (list alt1-re alt2-re))
-	(multiple-value-setq (match whole series-name ignore1 season
-			      episode)
-	  (match-re re thing :case-fold t))
-	(when match (return t)))
+     ((multiple-value-setq (match whole series-name ignore1 season episode)
+	(match-re alt1-re thing :case-fold t))
       (setq season (parse-integer season))
-      (setq episode (parse-integer episode))))
-
-    (when series-name (values series-name season episode))))
+      (setq episode (parse-integer episode))
+      (values series-name season episode))
+     
+     ((multiple-value-setq (match whole series-name ignore1 season episode)
+	(match-re alt2-re thing :case-fold t))
+      (setq season (parse-integer season))
+      (setq episode (parse-integer episode))
+      (values series-name season episode t)))
+;;;; values are returned from the cond above, do NOT insert more forms
+;;;; here...
+    ))
 
 (defun canonicalize-series-name (name)
   ;; Canonicalize the series name

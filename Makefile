@@ -112,6 +112,25 @@ endif
 
 ###############################################################################
 
+plexfix: FORCE
+	rm -fr plexfix build.tmp
+	cat deliver_plexfix.cl >> build.tmp
+	$(runlisp)
+
+install_plexfix: FORCE
+ifdef DESTDIR
+	rm -fr $(DESTDIR)/lib/plexfix.old
+	-mv $(DESTDIR)/lib/plexfix $(DESTDIR)/lib/plexfix.old
+	cp -rp plexfix $(DESTDIR)/lib/plexfix
+	rm -f $(DESTDIR)/bin/plexfix
+	cd $(DESTDIR)/bin; ln -s $(DESTDIR)/lib/plexfix/plexfix .
+else
+	@echo There is no DESTDIR defined in Makefile.
+	@exit 1
+endif
+
+###############################################################################
+
 tags: FORCE
 	etags *.cl bittorrent/*.cl
 
