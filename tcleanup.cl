@@ -428,7 +428,7 @@
 
 (defvar *video-types* '("avi" "mp4" "mkv" "wmv"))
 
-(defun tcleanup-files (&aux (initial-newline t) header)
+(defun tcleanup-files (&aux (initial-newline t) header symlink-pass)
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
 	     (format t "~%")
@@ -453,6 +453,7 @@
 		  then (if* *remove-watched*
 			  then (announce "rm ~a~%" p)
 			       (delete-file p)
+			       (setq symlink-pass t)
 			  else (announce "YES ~a:~a~%"
 					 reason (file-namestring p)))
 		elseif (null reason)
@@ -469,6 +470,7 @@
 	       (if* *remove-watched*
 		  then (announce "rm ~a~%" p)
 		       (delete-file p)
+		       (setq symlink-pass t)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
 	    ((equalp "rar" (pathname-type p))
 	     (announce "unwatchable rar file ~a~%" (file-namestring p)))
@@ -479,6 +481,18 @@
 	     )
 	    (t (announce "unknown: ~a~%" (file-namestring p)))))
 
+	 (pathname-as-directory directory)
+	 :recurse t
+	 :include-directories nil))
+
+      (when symlink-pass
+	;; Look for bad symbolic links, now that we've possible removed some
+	;; files.
+	(map-over-directory
+	 (lambda (p)
+	   (when (and (symbolic-link-p p) (not (probe-file p)))
+	     (announce "SYMLINK: ~a~%" (file-namestring p))
+	     (delete-file p)))
 	 (pathname-as-directory directory)
 	 :recurse t
 	 :include-directories nil)))))

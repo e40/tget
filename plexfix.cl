@@ -100,13 +100,15 @@
 (defun user::main (&aux (stream t))
   (flet
       ((send-output ()
-	 (ignore-errors
-	  (when (not (eq 't stream))
-	    (send-letter "192.168.0.1"
-			 (sys:getenv "USER")
-			 (sys:getenv "USER")
-			 (get-output-stream-string stream)
-			 :subject "plexfix"))))
+	 (let ((body (get-output-stream-string stream)))
+	   (when (string/= "" body)
+	     (ignore-errors
+	      (when (not (eq 't stream))
+		(send-letter "192.168.0.1"
+			     (sys:getenv "USER")
+			     (sys:getenv "USER")
+			     body
+			     :subject "plexfix"))))))
        (doit (&aux torrent-dir torrent-name)
 	 (system:with-command-line-arguments
 	     (("d" :short debug)
@@ -120,7 +122,10 @@
 		     (setq torrent-name (sys:getenv "TR_TORRENT_NAME")))
 	      then ;; called from Transmission
 		   (setq rest
-		     (list (format nil "~a~a" torrent-dir torrent-name)))
+		     (list 
+		      (namestring
+		       (merge-pathnames torrent-name
+					(pathname-as-directory torrent-dir)))))
 	    elseif (or (null rest) (/= 1 (length rest)))
 	      then (.error "usage: plexfix file."))
 	   (when debug (setq *debug* t))
