@@ -483,19 +483,19 @@
 
 	 (pathname-as-directory directory)
 	 :recurse t
-	 :include-directories nil))
-
-      (when symlink-pass
-	;; Look for bad symbolic links, now that we've possible removed some
-	;; files.
-	(map-over-directory
-	 (lambda (p)
-	   (when (and (symbolic-link-p p) (not (probe-file p)))
-	     (announce "SYMLINK: ~a~%" (file-namestring p))
-	     (delete-file p)))
-	 (pathname-as-directory directory)
-	 :recurse t
-	 :include-directories nil)))))
+	 :include-directories nil)
+	
+	(when symlink-pass
+	  ;; Look for bad symbolic links, now that we've possible removed some
+	  ;; files.
+	  (map-over-directory
+	   (lambda (p)
+	     (when (and (symbolic-link-p p) (not (probe-file p)))
+	       (announce "SYMLINK: ~a~%" (file-namestring p))
+	       (delete-file p)))
+	   (pathname-as-directory directory)
+	   :recurse t
+	   :include-directories nil))))))
 
 (defun initialize-watched (&aux (temp-file (sys:make-temp-file-name)))
   (or (probe-file *plex-db*)
