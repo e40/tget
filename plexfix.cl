@@ -64,6 +64,7 @@
 		      series-name year month day type)
 	 else (format nil "~a.S~2,'0dE~2,'0d.~a"
 		      series-name season episode type)))
+    (setq new-name (merge-pathnames new-name filename))
     (with-verbosity 1
       (format stream "OLD name: ~a~%" filename)
       (format stream "NEW name: ~a~%" new-name))
