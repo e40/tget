@@ -24,7 +24,8 @@
   :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
   :add-paused nil
   :trash-torrent-file t
-  :ratio "1.1"))
+  ;; The default when there is tracker defined ratio
+  :ratio 1.1))
 
 ;; An alternate method for downloading .torrent files: put them into a
 ;; specific directory, where your torrent client will see them.
@@ -38,40 +39,39 @@
     '(:x264 :h.264))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Main TV shows
+;; Trackers
 
-;; The delay before an episode is downloaded.  This cuts down on bogus
-;; episodes and the need to download a repack.
-(setq *download-delay* 1)
-;; The additional delay waiting to download a high quality ep while
-;; waiting for a normal quality one to become available.
-(setq *download-hq-delay* 1)
-;; The additional delay waiting to download a low quality ep while
-;; waiting for a normal or high quality one to become available.
-(setq *download-lq-delay* 24)
+(deftracker :eztv
+    :url "https://ezrss.it/..."
+    :debug-feed :eztv
+    :public t
+    :download-delay #-debug 1 #+debug 0
+    :disabled t ;; RSS is still offline 
+    :ratio 1.0)
 
-;; Not all sites support the idea of a feed interval.
-;; It's a nice feature, because if you decide to download a new series,
-;; you'll get any episodes released in this period of time.  And, for the
-;; initial installation, you can specify a really high interval (on the
-;; command line, not here), to populate your database with your shows.
-(setq *feed-interval* 21)
+(deftracker :freshon
+    :url "https://freshon.tv/..."
+    :debug-feed :freshon
+    :download-delay #-debug 1 #+debug 0
+    :ratio 1.3)
 
-;; When --debug is given on the command line, the debug version is used,
-;; and that's what this is.  No need to bombard the RSS server with
-;; requests while debugging.
-(defvar *debug-feed* "tget-test-data/debug.xml")
+(deftracker :btn
+    :url "https://broadcasthe.net/..."
+    :debug-feed :btn
+    :disabled #-debug nil #+debug t
+    :download-delay #-debug 6 #+debug 0
+    :ratio 1.5)
 
-;; This is how you define names for qualities you care about.
-;;
+(defvar *trackers*
+    (list :freshon :eztv :btn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Quality settings
+
 (defquality :normal
     ;; The priority of a quality allows selection of episodes when more
     ;; than one quality is available at the same time, as is often the
     ;; case.  Higher numerical priority is given precedence.
-    ;;
-    ;; This is my preferred quality.
-    
-;;;; The documentation for these options is in the README.md file.
     :priority 50
     :source :hdtv
     :codec *codec-x264* 
@@ -79,7 +79,6 @@
 
 (defquality :high
     :priority 40
-    #|:source :hdtv|#			;allow any source
     :codec *codec-x264* 
     :resolution :720p)
 
@@ -89,31 +88,47 @@
     :codec :xvid
     :resolution :sd)
 
-(defquality :indi :resolution :sd)
-
-(defquality :x264-hdtv-mp4
+(defquality :btn
     :priority 60
     :container :mp4
     :source :hdtv
     :codec *codec-x264*)
 
-;; This is a user-defined quality function.
+;; The additional delay waiting to download a high quality ep while
+;; waiting for a normal quality one to become available
+(defvar *download-hq-delay* #-debug 1 #+debug 5)
 
-(defun my-quality (episode)
+;; The additional delay waiting to download a low quality ep while
+;; waiting for a normal or high quality one to become available
+(defvar *download-lq-delay* #-debug 24 #+debug 24)
+
+(defun my-quality (episode &aux (tracker (episode-tracker episode))
+				temp)
+  ;; My defined quality, as a function.  This allows me to download
+  ;; different qualities based on different criteria.
+  ;;
   (if* (and (null
 	     ;; See if there is an episode with :normal quality.  The
 	     ;; :transient keyword is important, since it restricts the
 	     ;; search to episodes we have *not* downloaded yet.
 	     (query-episode :episode episode :quality :normal :transient t))
 	    (eq :high (episode-quality episode))
-	    (>= (hours-available episode) (+ *download-delay*
-					     *download-hq-delay*)))
+	    (and tracker
+		 (numberp (tracker-download-delay tracker))
+		 (if* (>= (hours-available episode)
+			  (setq temp
+			    (+ (tracker-download-delay tracker)
+			       *download-hq-delay*)))
+		    thenret
+		    else (@log ">>>waiting for ~a more hours for this HQ ep"
+			       (- temp (hours-available episode)))
+			 nil)))
      then ;; :normal quality is not available and the :high quality episode
 	  ;; has been available for a set amount of hours, then take this
 	  ;; one
 	  :high
    elseif (=~ "broadcasthe.net" (episode-torrent-url episode))
-     then :x264-hdtv-mp4
+     then :btn
    elseif (and (null
 		;; See if there is an episode with :normal or :high
 		;; quality.
@@ -121,72 +136,51 @@
 		 (query-episode :episode episode :quality :normal :transient t)
 		 (query-episode :episode episode :quality :high :transient t)))
 	       (eq :low (episode-quality episode))
-	       (>= (hours-available episode) *download-lq-delay*))
+	       (and tracker
+		    (>= (hours-available episode)
+			(+ (tracker-download-delay tracker)
+			   *download-lq-delay*))))
      then :low
      else :normal))
 
-(defvar *eztv-rss* "https://ezrss.it/...")
-
-(defvar *freshon-rss*
-    "https://freshon.tv/...")
-
-(defvar *btn-rss* "https://broadcasthe.net/...")
-
-(defvar *rss-urls* (list *freshon-rss*
-			 #+ignore *eztv-rss*
-			 *btn-rss*))
-
-(defvar *ppv-rss-urls* (list *freshon-rss*
-			     *btn-rss*))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Groups
 
 (defgroup :adrian
-    :rss-url '#.*rss-urls*
-    :debug-feed *debug-feed*
-    :delay *download-delay*
+    :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian/" *download-root*))
 
 (defgroup :anh
-    :rss-url '#.*rss-urls*
-    :debug-feed *debug-feed*
-    :delay *download-delay*
+    :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "anh/" *download-root*))
 
 (defgroup :kevin
-    :rss-url '#.*rss-urls*
-    :debug-feed *debug-feed*
-    :delay *download-delay*
-    :quality 'my-quality
-    :download-path (merge-pathnames "kevin/" *download-root*))
-
-(defgroup :kevin-ppv ;; don't use public trackers for this
-    :rss-url '#.*ppv-rss-urls*
-    :debug-feed *debug-feed*
-    :delay *download-delay*
+    :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 (defgroup :adrian+kevin
-    :rss-url '#.*rss-urls*
-    :debug-feed *debug-feed*
-    :delay *download-delay*
+    :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "adrian+kevin/" *download-root*))
 
 (defgroup :anh+kevin
-    :rss-url '#.*rss-urls*
-    :debug-feed *debug-feed*
-    :delay *download-delay*
+    :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
+;;;;TODO: seems like this shouldn't be here... figure out a way to get
+;;;;      around it.  See --add command line argument.
 (defgroup :manual
     :rss-url nil
-    :debug-feed nil
     :delay 0
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TV shows
 
 ;; Use ... :catch-up "S01E02" ... to start a series after the 1st ep
 ;; Use ... :remove t ... to delete a series
@@ -195,6 +189,7 @@
 ;;          Server see episodes of The Daily Show and The Colbert Report.
 
 (defseries "8 Out of 10 Cats" :kevin)
+(defseries "8 Out of 10 Cats Does Countdown" :kevin)
 (defseries "An Idiot Abroad" :adrian+kevin)
 (defseries "Archer (2009)" :kevin)
 (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
@@ -214,19 +209,19 @@
 (defseries "Elementary" :kevin)
 (defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
-(defseries "Game of Thrones" :kevin-ppv :delay 0) ;; immediate download
+(defseries "Game of Thrones" :kevin :private t :delay 0) ;; immediate download
 (defseries "Hannibal" :kevin :delay 0) ;; immediate download
 (defseries "Hell on Wheels" :kevin)
-(defseries "Homeland" :kevin-ppv :delay 0) ;; immediate download
+(defseries "Homeland" :kevin :private t :delay 0) ;; immediate download
 (defseries "Intruders" :kevin :catch-up "S01E02")
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin)
-(defseries "Last Week Tonight with John Oliver" :kevin-ppv
+(defseries "Last Week Tonight with John Oliver" :kevin :private t
   :subdir "Last.Week.Tonight.With.John.Oliver")
 (defseries "Longmire" :kevin)
 (defseries "Louis Theroux Documentaries" :kevin)
 (defseries "Louie" :kevin)
-(defseries "Luther" :kevin)
+(defseries "Luther" :kevin)		;gone forever??
 (defseries "Mad Men" :kevin)
 (defseries "Midsomer Murders" :anh)
 (defseries "Modern Family" :adrian+kevin)
@@ -236,7 +231,8 @@
 (defseries "Parks and Recreation" :adrian+kevin)
 (defseries "Person of Interest" :kevin)
 (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
-(defseries "Ray Donovan" :kevin-ppv)
+(defseries "Ray Donovan" :kevin :private t)
+(defseries "Regular Show" :adrian+kevin)
 (defseries "Rick and Morty" :adrian+kevin)
 (defseries "Ridiculousness" :adrian+kevin)
 (defseries "Shark Tank" :kevin)
@@ -244,7 +240,7 @@
 (defseries "Sirens (2014)" :kevin)
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
-	   :date-based t)
+	   :date-based t :remove t)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
 	   :date-based t
 	   :aliases ("The Daily Show"))
@@ -253,53 +249,23 @@
 (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
 (defseries "The Mentalist" :adrian+kevin)
 (defseries "The Neighbors (2012)" :adrian+kevin)
-(defseries "The Newsroom (2012)" :kevin-ppv)
+(defseries "The Newsroom (2012)" :kevin :private t)
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
-(defseries "True Detective" :kevin-ppv)
+(defseries "True Detective" :kevin :private t)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
-(defseries "White Collar" :anh+kevin)
+(defseries "White Collar" :anh+kevin :remove t)
+(defseries "Witness (2012)" :kevin :private t)
+(defseries "World's Craziest Fools" :adrian+kevin)
 (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
 	   :aliases ("Would I Lie To You"))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; BTN-only shows
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; These items are for the test suite only, and are not used in production
+;; mode:
 
-(defvar *btn-my-series-feed*
-    "https://broadcasthe.net/...")
-
-(defvar *btn-debug-feed* "tget-test-data/btn.xml")
-
-;; BTN quality is kinda funky and inconsistent.  Define some different
-;; qualities for shows from them.
-
-(defquality :x264-?dtv-mp4
-    :priority 10
-    :container :mp4
-    :source '(:pdtv :hdtv)
-    :codec *codec-x264*)
-
-(defgroup :btn-adrian+kevin
-    :rss-url *btn-my-series-feed*
-    :debug-feed *btn-debug-feed*
-    :ratio "-1" 
-    :quality :normal
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defgroup :btn-kevin
-    :rss-url *btn-my-series-feed*
-    :debug-feed *btn-debug-feed*
-    :ratio "-1" 
-    :quality :normal
-    :download-path (merge-pathnames "kevin/" *download-root*))
-
-(defseries "Regular Show" :btn-adrian+kevin :quality :high)
-(defseries "World's Craziest Fools" :btn-adrian+kevin :quality :x264-?dtv-mp4)
-(defseries "Witness (2012)" :btn-kevin :quality :x264-?dtv-mp4)
-(defseries "8 Out of 10 Cats Does Countdown"
-    :btn-kevin :quality :high)

@@ -2,20 +2,48 @@
 (in-package :user)
 
 (eval-when (compile eval load)
+  (require :anydate)
   (require :tester)
   (use-package :util.test))
 
-(defun test-quality (res)
-  `(:container :mp4 :source :hdtv :codec :x264 :resolution ,res))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; We do this globally so that any Lisp with the test suite loaded never
+;; messes with the production database.
+(let ((p (merge-pathnames "tmp/")))
+  (ensure-directories-exist p)
+  (setq *tget-data-directory* p))
+
+(setq *test* t) ;; make sure we don't fetch external feeds
+
+(defun reset-and-open-test-database ()
+  (reset-program-state)
+  
+  (open-tget-database :if-exists :supersede)
+  ;; Define this before loading the config file, so we don't rely on that
+  ;; value.  The test suite requires the value `6'.
+  (pushnew :debug *features* :test #'eq)
+  (load "tget-config/config.cl" :verbose t))
+
+(defvar *debug-feed* nil)
+
+(defun debug-feed (tracker)
+  (declare (ignore tracker))
+  (or *debug-feed*
+      (error "*debug-feed* is nil")))
 
 (defmacro with-tget-tests (options &body body)
   (declare (ignore options))
-  `(let ((*learn* t)
+  `(let ((*learn* t) ;; don't download anything
 	 (*log-stream* nil) ;; messages to stdout
+	 (*log-file* "tmp/ep.log")
 	 (*auto-backup* nil))
+     (open-log-files :truncate t)
      ,@body))
 
 (defun test-tget ()
+;;;; Test individual components, ones that can be tested without invoking
+;;;; the main processing engine.
   (test-tget-date-parser)
   (test-tget-episode-parser)
   (test-tget-epnum-comparisions)
@@ -23,8 +51,12 @@
   (test-tget-feed-reading)
   (test-tget-feed-bugs)
   (test-tget-complete-to)
+;;;; This is the meat of the engine and most of it used to be tested by
+;;;; test.sh.  Now in Lisp and it does a lot more.
   (test-tget-processing)
   (+ util.test:*test-errors* util.test:*test-unexpected-failures*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test-tget-date-parser ()
   (test (* 5 3600)
@@ -63,12 +95,12 @@
     (test-values '("Foo" 3 4)       "Foo.3x04.mp4"       t   t  )
     (test-values '("Foo" 3 4)       "Foo.3x04"           t   t  )
     (test-values '("Foo" 3 4)       "Foo.3x04"           t   nil)
-    (test-values '("Foo" 3 4)       "Foo.304.mp4"        t   t  )
-    (test-values '("Foo" 3 4)       "Foo.304"            t   t  )
-    (test-values '("Foo" 3 4)       "Foo.304"            t   nil)
-    (test-values '("Foo" 3 4)       "Foo.0304.mp4"       t   t  )
-    (test-values '("Foo" 3 4)       "Foo.0304"           t   t  )
-    (test-values '("Foo" 3 4)       "Foo.0304"           t   nil)
+    (test-values '("Foo" 3 4 t)     "Foo.304.mp4"        t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.304"            t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.304"            t   nil)
+    (test-values '("Foo" 3 4 t)     "Foo.0304.mp4"       t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.0304"           t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.0304"           t   nil)
     (test-values '(nil)             "Foo.0S03.mp4"       t   t  )
     (test-values '(nil)             "Foo.S03E04.mp4"     t   nil)
     (test-values '("Foo" 3 4)       "Foo S03E04.mp4"     t   t  )
@@ -80,15 +112,21 @@
     (test-values '("Foo" 3 nil)     "Foo S03"            nil nil)
     (test-values '(nil)             "Foo S03"            t   nil)
 
-    (test-values '("The.Bar" 2014 2) "The.Bar.2014.01.02.mp4" nil t)
-    (test-values '("The.Bar" 2014 2) "The.Bar 2014.01.02"     nil nil)
-    (test-values '("The.Bar" 2014 2) "The.Bar 2014.01.02"     nil t)
+    (test-values '("The.Bar" 2014 2
+		   nil "2014" "01" "02") "The.Bar.2014.01.02.mp4" nil t)
+    (test-values '("The.Bar" 2014 2
+		   nil "2014" "01" "02") "The.Bar 2014.01.02"     nil nil)
+    (test-values '("The.Bar" 2014 2
+		   nil "2014" "01" "02") "The.Bar 2014.01.02"     nil t)
     (test-values '(nil)              "The.Bar 2014.01"        nil nil)
-    (test-values '("The.Bar" 20 14)  "The.Bar 2014"           nil nil)
-    (test-values '("The.Bar" 20 14)  "The.Bar 2014"           nil t)
-    (test-values '("The.Bar" 2014 2) "The.Bar.2014x01.02.mp4" nil t)
-    (test-values '("The.Bar" 2014 2) "The.Bar 2014x01.02"     nil nil)
-    (test-values '("The.Bar" 2014 2) "The.Bar 2014x01.02"     nil t)
+    (test-values '("The.Bar" 20 14 t) "The.Bar 2014"           nil nil)
+    (test-values '("The.Bar" 20 14 t) "The.Bar 2014"           nil t)
+    (test-values '("The.Bar" 2014 2
+		   nil "2014" "01" "02") "The.Bar.2014x01.02.mp4" nil t)
+    (test-values '("The.Bar" 2014 2
+		   nil "2014" "01" "02") "The.Bar 2014x01.02"     nil nil)
+    (test-values '("The.Bar" 2014 2
+		   nil "2014" "01" "02") "The.Bar 2014x01.02"     nil t)
     (test-values '(nil)              "The.Bar 2014x01"        nil nil)
     ))
  
@@ -166,29 +204,20 @@
 	    (fuzzy-compare-series-names (first thing) (second thing))
 	    :test #'string=))))
 
-(defvar *tvt-delay*)
-
-(defun test-db-init ()
-  (open-tget-database :if-exists :supersede)
-  (setq *torrent-handler* nil)
-  ;; Define this before loading the config file, so we don't rely on that
-  ;; value.  The test suite requires the value `6'.
-  (setq *tvt-delay* 6)
-  (load "tget-config/config.cl" :verbose t))
-
 (defun test-tget-feed-reading ()
   (with-tget-tests ()
     (dolist (feed '("tget-test-data/btn.xml"
 		    "tget-test-data/eztv.xml"
-		    "tget-test-data/tvt.xml"))
-      (test-db-init)
+		    "tget-test-data/test001.xml"
+		    "tget-test-data/freshon.xml"))
+      (reset-and-open-test-database)
       (format t "~%~%;;;;; PARSE FEED: ~a~%~%" feed)
       (mapcar #'rss-to-episode (feed-to-rss-objects :file feed)))))
 
 (defun test-tget-feed-bugs ()
   ;; malformed data
   (with-tget-tests ()
-    (test-db-init)
+    (reset-and-open-test-database)
     (let ((e (rss-to-episode
 	      (make-rss-item
 	       :source :tvtorrents.com
@@ -267,7 +296,7 @@
     ))
 
 (defun test-tget-complete-to ()
-  (test-db-init)
+  (reset-and-open-test-database)
   (with-tget-tests ()
     (macrolet
 	((with-series ((var &key name complete-to discontinuous-episodes)
@@ -419,182 +448,500 @@
 	      :test #'equal :fail-info "test 12b"))
       )))
 
-(defvar *test-downloaded-episodes* nil)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun test-select-episode (ep)
-  (format t "select=~a~%" ep)
-  (push ep *test-downloaded-episodes*))
+(defun count-eps ()
+  (let ((n 0))
+    (doclass (ep (find-class 'episode) :db *main*)
+      (declare (ignore ep))
+      (incf n))
+    n))
 
-(defun test-make-eps (&rest things)
-  (test-db-init)
-  (dolist (thing things)
-    (destructuring-bind (filename &key hours transient)
-	thing
-      (multiple-value-bind (series-name season episode repack
-			    container source codec resolution)
-	  (extract-episode-info-from-filename filename)
-	(let ((title (format nil "~a S~aE~a" series-name
-			     season episode))
-	      (pub-date
-	       ;; `hours' is the hours back from now
-	       (- (get-universal-time)
-		  ;; seconds in the past
-		  (floor (* hours 3600)))))
-	  (make-episode
-	   :series (or (query-series-name-to-series series-name)
-		       (error "no series??? ~s" series-name))
-	   :series-name series-name
-	   :full-title title
-	   :title title
-	   :torrent-url title
-	   :pub-date pub-date
-	   :season season
-	   :episode episode
-	   :pretty-epnum
-	   (season-and-episode-to-pretty-epnum season episode)
-	   :repack repack
-	   :container container
-	   :source source
-	   :codec codec
-	   :resolution resolution
-	   :filename filename
-	   :transient transient)))))
-  (tget-commit *main*)
-  (tget-commit *temp*)
-  (setq *test-downloaded-episodes* nil)
-  (process-transient-objects (retrieve-from-index 'group 'name :kevin
-						  :db *main*)
-			     #'test-select-episode))
+(defun all-episodes ()
+  (let ((res '()))
+    (doclass (ep (find-class 'episode) :db *main*)
+      (push (append (list (episode-series-name ep)
+			  (episode-season ep)
+			  (episode-episode ep))
+		    (when (episode-repack ep)
+		      (list :repack)))
+	    res))
+    (sort res #'episode-sort-function)))
 
-(defun test-tget-processing (&aux *test-downloaded-episodes*)
+(defun episode-sort-function (e1 e2)
+  (let ((e1-epnum (if* (consp (third e1))
+		     then (car (third e1))
+		     else (third e1)))
+	(e2-epnum (if* (consp (third e2))
+		     then (car (third e2))
+		     else (third e2))))
+    (if* (string= (first e1) (first e2))
+       then (if* (= (second e1) (second e2))
+	       then (if* (= e1-epnum e2-epnum)
+		       then e1
+		       else (< e1-epnum e2-epnum))
+	       else (< (second e1) (second e2)))
+       else (string< (first e1) (first e2)))))
+
+(defvar *initial-base-episodes* nil)
+(defvar *base-episodes* nil)
+(defvar *base-series* nil)
+
+(defun note-episode (ep)
+  (setq *base-episodes*
+    (sort (cons ep *base-episodes*) #'episode-sort-function)))
+
+(defun check-episodes (base)
+  (format t ";; checking episodes...~%")
+
+  ;; does an equal on what's in the database compared to BASE, but it makes
+  ;; it easier to know what's different.
+  
+  (do* ((base base (cdr base))
+	(ep (all-episodes) (cdr ep))
+	mismatch
+	(n 0))
+      ((or mismatch
+	   (null base)
+	   (null ep))
+       (if* mismatch
+	  then (error "mismatch after ~d episodes; expected ~s, got ~s"
+		      n
+		      (car base)
+		      (car ep))
+	elseif base
+	  then (error "~d left over episodes in base: ~s" (length base) base)
+	elseif ep
+	  then (error "~d extra episodes in db: ~s" (length ep) ep))
+       t)
+    (when (not (equal (car base) (car ep)))
+      (error "check-episodes[~d]: expected ~s got ~s."
+	     n (car base) (car ep)))
+    (incf n)))
+
+(defun check-series (base)
+  (format t ";; checking series...~%")
+  (dolist (name base)
+    (test t (not (null (query-series-name-to-series name))))))
+
+(defun pprint-episodes (eps)
+  (dolist (ep eps)
+    (format t "~s~%" ep)))
+
+(setq *initial-base-episodes*
+  '(("8 out of 10 cats" 15 4)
+    ("8 out of 10 cats" 15 5)
+    ("8 out of 10 cats" 15 6)
+    ("8 out of 10 cats" 15 7)
+    ("8 out of 10 cats" 15 10)
+    ("bates motel" 1 6)
+    ("childrens hospital (us)" 5 1)
+    ("eagleheart" 2 11)
+    ("elementary" 1 8)
+    ("elementary" 1 9)
+    ("elementary" 1 10)
+    ("elementary" 1 11)
+    ("elementary" 1 12)
+    ("elementary" 1 13)
+    ("elementary" 1 14)
+    ("elementary" 1 15)
+    ("elementary" 1 16)
+    ("elementary" 1 17)
+    ("elementary" 1 18)
+    ("elementary" 1 19)
+    ("elementary" 1 21)
+    ("elementary" 1 (23 . 24))
+    ("frontline (us)" 24 11)
+    ("frontline (us)" 29 14)
+    ("frontline (us)" 30 21)
+    ("frontline (us)" 31 1)
+    ("frontline (us)" 31 2)
+    ("frontline (us)" 31 3)
+    ("frontline (us)" 31 4)
+    ("frontline (us)" 31 5)
+    ("frontline (us)" 31 6)
+    ("frontline (us)" 31 7)
+    ("frontline (us)" 31 8)
+    ("frontline (us)" 31 9)
+    ("frontline (us)" 31 10)
+    ("frontline (us)" 31 11)
+    ("frontline (us)" 31 12)
+    ("frontline (us)" 31 13)
+    ("hannibal" 1 1)
+    ("hannibal" 1 2)
+    ("hannibal" 1 3)
+    ("hannibal" 1 5)
+    ("hannibal" 1 6)
+    ("hannibal" 1 7)
+    ("hannibal" 1 8)
+    ("hannibal" 1 9)
+    ("hannibal" 1 10)
+    ("hannibal" 1 11)
+    ("hannibal" 1 12)
+    ("hannibal" 1 13)
+    ("justified" 4 7)
+    ("justified" 4 8)
+    ("justified" 4 9)
+    ("justified" 4 10)
+    ("justified" 4 12)
+    ("justified" 4 13)
+    ("longmire" 2 1)
+    ("longmire" 2 2)
+    ("longmire" 2 3)
+    ("longmire" 2 4)
+    ("longmire" 2 5)
+    ("longmire" 2 6 :repack)
+    ("longmire" 2 7)
+    ("longmire" 2 8)
+    ("luther" 3 1)
+    ("luther" 3 2)
+    ("luther" 3 3)
+    ("luther" 3 4)
+    ("mad men" 6 (1 . 2) :repack)
+    ("mad men" 6 3 :repack)
+    ("mad men" 6 4 :repack)
+    ("mad men" 6 5)
+    ("mad men" 6 6)
+    ("midsomer murders" 15 6)
+    ("nova" 40 8)
+    ("nova" 40 9)
+    ("nova" 40 10)
+    ("nova" 40 11)
+    ("nova" 40 12)
+    ("nova" 40 13)
+    ("nova" 40 14)
+    ("nova" 40 15)
+    ("nova" 40 16)
+    ("nova" 40 17)
+    ("nova" 40 18)
+    ("nova" 40 19)
+    ("nova" 40 20)
+    ("parks and recreation" 5 12)
+    ("parks and recreation" 5 13)
+    ("parks and recreation" 5 14)
+    ("parks and recreation" 5 15)
+    ("ray donovan" 1 1)
+    ("ray donovan" 1 2 :repack)
+    ("ray donovan" 1 3)
+    ("ray donovan" 1 4)
+    ("regular show" 4 1)
+    ("regular show" 4 2)
+    ("regular show" 4 3)
+    ("regular show" 4 4)
+    ("regular show" 4 7)
+    ("regular show" 4 8)
+    ("regular show" 4 9)
+    ("regular show" 4 10)
+    ("regular show" 4 11)
+    ("regular show" 4 12)
+    ("regular show" 4 13)
+    ("regular show" 4 14)
+    ("regular show" 4 15)
+    ("regular show" 4 16)
+    ("regular show" 4 17)
+    ("regular show" 4 18)
+    ("regular show" 4 20)
+    ("regular show" 4 21)
+    ("regular show" 4 22)
+    ("regular show" 4 23)
+    ("regular show" 4 24)
+    ("regular show" 4 25)
+    ("regular show" 4 26)
+    ("regular show" 4 27)
+    ("regular show" 4 28)
+    ("regular show" 4 29)
+    ("ridiculousness" 3 1)
+    ("ridiculousness" 3 2)
+    ("ridiculousness" 3 3)
+    ("ridiculousness" 3 4)
+    ("ridiculousness" 3 5)
+    ("ridiculousness" 3 6)
+    ("ridiculousness" 3 7)
+    ("ridiculousness" 3 8)
+    ("ridiculousness" 3 9)
+    ("shark tank" 4 14)
+    ("shark tank" 4 16)
+    ("shark tank" 4 17)
+    ("shark tank" 4 21)
+    ("shark tank" 4 22)
+    ("shark tank" 4 23)
+    ("shark tank" 4 24)
+    ("shark tank" 4 25)
+    ("shark tank" 4 26)
+    ("the daily show with jon stewart" 2013 35)
+    ("the daily show with jon stewart" 2013 36)
+    ("the daily show with jon stewart" 2013 37)
+    ("the daily show with jon stewart" 2013 38)
+    ("the daily show with jon stewart" 2013 42)
+    ("the daily show with jon stewart" 2013 43)
+    ("the daily show with jon stewart" 2013 44)
+    ("the daily show with jon stewart" 2013 45)
+    ("the daily show with jon stewart" 2013 50)
+    ("the daily show with jon stewart" 2013 51 :repack)
+    ("the daily show with jon stewart" 2013 52)
+    ("the daily show with jon stewart" 2013 56)
+    ("the daily show with jon stewart" 2013 57)
+    ("the daily show with jon stewart" 2013 58)
+    ("the daily show with jon stewart" 2013 59)
+    ("the daily show with jon stewart" 2013 133)
+    ("the daily show with jon stewart" 2013 161)
+    ("the daily show with jon stewart" 2013 162)
+    ("the daily show with jon stewart" 2013 168)
+    ("the daily show with jon stewart" 2013 196)
+    ("the daily show with jon stewart" 2013 197)
+    ("the daily show with jon stewart" 2013 198)
+    ("the daily show with jon stewart" 2013 199)
+    ("the daily show with jon stewart" 2013 203)
+    ("the daily show with jon stewart" 2013 205)
+    ("the daily show with jon stewart" 2013 206)
+    ("the good wife" 4 13)
+    ("the good wife" 4 14)
+    ("the good wife" 4 15)
+    ("the good wife" 4 16)
+    ("the good wife" 4 17)
+    ("the good wife" 4 18)
+    ("the good wife" 4 19)
+    ("the good wife" 4 20)
+    ("the good wife" 4 21)
+    ("the graham norton show" 12 7)
+    ("the graham norton show" 12 15)
+    ("the graham norton show" 12 16)
+    ("the graham norton show" 12 17)
+    ("the graham norton show" 12 18)
+    ("the graham norton show" 12 19)
+    ("the graham norton show" 13 1)
+    ("the graham norton show" 13 2)
+    ("the graham norton show" 13 3)
+    ("the graham norton show" 13 4)
+    ("the graham norton show" 13 5)
+    ("the graham norton show" 13 6)
+    ("the graham norton show" 13 7)
+    ("the graham norton show" 13 8)
+    ("the graham norton show" 13 9)
+    ("the graham norton show" 13 10)
+    ("the graham norton show" 13 11)
+    ("the graham norton show" 13 12)
+    ("the graham norton show" 13 13)
+    ("the newsroom (2012)" 2 1)
+    ("the newsroom (2012)" 2 2)
+    ("the simpsons" 24 1)
+    ("the simpsons" 24 3)
+    ("the simpsons" 24 19)
+    ("the ultimate fighter" 17 2)
+    ("the ultimate fighter" 17 3)
+    ("the ultimate fighter" 17 4)
+    ("the ultimate fighter" 17 5)
+    ("the ultimate fighter" 17 6)
+    ("the ultimate fighter" 17 7)
+    ("the ultimate fighter" 17 8 :repack)
+    ("the ultimate fighter" 17 9)
+    ("the ultimate fighter" 17 10)
+    ("the ultimate fighter" 17 11)
+    ("the ultimate fighter" 17 12)
+    ("the ultimate fighter" 17 13)
+    ("top gear" 18 8)
+    ("top gear" 18 9)
+    ("top gear" 18 10)
+    ("top gear" 18 11)
+    ("top gear" 20 1)
+    ("top gear" 20 2)
+    ("top gear" 20 3)
+    ("top gear" 20 4)
+    ("top of the lake" 1 1)
+    ("top of the lake" 1 2)
+    ("top of the lake" 1 3)
+    ("top of the lake" 1 4)
+    ("top of the lake" 1 5)
+    ("top of the lake" 1 6)
+    ("top of the lake" 1 7)
+    ("tosh 0" 5 1)
+    ("tosh 0" 5 2)
+    ("tosh 0" 5 3)
+    ("tosh 0" 5 4)
+    ("tosh 0" 5 5)
+    ("tosh 0" 5 6)
+    ("tosh 0" 5 7 :repack)
+    ("tosh 0" 5 8)
+    ("tosh 0" 5 9)
+    ("tosh 0" 5 10)
+    ("tosh 0" 5 11)
+    ("tosh 0" 5 12)
+    ("tosh 0" 5 13)
+    ("tosh 0" 5 14)
+    ("tosh 0" 5 15)))
+
+(setq *base-series*
+  '("8 out of 10 cats"
+    "bates motel"
+    "childrens hospital (us)"
+    "eagleheart"
+    "elementary"
+    "frontline (us)"
+    "hannibal"
+    "justified"
+    "longmire"
+    "luther"
+    "mad men"
+    "midsomer murders"
+    "nova"
+    "parks and recreation"
+    "ray donovan"
+    "regular show"
+    "ridiculousness"
+    "shark tank"
+    "the daily show with jon stewart"
+    "the good wife"
+    "the graham norton show"
+    "the newsroom (2012)"
+    "the simpsons"
+    "the ultimate fighter"
+    "top gear"
+    "top of the lake"
+    "tosh 0"))
+
+(defun test-tget-processing (&aux (*debug* 
+				   ;; `t' is too verbose
+				   nil)
+				  ep)
   (with-tget-tests ()
-;;;; weird naming:
-    (test-make-eps
-     `("Vikings.S22E11E12.720p.HDTV.X264-DIMENSION.mkv"
-       :hours ,(- *download-delay* 0.5)
-       :transient t))
-    (test 0 (length *test-downloaded-episodes*)
-	  :fail-info "test 0")
+    ;; First thing to do is populate the database with a known set of
+    ;; things, then we run further tests that should add episodes, or not,
+    ;; depending on the conditions.
+    ;;
+    ;; We used to only read the (old) TVT feed and process episodes from
+    ;; that, using the current time.  We still do that, for lack of a
+    ;; better resource.  The data file for this is
+    ;; tget-test-data/test001.xml.
 
-;;;; should wait longer for :sd ep
-    (test-make-eps
-     `("vikings.s01e01.repack.hdtv.x264-2hd.mp4"
-       :hours ,(- *download-delay* 0.5)
-       :transient t)
-     `("vikings.s01e01.720p.hdtv.x264-2hd.mkv"
-       :hours ,(+ *download-delay* (- *download-hq-delay* 0.5))
-       :transient t))
-    (test 0 (length *test-downloaded-episodes*)
-	  :fail-info "test 1")
-
-;;;; should download the :sd ep
-    (test-make-eps
-     `("vikings.s01e01.repack.hdtv.x264-2hd.mp4"
-       :hours ,(+ *download-delay* 1.5)
-       :transient t)
-     `("vikings.s01e01.720p.hdtv.x264-2hd.mkv"
-       :hours ,(+ *download-delay* (+ *download-hq-delay* 0.5))
-       :transient t))
-    (when (test 1 (length *test-downloaded-episodes*)
-		:fail-info "test 2.1")
-      (test :sd (episode-resolution (car *test-downloaded-episodes*))
-	    :fail-info "test 2.2"))
-      
-;;;; should download the repack
-    (test-make-eps
-     `("vikings.s01e01.hdtv.x264-2hd.mp4"
-       :hours ,(+ *download-delay* 5)
-       :transient nil)
-     `("vikings.s01e01.repack.hdtv.x264-2hd.mp4"
-       :hours ,(+ *download-delay* 1.5)
-       :transient t))
-    (when (test 1 (length *test-downloaded-episodes*)
-		:fail-info "test 3.1")
-      (test t (episode-repack (car *test-downloaded-episodes*))
-	    :fail-info "test 3.2"))
-
-;;;; should NOT download the repack
-    (test-make-eps
-     `("vikings.s01e01.hdtv.x264-2hd.mp4"
-       :hours ,(+ *download-delay* 5)
-       :transient nil)
-     `("vikings.s01e01.REPACK.720p.hdtv.x264-2hd.mkv"
-       :hours ,(+ *download-delay* 2.5)
-       :transient t))
-    (test 0 (length *test-downloaded-episodes*)
-	  :fail-info "test 4")
-
-;;;; should download the repack
-    (test-make-eps
-     `("vikings.s01e01.hdtv.x264-2hd.mp4"
-       :hours ,(+ *download-delay* 5)
-       :transient nil)
-     `("vikings.s01e01.REPACK.720p.hdtv.x264-2hd.mkv"
-       :hours ,(+ *download-delay* 2.5)
-       :transient t)
-     `("vikings.s01e01.REPACK.hdtv.x264-2hd.mp4"
-       :hours ,(+ *download-delay* 1.5)
-       :transient t))
-    (when (test 1 (length *test-downloaded-episodes*)
-		:fail-info "test 5")
-      (test t (episode-repack (car *test-downloaded-episodes*))
-	    :fail-info "test 5.2")
-      (test :sd (episode-resolution (car *test-downloaded-episodes*))
-	    :fail-info "test 5.3"))
-
-    (dolist (name '("Mad.Men.S06E01-E02.PROPER.HDTV.x264-2HD.mp4"
-		    "Mad.Men.S06E01E02.PROPER.HDTV.x264-2HD.mp4"
-		    "mad.men.s06e01e02.repack.hdtv.x264-2hd.mp4"))
-      (test-make-eps (list name
-			   :hours (+ *download-delay* 2)
-			   :transient t))
-      (when (test 1 (length *test-downloaded-episodes*)
-		  :fail-info "test 6.1")
-	(let ((ep (car *test-downloaded-episodes*)))
-	  (test t (episode-repack ep)
-		:fail-info "test 6.2")
-	  (test :sd (episode-resolution ep)
-		:fail-info "test 6.3")
-	  (test "S06E01-E02" (episode-pretty-epnum ep)
-		:test #'string=
-		:fail-info "test 6.4")
-	  (test '(6 . 2) (series-complete-to (episode-series ep))
-		:test #'equal
-		:fail-info "test 6.5"))))
+    (reset-and-open-test-database)
     
-;;;; inconsistent naming: switching from ep numbering & date numbering.  If
-;;;; ep #'s are there, use those
-    #+ignore
+    (setq *base-episodes* (copy-list *initial-base-episodes*))
+    
+    ;; make sure it's really empty:
+    (test 0 (count-eps) :test #'=)
+    
+;;;;;;;;;;;
+    (format t ";;;;; test 1~%")
+    (setq *now*
+      (excl:string-to-universal-time
+       ;; hours avail max is 11 with this value:
+       "Fri, 26 Jul 2013 23:34:38 +0000"))
+    (setq *debug-feed* "tget-test-data/test001.xml")
+    (time (process-groups))
 
-;;;; need to figure out the right way to deal with this one....
+    (test 240 (count-eps) :test #'=)
+    (test t (check-episodes *base-episodes*))
+    (check-series *base-series*)
+
+;;;;;;;;;;; 
+    (format t ";;;;; test 2: wait longer for :high~%")
+    (setq *debug-feed* "tget-test-data/test002.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 05:59:00 +0000"))
+    (process-groups)
+    (test 240 (count-eps) :test #'=)
+
+;;;;;;;;;;;
+    (format t ";;;;; test 3: grab :high~%")
+    (setq *debug-feed* "tget-test-data/test003.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 06:00:10 +0000"))
+    (process-groups)
+    (test 241 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 1))
+
+;;;;;;;;;;; 
+    (format t ";;;;; test 4: already have ep~%")
+    (setq *debug-feed* "tget-test-data/test004.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 06:30:00 +0000"))
+    (process-groups)
+    (test 241 (count-eps) :test #'=)
+
+;;;;;;;;;;; 
+    (format t ";;;;; test 5: get :normal not :high~%")
+    (setq *debug-feed* "tget-test-data/test005.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 07:00:00 +0000"))
+    (process-groups)
+    (test 242 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 2))
+    (setq ep (query-episode :series-name "vikings" :season 1 :ep-number 2))
+    (test 1 (length ep))
+    (setq ep (car ep))
+    (test :normal (episode-quality ep))
+
+;;;;;;;;;;; 
+    (format t ";;;;; test 5b: do NOT download :high REPACK~%")
+    (setq *debug-feed* "tget-test-data/test005b.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 07:30:00 +0000"))
+    (process-groups)
+    (test 242 (count-eps) :test #'=)
+
+;;;;;;;;;;; 
+    (format t ";;;;; test 6: Get repack over non-repack ep~%")
+    (setq *debug-feed* "tget-test-data/test006.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 07:00:00 +0000"))
+    (process-groups)
+    (test 243 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 3))
+    (setq ep (query-episode :series-name "vikings" :season 1 :ep-number 3))
+    (test 1 (length ep))
+    (setq ep (car ep))
+    (test :normal (episode-quality ep))
+    (test t (episode-repack ep))
     
-;;;; maybe signal a warning when an ep-based name is found for a date-based
-;;;; series??? (or vice versa)
-    
-    (let ((e1 (convert-rss-to-episode
-	       :tvtorrents.com
-	       #S(rss-item :source :tvtorrents.com
-			   :title "Last Week Tonight with John Oliver - 1x14 - Episode 14 (.mp4) (Repack)"
-			   :link "http://torrent.tvtorrents.com/FetchTorrentServlet?info_hash=3a88c4a7c21d1b2b1eec230ab941254ab3aa269f&digest=0a8994688db11176c1a3ec73737ed3d0cfccf25a&hash=c4811c3cd8c978b652b9964e44b01ad99982ba6f"
-			   :guid nil
-			   :comments "http://www.tvtorrents.com/loggedin/torrent.do?info_hash=3a88c4a7c21d1b2b1eec230ab941254ab3aa269f"
-			   :pub-date "Tue, 12 Aug 2014 05:49:03 +0000"
-			   :description "Show Name:Last Week Tonight with John Oliver; Show Title: Episode 14 (.mp4) (Repack); Season: 1; Episode: 14; Filename: Last.Week.Tonight.With.John.Oliver.2014.08.10.REPACK.HDTV.x264-BAJSKORV.mp4;"
-			   :type "application/x-bittorrent"
-			   :length "201587214")))
-	  (e2 (convert-rss-to-episode
-	       :tvtorrents.com
-	       #S(rss-item :source :tvtorrents.com
-			   :title "Last Week Tonight with John Oliver - 1x15 - Episode 15 (720p .mkv)"
-			   :link "http://torrent.tvtorrents.com/FetchTorrentServlet?info_hash=4d1b44b442ccdba4ba24e9d1dfe3394ca3d9dd82&digest=0a8994688db11176c1a3ec73737ed3d0cfccf25a&hash=2c1c500c1fd2fc45a7af0886b379a35488c31086"
-			   :guid nil
-			   :comments "http://www.tvtorrents.com/loggedin/torrent.do?info_hash=4d1b44b442ccdba4ba24e9d1dfe3394ca3d9dd82"
-			   :pub-date "Mon, 18 Aug 2014 09:34:40 +0000"
-			   :description "Show Name:Last Week Tonight with John Oliver; Show Title: Episode 15 (720p .mkv); Season: 1; Episode: 15; Filename: Last.Week.Tonight.With.John.Oliver.S01E15.720p.HDTV.x264-BATV.mkv;"
-			   :type "application/x-bittorrent"
-			   :length "902990079")))
-	  )
-      )
-    
-    
-    ))
+;;;;;;;;;;;
+    (format t ";;;;; test 7: grab ep~%")
+    (setq *debug-feed* "tget-test-data/test007.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 07:30:00 +0000"))
+    (process-groups)
+    (test 244 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 4))
+
+;;;;;;;;;;;
+    (format t ";;;;; test 7a: download the :normal repack~%")
+    (setq *debug-feed* "tget-test-data/test007a.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 07:45:00 +0000"))
+    (process-groups)
+    (test 245 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 4))
+    (setq ep (query-episode :series-name "vikings" :season 1 :ep-number 4
+			    :repack t))
+    (test 1 (length ep))
+    (setq ep (car ep))
+    (test :normal (episode-quality ep))
+
+;;;;;;;;;;;
+    (format t ";;;;; test 8: grab ep~%")
+    (setq *debug-feed* "tget-test-data/test008.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sat, 27 Jul 2013 07:55:00 +0000"))
+    (process-groups)
+    (test 246 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 5))
+
+;;;;;;;;;;;
+    (format t ";;;;; test 8a: do NOT download any repack~%")
+    (setq *debug-feed* "tget-test-data/test008a.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sun, 28 Jul 2013 20:00:00 +0000"))
+    (process-groups)
+    (test 246 (count-eps) :test #'=)
+
+;;;;;;;;;;;
+    (format t ";;;;; test 9: grab REPACK~%")
+    (setq *debug-feed* "tget-test-data/test009.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sun, 28 Jul 2013 20:00:00 +0000"))
+    (process-groups)
+    (test 247 (count-eps) :test #'=)
+    (note-episode '("vikings" 1 (6 . 7)))
+    (setq ep (query-episode :series-name "vikings" :season 1
+			    :ep-number '(6 . 7) :repack t))
+    (test 1 (length ep))
+))

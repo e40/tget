@@ -6,7 +6,7 @@
 				       *database-main-name*)))
 (setq *log-file* (merge-pathnames "ep.log" *load-pathname*))
 (setq *config-file* (merge-pathnames "tget-config/config.cl" *load-pathname*))
-(setq *debug* t)
+(setq *debug* nil) ;; too verbose
 (setq *feed-interval* 180)
 (setq *learn* t)
 (setq *verbose* 1)
@@ -76,3 +76,4 @@
     (prof:with-profiling () (process-groups))))
 
 (pprint `(test-tget))
+(pprint `(test-tget-processing))

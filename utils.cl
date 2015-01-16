@@ -22,6 +22,11 @@
      (prog1 (progn ,@forms)
        (force-output t))))
 
+;; User visible:
+(defvar *repack-window-seconds*
+    ;; download repacks within a day of the original episode
+    (* 24 3600))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar *max-epnum* 9999)
@@ -612,6 +617,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; misc
 
+(defun collect-hash-values (hash-table)
+  (let ((vals '()))
+    (maphash (lambda (k v)
+	       (declare (ignore k))
+	       (push v vals))
+	     hash-table)
+    vals))
+
 (defvar *log-stream* nil)
 (defvar *log-prefix* nil)
 
@@ -622,7 +635,8 @@
       (setq *log-prefix* (format nil "~a: " (excl.osi:getpid))))
     (princ *log-prefix* *log-stream*)
     (apply #'format *log-stream* format-string args)
-    (fresh-line *log-stream*))
+    (fresh-line *log-stream*)
+    (force-output *log-stream*))
    ((> *verbose* 0)
     (apply #'format t format-string args)
     (fresh-line t)))

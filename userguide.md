@@ -258,15 +258,39 @@ Valid values:
 
 %%VALUE: *valid-resolutions*
 
-### `defgroup name &key rss-url debug-feed delay ratio quality download-path`
+### `deftracker name &key url debug-feed public download-delay disabled ratio`
+
+`name` -- the name of the tracker, a keyword (e.g. :eztv).
+
+`url` -- the URL that points to an RSS feed for this tracker.  If you
+require a password to access the tracker's RSS feed, it would need to
+be contained in the URL.
+
+`debug-feed` -- a filename which is to be substituted for the actual
+URL, for debugging purposes.
+
+`public` -- a boolean which indicates if this tracker is public or
+not.
+
+`download-delay` -- the delay imposed on downloads for this tracker.
+This option allows you to give priority to different trackers, based
+of time.
+
+`disabled` -- a boolean indicating if the tracker has been disabled.
+It is useful when trackers go offline for extended periods of time.
+
+`ratio` -- the ratio to be applied to this specific tracker.  It takes
+precedence over the global ratio specified for Transmission, if that
+is used.
+
+### `defgroup name &key rss-url trackers delay ratio quality download-path`
 
 `name` -- the name of the group, a keyword (e.g. :bruce).
 
-`:rss-url` -- the URL of the RSS feed.
+`:trackers` -- a list of trackers which apply to this group.
 
-`:debug-feed` -- a file name containing the static XML to be used in
-debug mode instead of the fetching it from the URL (given by
-:rss-url).
+`:rss-url` -- the URL of the RSS feed.  **This option has been
+deprecated in favor of the `:trackers` option.**
 
 `:delay` -- nil or a positive integer, which represents the delay, in
 hours, that episodes should be delayed from download.  **NOTE:** this
@@ -285,12 +309,15 @@ forever.
 the downloaded file for this group.  Because the path can be remote,
 no checking on the validity of the path is done.
 
-### `defseries name group &key delay quality catch-up subdir date-based aliases`
+### `defseries name group &key private delay quality catch-up subdir date-based aliases`
 
 Required arguments:
 
 `name` -- the name of the series.  Case is not significant, and single
 quotes are removed in parsing.
+
+`private` -- a boolean indicating this series should only be
+downloaded from a tracker listed as private.
 
 `group` -- the group to which this series belongs.
 
@@ -321,6 +348,12 @@ with Jon Stewart` vs. `The Daily Show`.
 Here's how you specify it:
 
     :aliases ("The Daily Show")
+
+%%VALUE: *repack-window-seconds*
+
+This value is the number of seconds after an episode is downloaded
+that we will download a *repack* of that episode.  A repack is a
+re-release of an episode to fix problems in the original.
 
 ## Maintenance tasks
 

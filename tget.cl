@@ -105,12 +105,13 @@
 		#:save-database
 		)
   (:import-from #:db.allegrocache.utils
-		#:defclass*))
+		#:defclass*
+		#:delete-persistent-class))
 
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "3.1")
+(defvar *tget-version* "4.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -129,7 +130,11 @@
     ;; 9 == added `subdir' slot to series
     ;; 10 == added `date-based' slot to series
     ;; 11 == `group-rss-url' is now a list
-    11)
+    ;; 12 == new series `private' slot; episode `tracker' slot; class
+    ;;       `group' is no longer persistent
+    ;;
+    ;; see the db-upgrade methods for details.
+    12)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -140,30 +145,20 @@
 (defvar *version-file* nil)
 (defvar *config-file* nil)
 (defvar *debug* nil)
+(defvar *test* nil)
+(defvar *init-forms* nil)
 
 (defvar *log-rss-stream* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; User-settable variables (in config file)
+;; [some] user-settable variables (in config file)
 
-(defvar *feed-interval* 14)
 (defvar *log-rss*
-    ;; If non-nil, a pathanme to log rss feed info
+    ;; if non-nil, a pathanme to log rss feed info
     nil)
+
 (defvar *log-file*
-    ;; If non-nil, a pathanme to log episode info
-    nil)
-(defvar *download-delay*
-    ;; The delay after something is available before it is considered for
-    ;; downloading.
-    nil)
-(defvar *download-hq-delay*
-    ;; The additional delay waiting to download a high quality ep while
-    ;; waiting for a normal quality one to become available
-    nil)
-(defvar *download-lq-delay*
-    ;; The additional delay waiting to download a low quality ep while
-    ;; waiting for a normal or high quality one to become available
+    ;; if non-nil, a pathanme to log episode info
     nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -274,15 +269,13 @@
 (defmethod describe-object ((object quality) stream)
   (describe-persistent-clos-object object stream))
 
-(defclass* group (:conc-name t :print nil :init nil)
-  ;;e.g. :kevin
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;THIS IS A DUMMY CLASS DEFINITION--the real group objects is a defstruct
+;;;;and is defined below.
+(defclass* group (:print nil :init nil)
   (name :index :any-unique)
-  rss-url ;; a list of URLs
-  delay
-  debug-feed ;; formerly the unused `transmission-client'
-  ratio
-  quality
-  download-path
+  ;; rest of the slots removed
   )
 
 (defmethod print-object ((obj group) stream)
@@ -291,15 +284,18 @@
     (print-object-persistent-clos-object
      obj stream
      (lambda (obj) (if (slot-boundp obj 'name) (group-name obj)))))
-   (t ;; print it for humans
-    (format stream "#<group ~s>" (group-name obj)))))
+   (t ;; print it for humans                                                    
+    (format stream "#<OLDgroup ~s>" (group-name obj)))))
 
 #+clos-describe-hack
 (defmethod describe-object ((object group) stream)
   (describe-persistent-clos-object object stream))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defclass* series (:conc-name t :print nil :init nil)
-  ;;e.g. :kevin
+  ;; The group name is used to find all the series objects which are in a
+  ;; group.  It is a keyword.
   (group :index :any)
   ;; Only used for presentation to the user
   pretty-name
@@ -321,7 +317,10 @@
   ;; This series is date based, and as such cannot use the complete-to
   ;; mechanism, since we can't really tell what the sequence of episodes
   ;; will be named.  The Daily Show is like this.
-  date-based)
+  date-based
+  ;; Non-nil if this series should only be downloaded from a private
+  ;; tracker.
+  private)
 
 (defmethod print-object ((obj series) stream)
   (cond
@@ -351,7 +350,7 @@
   ;;number or :all
   (episode :index :any)
   pretty-epnum				; for human consumption
-  repack				;repack or proper?
+  (repack :index :any)
   ;; quality from torrent
   (container :index :any)
   (source :index :any)
@@ -362,7 +361,13 @@
   length				;length in bytes
   filename				;e.g. "Vikings.S01E04.HDTV.x264-2HD.mp4"
 ;;;;
-  (transient :index :any))
+  (transient :index :any)
+;;;; non-persistent slots:
+  ;; The tracker for this episode.  It's not persistent because we only
+  ;; need it while making the decision to download the object, and after
+  ;; we exit it could come from a different tracker next time (if we don't
+  ;; download it).
+  (tracker :allocation :instance))
 
 (defmethod episode-p ((obj t)) nil)
 (defmethod episode-p ((obj episode)) t)
@@ -444,6 +449,59 @@
   version
   tget-version)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defstruct tracker
+  name
+  url
+  debug-feed
+  public
+  download-delay
+  disabled
+  ratio)
+
+(defvar *tracker-name-to-tracker* (make-hash-table :size 777 :test #'eq))
+(push '(clrhash *tracker-name-to-tracker*)
+      *init-forms*)
+
+(defun tracker-name-to-tracker (tracker-name)
+  (gethash tracker-name *tracker-name-to-tracker*))
+
+(defun (setf tracker-name-to-tracker) (tracker tracker-name)
+  (setf (gethash tracker-name *tracker-name-to-tracker*) tracker))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Used to be a class called `group', can't use name
+(defstruct (xgroup (:conc-name group-))
+  name					; a keyword
+;;;; one of the next to
+  ;; rss-url is legacy and kept for compatibility
+  rss-url				; a list of URLs
+  trackers
+;;;;
+  delay
+  ratio
+  quality
+  download-path)
+
+
+
+(defvar *group-name-to-group* (make-hash-table :size 777 :test #'eq))
+(push '(clrhash *group-name-to-group*)
+      *init-forms*)
+
+(defun group-name-to-group (group-name)
+  (gethash group-name *group-name-to-group*))
+
+(defun (setf group-name-to-group) (group group-name)
+  (setf (gethash group-name *group-name-to-group*) group))
+
+(defmethod print-object ((obj xgroup) stream)
+  (format stream "#<group ~s>" (group-name obj)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defstruct (transmission
 	    (:constructor .make-transmission 
 			  (&key host port username password add-paused
@@ -460,6 +518,8 @@
   ssh-user)
 
 (defvar *torrent-handler* nil)
+(push '(setq *torrent-handler* nil)
+      *init-forms*)
 
 (define-condition tget (error) ())
 
@@ -475,12 +535,12 @@
 
 (defmacro defquality (name &key priority container source codec resolution)
   `(make-quality
-     :name ,name
-     :priority ,priority
-     :container ,container
-     :source ,source
-     :codec ,codec
-     :resolution ,resolution))
+    :name ,name
+    :priority ,priority
+    :container ,container
+    :source ,source
+    :codec ,codec
+    :resolution ,resolution))
 
 (defun check-atom-or-list (atom-or-list allowed-values what)
   ;; `nil' is allowed and ignored
@@ -522,48 +582,77 @@
 		:codec codec
 		:resolution resolution)))))
 
-(defmacro defgroup (name &key rss-url debug-feed delay ratio quality
-			      download-path)
-  `(make-group
-     :name ,name
-     :rss-url ,rss-url
-     :debug-feed ,debug-feed
-     :delay ,delay
-     :ratio ,ratio
-     :quality ,quality
-     :download-path ,download-path))
+(defmacro deftracker (name &key url debug-feed public download-delay
+				disabled ratio)
+  `(.make-tracker
+    :name ,name
+    :url ,url
+    :debug-feed ,debug-feed
+    :public ,public
+    :download-delay ,download-delay
+    :disabled ,disabled
+    :ratio ,ratio))
 
-(defun make-group (&key name rss-url debug-feed delay ratio quality
+(defmacro .make-tracker (&key name url debug-feed public download-delay
+			      disabled ratio)
+  (when (tracker-name-to-tracker name)
+    (.error "Tracker ~s defined more than once in config file." name))
+  (check-url "Tracker :url" url)
+  ;; Don't check debug-feed because it's a function
+  (check-integer "Tracker :download-delay" download-delay)
+  (check-ratio ratio)
+  (setf (tracker-name-to-tracker name)
+    (make-tracker
+     :name name
+     :url url
+     :debug-feed debug-feed
+     :public public
+     :download-delay download-delay
+     :disabled disabled
+     :ratio ratio)))
+
+(defmacro defgroup (name &key trackers rss-url delay ratio quality
+			      download-path)
+  `(.make-group
+    :name ,name
+    :trackers ,trackers
+    :rss-url ,rss-url
+    :delay ,delay
+    :ratio ,ratio
+    :quality ,quality
+    :download-path ,download-path))
+
+(defun .make-group (&key name trackers rss-url delay ratio quality
 			download-path)
-  (let ((old (retrieve-from-index 'group 'name name :db *main*)))
+  (let ((old (group-name-to-group name)))
+    (setq trackers (check-trackers trackers))
     (check-rss-url rss-url)
-    ;; don't check debug-feed
     (check-delay delay)
     (check-ratio ratio)
     (check-quality quality)
     (setq download-path (namestring download-path))
     (if* old
-       then (setf (group-rss-url old) rss-url)
-	    (setf (group-debug-feed old) debug-feed)
+       then (setf (group-trackers old) trackers)
+	    (setf (group-rss-url old) rss-url)
 	    (setf (group-delay old) delay)
 	    (setf (group-ratio old) ratio)
 	    (setf (group-quality old) quality)
 	    (setf (group-download-path old) download-path)
 	    old
-       else (let ((*allegrocache* *main*))
-	      (make-instance 'group
-		:name name
-		:rss-url (if* (consp rss-url)
-			    then rss-url
-			    else (list rss-url))
-		:debug-feed debug-feed
-		:delay delay
-		:ratio ratio
-		:quality quality
-		:download-path download-path)))))
+       else (setf (group-name-to-group name)
+	      (make-xgroup
+	       :name name
+	       :trackers trackers
+	       :rss-url (if* (consp rss-url)
+			   then rss-url
+			   else (list rss-url))
+	       :delay delay
+	       :ratio ratio
+	       :quality quality
+	       :download-path download-path)))))
 
 (defmacro defseries (name group &key delay quality remove catch-up subdir
-				     date-based aliases)
+				     date-based aliases private)
   (if* remove
      then `(forget-series ,name :noisy nil)
      else `(make-series
@@ -574,7 +663,8 @@
 	    ,@(when catch-up `(:catch-up ,catch-up))
 	    ,@(when delay `(:delay ,delay))
 	    ,@(when quality `(:quality ,quality))
-	    ,@(when aliases `(:aliases ',aliases)))))
+	    ,@(when aliases `(:aliases ',aliases))
+	    ,@(when private `(:private ',private)))))
 
 (defun forget-series (name &key (noisy t))
   (let* ((series-name (canonicalize-series-name name))
@@ -589,25 +679,26 @@
 ;; The following are not persistent and don't need to be.
 ;; They are initialized by loading the config file and are
 ;; used while processing episodes from the RSS feeds.
-(defvar *all-series-names*
-    (make-hash-table :size 777 :test #'equal))
+(defvar *all-series-names* (make-hash-table :size 777 :test #'equal))
+(push '(clrhash *all-series-names*)
+      *init-forms*)
 
 (defvar *series-name-aliases*
     ;; Key is a string naming a series, the value is the real name of the
     ;; series.
     (make-hash-table :size 777 :test #'equal))
+(push '(clrhash *series-name-aliases*)
+      *init-forms*)
 
 (defun make-series (&key name group delay quality catch-up subdir
-			 date-based aliases
+			 date-based aliases private
 		    &aux series)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
 	 (old (query-series-name-to-series name)))
     (check-delay delay)
     (check-quality quality)
-;;;;TODO: check group
-    (or (keywordp group)
-	(.error "Bad group: ~s." group))
+    (check-group group)
     (or (stringp name)
 	(.error "Series name must be a string: ~s." name))
     (when catch-up
@@ -616,10 +707,8 @@
     (when subdir
       (or (stringp subdir)
 	  (.error "Series subdir must be a string: ~s." subdir)))
-    (when date-based
-      (or (null date-based)
-	  (eq 't date-based)
-	  (.error "Series date-based must be `t' or `nil': ~s." date-based)))
+    (check-boolean "Series :date-based option" date-based)
+    (check-boolean "Series :private option" private)
     (when aliases
       (or (null aliases)
 	  (dolist (alias aliases)
@@ -628,9 +717,8 @@
     (setq series
       (if* old
 	 then (when (not (eq group (series-group old)))
-		(warn "There is either a duplicate defseries for ~s ~
- or series moved groups."
-			pretty-name))
+                (warn "Series ~s moved groups (~a to ~a)."
+		      pretty-name (series-group old) group))
 	      (when (string/= (series-name old) pretty-name)
 		(setf (series-pretty-name old) pretty-name))
 	      (setf (series-group old) group)
@@ -638,6 +726,7 @@
 	      (setf (series-quality old) quality)
 	      (setf (series-subdir old) subdir)
 	      (setf (series-date-based old) date-based)
+	      (setf (series-private old) private)
 	      old
 	 else (let ((*allegrocache* *main*))
 		(make-instance 'series
@@ -649,7 +738,8 @@
 		  :delay delay
 		  :quality quality
 		  :subdir subdir
-		  :date-based date-based))))
+		  :date-based date-based
+		  :private private))))
     (setf (gethash pretty-name *all-series-names*) t)
     (dolist (alias aliases)
       ;; Enter the aliases to be used during RSS to EPISODE conversion.
@@ -772,6 +862,28 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun check-url (what item)
+  (when item
+    (or (and (stringp item) (=~ "^http" item))
+	(.error "~a must be a URL: ~s." what item))))
+
+(defun check-filename (what item)
+  (when item
+    (or (and (or (stringp item)
+		 (pathnamep item))
+	     (probe-file item))
+	(.error "~a must be the name of an existing file: ~s." what item))))
+
+(defun check-integer (what item)
+  (when item
+    (or (integerp item)
+	(.error "~a must be an integer: ~s." what item))))
+
+(defun check-boolean (what item)
+  (when item
+    (or (eq 't item)
+	(.error "~a must be `t' or `nil': ~s." what item))))
+
 (defun check-rss-url (rss-url)
   (and rss-url
        (and (dolist (u (if (consp rss-url) rss-url (list rss-url)))
@@ -782,6 +894,18 @@
 		 else (return t)))
 	    (.error "Bad rss-url: ~s." rss-url))))
 
+(defun check-trackers (tracker-thing &aux tracker (trackers '()))
+  (and tracker-thing
+       (dolist (tracker-name (if* (consp tracker-thing)
+			     then tracker-thing
+			     else (list tracker-thing))
+		 (nreverse trackers))
+	 (when (not (symbolp tracker-name))
+	   (.error "Bad tracker name: ~s." tracker-name))
+	 (when (not (setq tracker (tracker-name-to-tracker tracker-name)))
+	   (.error "Unknown tracker: ~s." tracker-name))
+	 (push tracker trackers))))
+
 (defun check-delay (delay)
   (and delay
        (or (numberp delay)
@@ -791,12 +915,18 @@
   (and ratio
        (or (and (stringp ratio)
 		(match-re "^-?[0-9.]+$" ratio))
+	   (floatp ratio)
 	   (.error "Bad ratio: ~s." ratio))))
+
+(defun check-group (group-name)
+  (and group-name
+       (or (keywordp group-name)
+	   (.error "Bad group: ~s." group-name))))
 
 (defun check-quality (quality)
   (and quality
        (or (and (symbolp quality)
-		(or (retrieve-from-index 'group 'name quality :db *main*)
+		(or (retrieve-from-index 'quality 'name quality :db *main*)
 		    (keywordp quality)
 		    (eq 't quality)
 		    (symbol-function quality)
@@ -827,7 +957,6 @@ Primary behavior determining arguments (one of these must be given):
     --dump-all
     --dump-complete-to
     --dump-episodes series-name
-    --dump-groups
     --dump-orphans
     --dump-series series-name
     --dump-stats
@@ -840,7 +969,6 @@ Behavior modifying arguments:
     --cron
     --db database-name
     --debug
-    --feed-interval ndays
     --learn
     --reset
     --root data-directory
@@ -927,10 +1055,6 @@ The following are arguments controlling primary behavior:
 
   Dump all episode objects matching series name `series-name` to stdout.
 
-* `--dump-groups`
-
-  Dump group objects.  Used for debugging only.
-
 * `--dump-orphans`
 
   Dump orphaned series and episodes.  Orphaned series are those which do
@@ -997,12 +1121,6 @@ effects:
   is more verbose.  This is for testing and is not recommended.  It implies
   `--learn`.
 
-* `--feed-interval ndays`
-
-  Set the feed interval to `ndays`.  Only useful when a user-defined
-  function of one argument is given to a `defgroup`'s :rss-url option.
-  See the example config file.
-
 * `--learn`
 
   Mark episodes which match the configuration as _downloaded_.  This is
@@ -1028,11 +1146,16 @@ Examples:
 Toss current database and catch up on shows released in the last 180 days
 marking them all as `downloaded'
 
-    $ tget --reset --learn --feed-interval 180
+    $ tget --reset --learn
+
+The usefulness of this is highly dependent on how far the feed for the site
+you are using goes back.  Many sites do not have deep feeds, but some sites
+have parameters that allow you to go back in time.  Sadly, this feature is
+rare these days, as it is expensive to support.
 
 Same, but to a `temp' database in the current directory:
 
-    $ tget --reset --learn --feed-interval 180 --root $PWD --db test.db
+    $ tget --reset --learn --root $PWD --db test.db
 
 Let's see what the series object for \"Regular Show\" looks like.
 The series name is not case sensitive:
@@ -1128,6 +1251,10 @@ Catch up series to a specific episode:
 			   "~%~a~%")
 	 :format-arguments (nconc format-arguments (list *usage*))))
 
+(defun reset-program-state ()
+  (dolist (form *init-forms*)
+    (eval form)))
+
 (defun main ()
   (setq *global-gc-behavior* :auto)
   (labels
@@ -1150,7 +1277,6 @@ Catch up series to a specific episode:
 	      ("dump-all" :long dump-all)
 	      ("dump-complete-to" :long dump-complete-to)
 	      ("dump-episodes" :long dump-episodes :required-companion)
-	      ("dump-groups" :long dump-groups)
 	      ("dump-orphans" :long dump-orphans)
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-stats" :long dump-stats)
@@ -1227,9 +1353,7 @@ Catch up series to a specific episode:
 	       (pathname (format nil "~a/version.cl" database))))
 	   
 	   (when feed-interval
-	     (when (not (match-re "^\\d+$" feed-interval))
-	       (usage "Bad --feed-interval: ~s." feed-interval))
-	     (setq *feed-interval* (parse-integer feed-interval)))
+	     (warn "The --feed-interval argument has been removed."))
 	   
 	   (when auto-backup
 	     (setq *auto-backup*
@@ -1249,7 +1373,6 @@ Catch up series to a specific episode:
 				   :if-does-not-exist
 				   (if* (or dump-all dump-complete-to
 					    dump-stats dump-series
-					    dump-groups
 					    delete-orphans dump-orphans
 					    dump-episodes delete-episodes
 					    delete-series
@@ -1299,9 +1422,6 @@ Catch up series to a specific episode:
 		     (doclass (o (find-class 'series) :db *main*)
 		       (declare (ignorable o))
 		       (incf series))
-		     (doclass (o (find-class 'group) :db *main*)
-		       (declare (ignorable o))
-		       (incf groups))
 		     (doclass (o (find-class 'quality) :db *main*)
 		       (declare (ignorable o))
 		       (incf qualities))
@@ -1330,10 +1450,6 @@ Catch up series to a specific episode:
 		     (if* verbose
 			then (describe ep)
 			else (format t "~a~%" ep)))
-		   (done)
-	    elseif dump-groups
-	      then (doclass (group (find-class 'group) :db *main*)
-		     (describe group))
 		   (done)
 	    elseif delete-episodes
 	      then (dolist (ep (query-episode
@@ -1381,7 +1497,7 @@ Catch up series to a specific episode:
 		       (setq ep (manual-add-file torrent))
 		       (when ep (push ep episodes)))
 		     
-		     (download-episodes (query-group-name-to-group :manual)
+		     (download-episodes (group-name-to-group :manual)
 					episodes
 					(lambda (ep) (format t "~&~a~%" ep)))
 		     (dolist (ep episodes)
@@ -1389,7 +1505,8 @@ Catch up series to a specific episode:
 		     (tget-commit *temp*)
 		     (tget-commit *main*))
 	    elseif run-mode
-	      then (process-groups)
+	      then (reset-program-state)
+		   (process-groups)
 	      else (usage "no primary arguments given."))
 	   
 	   (done))))
@@ -1643,7 +1760,8 @@ Catch up series to a specific episode:
 	  version (1+ version))
   (format t ";;   Initializing new slots of series instances.~%")
   (doclass (series (find-class 'series) :db *main*)
-;;;;TODO: If I don't print the series objects, the slots aren't updated!
+    ;; Weirdly, if I don't print the series objects, the slots aren't
+    ;; updated!  What's up with that?!?
     (format t ";; updating ~a...~%" series)
     (setf (series-complete-to series) nil)
     (setf (series-discontinuous-episodes series) nil))
@@ -1732,26 +1850,54 @@ Catch up series to a specific episode:
     (when (not (slot-boundp s 'date-based))
       (setf (series-date-based s) nil))
     (when (series-date-based s)
-;;;;TODO: what about discontinuous-episodes???  They can cause trouble, too.
+;;;; what about discontinuous-episodes???  They can cause trouble, too.
       ;; If series is date based, then warn the user there is a
       ;; complete-to, in case it's wrong.
       (format t ";;    Warning: complete-to for date-based series:~%     ~a~~%"
 	      s)))
   (tget-commit *main*))
 
-
 (defmethod db-upgrade ((version (eql 10)))
   ;; The change from 10 to 11: made `group-rss-url' a list
   (format t ";; Upgrading database from version ~d to ~d...~%"
 	  version (1+ version))
 
-  (format t ";;   Update group objects (rss-url is a list)...~%")
+  (format t ";;   OBSOLETE...~%")
+  #+ignore
   (doclass (g (find-class 'group) :db *main*)
     (when (and (slot-boundp g 'rss-url)
 	       (not (consp (group-rss-url g))))
       (setf (group-rss-url g)
 	(list (group-rss-url g)))))
   (tget-commit *main*))
+
+(defmethod db-upgrade ((version (eql 11)))
+  ;; The change from 11 to 12:
+  ;;  - added `private' to series class
+  ;;  - added `tracker' to episode class
+  ;;  - remove persistent class `group'
+  
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+
+  (doclass (s (find-class 'series) :db *main*)
+    (when (slot-boundp s 'private)
+      (setf (series-private s) nil)))
+  
+  (doclass (e (find-class 'episode) :db *main*)
+    (when (slot-boundp e 'tracker)
+      (setf (episode-tracker e) nil)))
+
+  (doclass (g (find-class 'group) :db *main*)
+    (delete-instance g))
+  ;; No point to this because we have a chicken and egg situation with the
+  ;; class: I need the class definition to delete the instances.
+  #+ignore
+  (delete-persistent-class (find-class 'group))
+
+  (tget-commit *main*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun clean-database (&key check)
   ;; clean database:
@@ -1793,12 +1939,6 @@ Catch up series to a specific episode:
       (format t "query-series-name-to-series: returning ~s~%" s))
     (values s name)))
 
-(defun query-group-name-to-group (name)
-  (let ((g (retrieve-from-index 'group 'name name :db *main*)))
-    (with-verbosity 3
-      (format t "query-group-name-to-group: returning ~s~%" g))
-    (values g name)))
-
 (defun make-episode (&key transient
 			  full-title
 			  torrent-url
@@ -1817,6 +1957,7 @@ Catch up series to a specific episode:
 			  source
 			  codec
 			  resolution
+			  tracker
 		     &aux temp)
   ;; Only make a new episode instance if one does not already exist.
   
@@ -1827,11 +1968,13 @@ Catch up series to a specific episode:
 			:container container
 			:source source
 			:codec codec
-			:resolution resolution))
+			:resolution resolution
+			:repack repack))
      then #+ignore
 	  (when (cdr temp)
-;;;;TODO: sometimes there's an Indi and a non-Indi... I'd really like to
-;;;;      only download the non-Indi... so need some way to tag Indi's
+	    ;; sometimes there's an Indi and a non-Indi... I'd really like
+	    ;; to only download the non-Indi... so need some way to tag
+	    ;; Indi's.  1/18/15: this really isn't an issue anymore.
 	    (warn "more than one! ~s" temp))
 	  (car temp)
      else (let ((*allegrocache* (if* transient
@@ -1855,7 +1998,8 @@ Catch up series to a specific episode:
 	       :container container
 	       :source source
 	       :codec codec
-	       :resolution resolution))))
+	       :resolution resolution
+	       :tracker tracker))))
 
 (defun query-episode (&key series-name
 			   season
@@ -1868,6 +2012,7 @@ Catch up series to a specific episode:
 			   episode
 			   quality
 			   ;;
+			   (repack nil repack-given)
 			   (transient nil transient-given)
 		      &aux (db
 			    (if* (and transient-given transient)
@@ -1884,6 +2029,8 @@ Catch up series to a specific episode:
 		   `(and 
 		     ,@(when transient-given
 			 `((= transient ,transient)))
+		     ,@(when repack-given
+			 `((= repack ,repack)))
 		     (= series-name ,series-name)
 		     ,@(when season `((= season ,season)))
 		     ,@(when ep-number `((= episode ,ep-number)))
@@ -1937,7 +2084,7 @@ Catch up series to a specific episode:
   ;; Return a list of all series instances that are in group GROUP-NAME.
   (retrieve-from-index 'series 'group (group-name group) :all t :db *main*))
 
-;;;TODO: cache the lookups... mostly will be just a few of them
+;;; cache the lookups??? mostly will be just a few of them
 (defun quality (thing)
   (if* (keywordp thing)
      then (retrieve-from-index 'quality 'name thing :db *main*)
@@ -1953,11 +2100,14 @@ Catch up series to a specific episode:
 	   then (quality-priority q)
 	   else (quality-name q))))))
 
+(defvar *now* nil) ;; used by test suite
+
 (defun hours-available (episode)
   ;; Return the number of hours EPISODE has been available in the feed in
   ;; which it was found.
   (values
-   (floor (- (get-universal-time) (episode-pub-date episode))
+   (floor (- (or *now* (get-universal-time))
+	     (episode-pub-date episode))
 	  3600)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1970,35 +2120,73 @@ Catch up series to a specific episode:
 ;; If a feed gets this many errors, then we skip it
 (defvar *error-skip-count* 2)
 
+(defvar *tracker* nil)
+
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
 			    ep-printer
-			    group-process
+			    group-processed
 			    temp
 			    (skip-count
 			     ;; (feed . count)
-			     '()))
+			     '())
+			    *tracker*)
   (tget-commit *main*)
   (tget-commit *temp*)
-  (doclass (group (find-class 'group) :db *main*)
-    (tagbody
-      ;; Setup the printer for this group.  The idea is to have no output
-      ;; unless there are matches.
-      (setf ep-printer
-	(let ((first t))
-	  (lambda (ep)
-	    (when first
-	      (format t "~&;; Processing group ~s~%" (group-name group))
-	      (setq first nil))
-	    (format t "~&~a [~d hours]~%"
-		    ep (hours-available ep)))))
+  (dolist (group (collect-hash-values *group-name-to-group*))
+    ;; Setup the printer for this group.  The idea is to have no output
+    ;; unless there are matches.
+    (setf ep-printer
+      (let ((first t))
+	(lambda (ep)
+	  (when first
+	    (format t "~&;; Processing group ~s~%" (group-name group))
+	    (setq first nil))
+	  (format t "~&~a [~d hours]~%"
+		  ep (hours-available ep)))))
     
-      ;; Convert the rss objects to episodes and process them.
+    ;; Convert the rss objects to episodes and process them.
 
-      ;; Get all the episodes from the feed into the database, so we can
-      ;; query against it.  When I removed non-interesting instances I got
-      ;; errors due to accessing slots of deleted objects.  :(
-      ;;
-      (setq group-process nil)
+    ;; Get all the episodes from the feed into the database, so we can
+    ;; query against it.  When I removed non-interesting instances I got
+    ;; errors due to accessing slots of deleted objects.  :(
+    ;;
+    (setq group-processed nil)
+    (setq *tracker* nil)
+    (cond
+     ((group-trackers group)		; THE NEW WAY
+      (dolist (tracker (group-trackers group))
+	(when (or (tracker-disabled tracker)
+		  (null (tracker-url tracker)))
+	  ;; Disabled or no URL, so ignore it.
+	  (go :skip))
+	(setq *tracker* tracker)
+	
+	(when (null (setq temp (assoc (tracker-url tracker) skip-count
+				      :test #'string=)))
+	  (push (setq temp (cons (tracker-url tracker) 0)) skip-count))
+	(handler-case
+	    (when (< (cdr temp) *error-skip-count*)
+	      (prog1
+		  (mapcar
+		   'rss-to-episode
+		   (fetch-feed (tracker-url tracker)
+			       (if* (and (symbolp (tracker-debug-feed tracker))
+					 (fboundp 'debug-feed))
+				  then (funcall 'debug-feed
+						(tracker-debug-feed tracker))
+				elseif (stringp (tracker-debug-feed tracker))
+				  then (tracker-debug-feed tracker))))
+		(setq group-processed t)))
+	  (net.rss:feed-error (c)
+	    (format t "~&~a~%" c)
+	    ;; reduce *http-timeout* dramatically, since we already got an
+	    ;; error
+	    (setq *http-timeout* 30)
+	    ;; incf skip-count
+	    (incf (cdr temp))))
+       :skip
+	))
+     (t					; LEGACY
       (dolist (rss-url (if* (consp (group-rss-url group))
 			  then (group-rss-url group)
 			  else (list (group-rss-url group))))
@@ -2012,8 +2200,10 @@ Catch up series to a specific episode:
 	(handler-case
 	    (when (< (cdr temp) *error-skip-count*)
 	      (prog1 (mapcar 'rss-to-episode
-			     (fetch-feed rss-url (group-debug-feed group)))
-		(setq group-process t)))
+			     (fetch-feed rss-url
+					 ;; no debug feed in this case
+					 nil))
+		(setq group-processed t)))
 	  (net.rss:feed-error (c)
 	    (format t "~&~a~%" c)
 	    ;; reduce *http-timeout* dramatically, since we already got an
@@ -2022,29 +2212,30 @@ Catch up series to a specific episode:
 	    ;; incf skip-count
 	    (incf (cdr temp))))
        :skip
-	)
-      (when (null group-process)
-	;; None of the feeds for this group worked, so skip to next
-	(go next-feed))
-      
-      ;; Process the eps we just read from the feed.
-      (tget-commit *main*)
-      (tget-commit *temp*)
-    
-      ;; Now, the newly added objects in the database have their transient
-      ;; slot set to `t'.  We can query against them, to see if we
-      ;; need to download any of them, and and easily find them to remove
-      ;; them when we're done.
+	)))
 
-      (process-transient-objects group ep-printer)
+    (when (not group-processed)
+      ;; None of the feeds for this group worked, so skip to next
+      (go next-group))
+      
+    ;; Process the eps we just read from the feed.
+    (tget-commit *main*)
+    (tget-commit *temp*)
+    
+    ;; Now, the newly added objects in the database have their transient
+    ;; slot set to `t'.  We can query against them, to see if we
+    ;; need to download any of them, and and easily find them to remove
+    ;; them when we're done.
+
+    (process-transient-objects group ep-printer)
   
-      ;; Remove the remaining transient episodes
-      (dolist (ep (retrieve-from-index 'episode 'transient t :all t :db *temp*))
-	(delete-instance ep))
-      (tget-commit *temp*)
-      (tget-commit *main*)
-     next-feed
-      )))
+    ;; Remove the remaining transient episodes
+    (dolist (ep (retrieve-from-index 'episode 'transient t :all t :db *temp*))
+      (delete-instance ep))
+    (tget-commit *temp*)
+    (tget-commit *main*)
+   next-group
+    ))
 
 (defun process-transient-objects (group ep-printer)
   ;; Now, we comb through the series for this group and look for matches
@@ -2113,8 +2304,7 @@ Catch up series to a specific episode:
 	(eps episodes (cdr eps))
 	(ep (car eps) (car eps))
 	(res '())
-	temp
-	hours)
+	temp hours tracker after-complete-to)
       ((null eps) res)
     (@log "matching: ~a" ep)
     (when (and
@@ -2132,7 +2322,10 @@ Catch up series to a specific episode:
 	   
 	   ;; Make sure it's not before our cutoff in the series
 	   ;; complete-to
-	   (if* (episode-after-complete-to ep series)
+	   (if* (or (setq after-complete-to
+		      (episode-after-complete-to ep series))
+		    ;; unless it's a repack
+		    (episode-repack ep))
 	      thenret
 	      else (@log "  ignore: before complete-to of ~a"
 			 (pretty-season-and-episode
@@ -2158,16 +2351,24 @@ Catch up series to a specific episode:
 				      (equal (episode-codec old)
 					     (episode-codec ep))
 				      (equal (episode-resolution old)
-					     (episode-resolution ep)))
+					     (episode-resolution ep))
+				      (< (- (episode-pub-date ep)
+					    (episode-pub-date old))
+					 *repack-window-seconds*))
 				 (return t)))
 			     ;; Repack of an ep of the same quality as one
 			     ;; in the database.  We might want it.
-			     (@log "  is a repack")
+			     (@log "  is a repack we want")
 			     t)
 			    (t
 			     (@log "  ignore: not our repack")
 			     nil))
 		      else (@log "  ignore: already have ep")
+			   nil)
+	    elseif (episode-repack ep)
+	      then (if* after-complete-to
+		      then (@log "  don't have ep, want it [REPACK]")
+		      else (@log "  don't have ep, before complete-to [REPACK]")
 			   nil)
 	      else (@log "  don't have ep")
 		   t)
@@ -2175,7 +2376,25 @@ Catch up series to a specific episode:
 	   (progn
 	     (setq hours (hours-available ep))
 	     t)
+	   
+	   (setq tracker (episode-tracker ep))
+	   ;; If there is a tracker download delay, then check that before
+	   ;; checking the quality.
+	   ;;
+;;;;TODO: should the series delay trump this?  Should that turn into a
+;;;;      "download immediately" flag???
+	   (if* (or (null tracker)
+		    (null (tracker-download-delay tracker)))
+	      then (@log "  no tracker download delay")
+	    elseif (>= hours (tracker-download-delay tracker))
+	      then (@log "  ep available (~d) longer than tracker delay (~d)"
+			 hours (tracker-download-delay tracker))
+	      else (@log "  ep not available long enough (~d < ~d)"
+			 hours (tracker-download-delay tracker))
+		   nil)
 
+	   ;; Check quality of episode.
+	   ;;
 	   (if* (series-quality series)
 	      then ;; We have a series quality override.  Only accept that.
 		   (if* (eq (episode-quality ep)
@@ -2185,12 +2404,11 @@ Catch up series to a specific episode:
 				 (episode-quality ep)
 				 (series-quality series))
 			   nil)
-	    elseif (quality-acceptable-p ep quality)
-	      then (@log "  quality is good")
-	      else (@log "  ignore: quality not good (hours avail=~d)" hours)
-		   nil)
+	      else (quality-acceptable-p ep quality))
 	   
-	   ;; Check that we don't have a delay for this series or group.
+	   ;; Check for a series or group delay.
+	   ;;
+;;;;TODO: move series delay above tracker delay??
 	   (let ((delay (or (series-delay series)
 			    (group-delay group))))
 	     (if* (or (null delay) (= 0 delay))
@@ -2203,7 +2421,8 @@ Catch up series to a specific episode:
       (@log "  => matching episode")
       (push ep res))))
 
-(defun quality-acceptable-p (episode quality)
+(defun quality-acceptable-p (episode quality
+			     &aux (hours (hours-available episode)))
   ;; Return T if the quality of EPISODE is the same as that given by
   ;; QUALITY.
   ;;
@@ -2224,12 +2443,11 @@ Catch up series to a specific episode:
 			  quality)))
   
   (@log "  quality-acceptable-p: comparing")
-  (@log "    episode=~a" episode)
   (@log "    quality=~a" quality)
   (if* (quality-match-p episode quality)
-     then (@log "    matches")
+     then (@log "    matches [hours avail=~s]" hours)
 	  t
-     else (@log "    no match")
+     else (@log "    no match [hours avail=~s]" hours)
 	  nil))
 
 (defun quality-match-p (ep q &aux temp)
@@ -2337,7 +2555,9 @@ Catch up series to a specific episode:
 		    :resolution (episode-resolution episode))))
   (tget-commit *main*))
 
-(defmethod torrent-handler ((obj transmission) episode group)
+(defmethod torrent-handler ((obj transmission) episode group
+			    &aux (tracker
+				  (when episode (episode-tracker episode))))
   (let* ((series (episode-series episode))
 	 (cmd
 	  (format nil "~
@@ -2355,7 +2575,9 @@ transmission-remote ~a:~a ~
 		  (if* (transmission-add-paused obj)
 		     then "--start-paused"
 		     else "--no-start-paused")
-		  (or (group-ratio group) (transmission-ratio obj))
+		  (or (group-ratio group)
+		      (and tracker (tracker-ratio tracker))
+		      (transmission-ratio obj))
 		  (transmission-trash-torrent-file obj)
 		  (if* (series-subdir series)
 		     then ;; Need to tack on the series-subdir to the end
@@ -2370,8 +2592,8 @@ transmission-remote ~a:~a ~
 			    (ensure-remote-directory-exists obj dir)
 			    dir)))))
     (cond
-     ((or *debug* *learn*)
-      (@log "cmd[not executed]: ~a" cmd)
+     ((or *debug* *test* *learn*)
+      (when *debug* (@log "cmd[not executed]: ~a" cmd))
       ;; success
       t)
      (t
@@ -2425,7 +2647,7 @@ transmission-remote ~a:~a ~
 	(res ;; assume success
 	 t))
     (cond
-     ((or *debug* *learn*)
+     ((or *debug* *test* *learn*)
       (@log "torrent[not downloaded]: ~a" url)
       res)
      (t
@@ -2747,7 +2969,8 @@ transmission-remote ~a:~a ~
 	      (let ((v (sorted-insert new-ct
 				      (series-discontinuous-episodes series))))
 		(setf (series-discontinuous-episodes series) v)
-;;;;TODO: announce???
+		;; announce???
+		;;   (not even sure what this comment means anymore)
 		))))))
 
 (defun episode-after-complete-to (ep series)
@@ -2771,32 +2994,39 @@ transmission-remote ~a:~a ~
     ;; An alist of (feed-url . rss-objects)
     nil)
 
-(defun fetch-feed (thing debug &aux temp url)
+(defun fetch-feed (thing debug &aux cache-key temp url)
   ;; Retrieve the rss feed from URL and return a list of net.rss:item's
   ;;
   ;; Cache the feed results.  We don't want to hit the feed 5-10 times in a
   ;; few seconds, since it's unlikely to change in that time.
   ;;
   
+;;;;TODO: when debug, file-write-date the file so we can re-read it
+
   (if* (stringp thing)
      then (setq url thing)
    elseif (symbolp thing)
-     then (setf url (funcall thing *feed-interval*))
+     then (setf url (funcall thing))
      else (.error "Bad url: ~s." thing))
   
+  (if* (and debug *test*)
+     then (setq cache-key debug)
+     else (setq cache-key url))
+  
   (if* (and *cached-feeds*
-	    (setq temp (assoc url *cached-feeds* :test #'string=)))
+	    (setq temp (assoc cache-key *cached-feeds* :test #'string=)))
      then (@log "using cached feed for ~a" url)
 	  (cdr temp)
      else (let ((res
-		 (if* (and *debug* debug)
+		 (if* (or *test* (and *debug* debug))
 		    then ;; while debugging, use a static version of the
 			 ;; feed, so we don't hammer the server.
-			 (@log "using static feed for ~a" url)
+			 (when (not debug) (error "No debug feed."))
+			 (format t ";;;; reading feed: ~a~%" debug)
 			 (feed-to-rss-objects :file debug)
 		    else (@log "read feed for ~a" url)
 			 (feed-to-rss-objects :url url))))
-	    (push (cons url res) *cached-feeds*)
+	    (push (cons cache-key res) *cached-feeds*)
 	    ;; Log here, so we don't log the cached version, too
 	    (maybe-log-rss res))))
 
@@ -2901,6 +3131,7 @@ transmission-remote ~a:~a ~
   ;; Turn the RSS defstruct instance into a persisten episode object.
   (convert-rss-to-episode (rss-item-source rss) rss))
 
+;; Do not remove, needed for test suite
 (defmethod convert-rss-to-episode ((type (eql :tvtorrents.com)) rss)
   (let ((des (rss-item-description rss))
 	series series-name season episode pretty-epnum repack container
@@ -2914,6 +3145,7 @@ transmission-remote ~a:~a ~
 	     "Season:\\s*([0-9]+)\\s*;\\s*"
 	     "Episode:\\s*("
 	     "[0-9]+|"
+	     "[0-9]+-[0-9]+|"
 	     "all|"
 	     "complete|"
 	     "special.*|"
@@ -2927,7 +3159,7 @@ transmission-remote ~a:~a ~
 	 :case-fold t)
       (declare (ignore whole))
       (when (not match)
-	(@log "TVT: couldn't parse rss description: ~s." des)
+	(when *debug* (@log "TVT: couldn't parse rss description: ~s." des))
 	(return-from convert-rss-to-episode nil))
       
       ;; ".UNCUT." is in the "Filename" but not the "Show Name", but
@@ -2956,7 +3188,7 @@ transmission-remote ~a:~a ~
 	   then ;; \\d\\d is the month -- this is a lie, but I don't care
 		;; about these types of downloads:
 		:complete-month
-	 elseif (=~ "^(\\d\\d\\d?)-(\\d\\d\\d?)$" des-episode)
+	 elseif (=~ "^(\\d{1,3})-(\\d{1,3})$" des-episode)
 	   then ;; a range of episodes
 		(cons (parse-integer $1) (parse-integer $2))
 	 elseif (and (> des-season 1900) ;; check, to make sure
@@ -3000,30 +3232,31 @@ transmission-remote ~a:~a ~
       ;; a series we care about...
       
       (make-episode
-	:transient t
-	:full-title (rss-item-title rss)
-	:torrent-url (rss-item-link rss)
-	:pub-date (parse-rss20-date (rss-item-pub-date rss))
-	:type (rss-item-type rss)
-	:length (parse-integer (rss-item-length rss))
+       :transient t
+       :tracker *tracker*
+       :full-title (rss-item-title rss)
+       :torrent-url (rss-item-link rss)
+       :pub-date (parse-rss20-date (rss-item-pub-date rss))
+       :type (rss-item-type rss)
+       :length (parse-integer (rss-item-length rss))
 
-	:series series
-	:series-name series-name
-	:title title
-	:season season
-	:episode episode
-	:pretty-epnum pretty-epnum
-	:repack repack
-	:filename filename
-	:container container
-	:source (or source
-		    (match-re "\\.mp4" (rss-item-title rss) :case-fold t)
-		    :unknown)
-	:codec (or codec
+       :series series
+       :series-name series-name
+       :title title
+       :season season
+       :episode episode
+       :pretty-epnum pretty-epnum
+       :repack repack
+       :filename filename
+       :container container
+       :source (or source
 		   (match-re "\\.mp4" (rss-item-title rss) :case-fold t)
 		   :unknown)
-	;; for TVT it's always in the filename, but others it's in the title
-	:resolution resolution))))
+       :codec (or codec
+		  (match-re "\\.mp4" (rss-item-title rss) :case-fold t)
+		  :unknown)
+       ;; for TVT it's always in the filename, but others it's in the title
+       :resolution resolution))))
 
 (defmethod convert-rss-to-episode ((type (eql :broadcasthe.net)) rss)
   (let ((rss-des (rss-item-description rss))
@@ -3143,6 +3376,7 @@ transmission-remote ~a:~a ~
 
       (make-episode
        :transient t
+       :tracker *tracker*
        :full-title rss-title
        :torrent-url (rss-item-link rss)
        :pub-date (and (rss-item-pub-date rss)
@@ -3244,6 +3478,7 @@ transmission-remote ~a:~a ~
       (let ((ep
 	     (make-episode
 	      :transient t
+	      :tracker *tracker*
 	      :full-title (rss-item-title rss)
 	      :torrent-url (rss-item-link rss)
 	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
@@ -3305,6 +3540,7 @@ transmission-remote ~a:~a ~
       (let ((ep
 	     (make-episode
 	      :transient t
+	      :tracker *tracker*
 	      :full-title (rss-item-title rss)
 	      :torrent-url (rss-item-link rss)
 	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
@@ -3364,9 +3600,10 @@ transmission-remote ~a:~a ~
   (when (and des-series-name series-name)
     (setq fuzzy-series-name
       (fuzzy-compare-series-names des-series-name series-name))
-    (when (not fuzzy-series-name)
-      (@log "Desc & fn series name differ (using 2nd): ~s, ~s."
-	    des-series-name series-name)))
+    (when *debug*
+      (when (not fuzzy-series-name)
+	(@log "Desc & fn series name differ (using 2nd): ~s, ~s."
+	      des-series-name series-name))))
 
   (setq season (or season des-season)
 	episode (or episode des-episode))
