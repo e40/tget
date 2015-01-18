@@ -27,7 +27,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun plexfix (stream filename)
+(defun plexfix (filename &optional (stream t))
   (if* (not (probe-file filename))
      then (.error "~a does not exist." filename)
    elseif (file-directory-p filename)
@@ -136,7 +136,7 @@
 			       1))
 	   (when (and (not debug) (not no-email))
 	     (setq stream (make-string-output-stream)))
-	   (plexfix stream (car rest)))))
+	   (plexfix (car rest) stream))))
 
     (if* *debug* ;; -d on command line doesn't effect this test!
        then (format t ";;;NOTE: debugging mode is on~%")

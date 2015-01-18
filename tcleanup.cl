@@ -428,7 +428,7 @@
 
 (defvar *video-types* '("avi" "mp4" "mkv" "wmv"))
 
-(defun tcleanup-files (&aux (initial-newline t) header symlink-pass)
+(defun tcleanup-files (&aux (initial-newline t) header #+ignore symlink-pass)
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
 	     (format t "~%")
@@ -451,8 +451,8 @@
 	     (multiple-value-bind (ready-to-remove reason) (watchedp p)
 	       (if* ready-to-remove
 		  then (if* *remove-watched*
-			  then (announce "rm ~a~%" p)
-			       (delete-file p)
+			  then (cleanup-file p #'announce)
+			       #+ignore
 			       (setq symlink-pass t)
 			  else (announce "YES ~a:~a~%"
 					 reason (file-namestring p)))
@@ -468,8 +468,8 @@
 					     p))
 			    (return t))))
 	       (if* *remove-watched*
-		  then (announce "rm ~a~%" p)
-		       (delete-file p)
+		  then (cleanup-file p #'announce)
+		       #+ignore
 		       (setq symlink-pass t)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
 	    ((equalp "rar" (pathname-type p))
@@ -484,7 +484,8 @@
 	 (pathname-as-directory directory)
 	 :recurse t
 	 :include-directories nil)
-	
+
+	#+ignore
 	(when symlink-pass
 	  ;; Look for bad symbolic links, now that we've possible removed some
 	  ;; files.
@@ -496,6 +497,18 @@
 	   (pathname-as-directory directory)
 	   :recurse t
 	   :include-directories nil))))))
+
+(defun cleanup-file (p announce &aux aux-p)
+  ;; If `p' is a symlink, then delete the symlink and what it points to
+  (if* (setq aux-p (symbolic-link-p p))
+     then (setq aux-p (merge-pathnames aux-p p))
+	  (when (probe-file aux-p)
+	    (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* aux-p)
+	    (when (not *debug*) (delete-file aux-p)))
+	  (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
+	  (when (not *debug*) (delete-file p))
+     else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
+	  (when (not *debug*) (delete-file p))))
 
 (defun initialize-watched (&aux (temp-file (sys:make-temp-file-name)))
   (or (probe-file *plex-db*)

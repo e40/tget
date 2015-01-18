@@ -376,8 +376,12 @@
   ;; \3 is season
   ;; \4 is episode
   (concatenate 'simple-string
-    "^(.*)(\\s|\\.+)"
-    "([0-9]{1,2})([0-9][0-9])"		; season & episode
+    "^(.*?)(\\s|\\.+)"
+    "([0-9]{1,2})([0-9]{2})"		; season & episode
+    (if* junk-allowed
+       then ;' so resolution isn't mistaken for season & episode
+	    "(?:.*720p)?"
+       else "")
     (if junk-allowed "" "$")))
 (defun date1-re (junk-allowed)
   ;; example: The.Daily.Show.2014x10.13.hdtv.x264-fov.mp4
@@ -401,30 +405,30 @@
     (if junk-allowed "" "$")))
 )
 
-(defvar *alt0-name-season-ep-re-t-t*
+(defparameter *alt0-name-season-ep-re-t-t*
     (compile-re #.(alt0-name-season-ep-re t t) :case-fold t))
-(defvar *alt0-name-season-ep-re-t-nil*
+(defparameter *alt0-name-season-ep-re-t-nil*
     (compile-re #.(alt0-name-season-ep-re t nil) :case-fold t))
-(defvar *alt0-name-season-ep-re-nil-t*
+(defparameter *alt0-name-season-ep-re-nil-t*
     (compile-re #.(alt0-name-season-ep-re nil t) :case-fold t))
-(defvar *alt0-name-season-ep-re-nil-nil*
+(defparameter *alt0-name-season-ep-re-nil-nil*
     (compile-re #.(alt0-name-season-ep-re nil nil) :case-fold t))
 
-(defvar *alt1-name-season-ep-re-t*
+(defparameter *alt1-name-season-ep-re-t*
     (compile-re #.(alt1-name-season-ep-re t) :case-fold t))
-(defvar *alt1-name-season-ep-re-nil*
+(defparameter *alt1-name-season-ep-re-nil*
     (compile-re #.(alt1-name-season-ep-re nil) :case-fold t))
 
-(defvar *alt2-name-season-ep-re-t*
+(defparameter *alt2-name-season-ep-re-t*
     (compile-re #.(alt2-name-season-ep-re t) :case-fold t))
-(defvar *alt2-name-season-ep-re-nil*
+(defparameter *alt2-name-season-ep-re-nil*
     (compile-re #.(alt2-name-season-ep-re nil) :case-fold t))
 
-(defvar *date1-re-t* (compile-re #.(date1-re t) :case-fold t))
-(defvar *date1-re-nil* (compile-re #.(date1-re nil) :case-fold t))
+(defparameter *date1-re-t* (compile-re #.(date1-re t) :case-fold t))
+(defparameter *date1-re-nil* (compile-re #.(date1-re nil) :case-fold t))
 
-(defvar *date2-re-t* (compile-re #.(date2-re t) :case-fold t))
-(defvar *date2-re-nil* (compile-re #.(date2-re nil) :case-fold t))
+(defparameter *date2-re-t* (compile-re #.(date2-re t) :case-fold t))
+(defparameter *date2-re-nil* (compile-re #.(date2-re nil) :case-fold t))
 
 (defun parse-name-season-and-episode (thing &key episode-required
 						 (junk-allowed t))
