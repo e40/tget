@@ -1,4 +1,4 @@
-# tget 4.0.1 - torrent get
+# tget 4.0.2 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -750,34 +750,49 @@ Catch up series to a specific episode:
     ;; waiting for a normal or high quality one to become available
     (defvar *download-lq-delay* #-debug 24 #+debug 24)
     
+    (pushnew :tget-config-debug *features*)
+    
     (defun my-quality (episode &aux (tracker (episode-tracker episode))
     				temp)
-      ;; My defined quality, as a function.  This allows me to download
-      ;; different qualities based on different criteria.
-      ;;
-      (if* (and (null
-    	     ;; See if there is an episode with :normal quality.  The
-    	     ;; :transient keyword is important, since it restricts the
-    	     ;; search to episodes we have *not* downloaded yet.
-    	     (query-episode :episode episode :quality :normal :transient t))
-    	    (eq :high (episode-quality episode))
-    	    (and tracker
-    		 (numberp (tracker-download-delay tracker))
-    		 (if* (>= (hours-available episode)
-    			  (setq temp
-    			    (+ (tracker-download-delay tracker)
-    			       *download-hq-delay*)))
-    		    thenret
-    		    else (@log ">>>waiting for ~a more hours for this HQ ep"
-    			       (- temp (hours-available episode)))
-    			 nil)))
-         then ;; :normal quality is not available and the :high quality episode
-    	  ;; has been available for a set amount of hours, then take this
-    	  ;; one
-    	  :high
-       elseif (=~ "broadcasthe.net" (episode-torrent-url episode))
-         then :btn
-       elseif (and (null
+      (flet
+          ((announce (temp)
+    	 ;; we would have downloaded this if enough time had passed, so
+    	 ;; let's say that
+    	 (format t "Will download episode in ~d more hours:~%   ~a~%"
+    		 episode (- temp (hours-available episode)))))
+        ;; My defined quality, as a function.  This allows me to download
+        ;; different qualities based on different criteria.
+        ;;
+        ;; We also output progress reports for episodes not downloaded,
+        ;; so we can monitor progress, for debugging purposes.
+        (when (and (null
+    		;; See if there is an episode with :normal quality.  The
+    		;; :transient keyword is important, since it restricts the
+    		;; search to episodes we have *not* downloaded yet.
+    		(query-episode :episode episode :quality :normal :transient t))
+    	       (eq :high (episode-quality episode))
+    	       (and tracker
+    		    (numberp (tracker-download-delay tracker))
+    		    (if* (>= (hours-available episode)
+    			     (setq temp
+    			       (+ (tracker-download-delay tracker)
+    				  *download-hq-delay*)))
+    		       thenret
+    		       else (@log ">>>waiting for ~a more hours for this HQ ep"
+    				  (- temp (hours-available episode)))
+    			    nil)))
+          ;; :normal quality is not available and the :high quality episode
+          ;; has been available for a set amount of hours, then take this
+          ;; one
+          (return-from my-quality :high))
+      
+        #+tget-config-debug (when temp (announce temp))
+      
+        (when (=~ "broadcasthe.net" (episode-torrent-url episode))
+          (return-from my-quality :btn))
+    
+        (setq temp nil)
+        (when (and (null
     		;; See if there is an episode with :normal or :high
     		;; quality.
     		(or
@@ -786,10 +801,14 @@ Catch up series to a specific episode:
     	       (eq :low (episode-quality episode))
     	       (and tracker
     		    (>= (hours-available episode)
-    			(+ (tracker-download-delay tracker)
-    			   *download-lq-delay*))))
-         then :low
-         else :normal))
+    			(setq temp
+    			  (+ (tracker-download-delay tracker)
+    			     *download-lq-delay*)))))
+          (return-from my-quality :low))
+        
+        #+tget-config-debug (when temp (announce temp))
+      
+        :normal))
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Groups

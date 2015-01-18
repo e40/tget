@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.1")
+(defvar *tget-version* "4.0.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -380,8 +380,11 @@
      (lambda (obj)
        (format
 	nil
-	"~a~@[, REPACK~*~]~@[ ~a~]~@[; quality=~a~]; transient=~s"
+	"~a~@[@~a~]~@[, REPACK~*~]~@[ ~a~]~@[; quality=~a~]; transient=~s"
 	(when (slot-boundp obj 'series-name) (episode-series-name obj))
+	(when (slot-boundp obj 'tracker)
+	  (when (episode-tracker obj)
+	    (tracker-name (episode-tracker obj))))	
 	(when (slot-boundp obj 'repack) (episode-repack obj))
 	(when (slot-boundp obj 'pretty-epnum) (episode-pretty-epnum obj))
 	(pretty-episode-quality obj)
@@ -389,8 +392,11 @@
 	   then (episode-transient obj)
 	   else "-unbound-")))))
    (t ;; print it for humans
-    (format stream "#<~s~@[, REPACK~*~], ~a [~a]>"
+    (format stream "#<~s~@[@~a~]~@[, REPACK~*~], ~a [~a]>"
 	    (episode-series-name obj)
+	    (when (slot-boundp obj 'tracker)
+	      (when (episode-tracker obj)
+		(tracker-name (episode-tracker obj))))
 	    (episode-repack obj)
 	    (episode-pretty-epnum obj)
 	    (pretty-episode-quality obj)))))
