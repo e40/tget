@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0")
+(defvar *tget-version* "4.0.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -1385,6 +1385,8 @@ Catch up series to a specific episode:
 	       ;; no backtrace for this one
 	       (format t "~a~&" c)
 	       (exit 1 :quiet t)))
+	   ;; Must be done before the loading of the config file!
+	   (reset-program-state)
 	   (load config-file :verbose (> *verbose* 0))
 	   (when (not *torrent-handler*)
 	     (usage "*torrent-handler* is not defined in config file."))
@@ -1505,8 +1507,7 @@ Catch up series to a specific episode:
 		     (tget-commit *temp*)
 		     (tget-commit *main*))
 	    elseif run-mode
-	      then (reset-program-state)
-		   (process-groups)
+	      then (process-groups)
 	      else (usage "no primary arguments given."))
 	   
 	   (done))))
