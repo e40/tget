@@ -195,19 +195,23 @@
 	  (user::extract-episode-info-from-filename (torrent-filename torrent)
 						    :episode-required nil)
 	(when series-name
-	  (let ((pretty (user::season-and-episode-to-pretty-epnum
-			 season episode)))
-	    (setf (torrent-name torrent)
-	      (format nil "~a ~a" series-name pretty)))
-	  (setf (torrent-series-name torrent) series-name)
-	  (setf (torrent-season torrent) season)
-	  (setf (torrent-episode torrent) episode)
-	  (setf (torrent-seasonp torrent)
-	    (and season
-		 (null episode)
-		 ;; episode might be null if this is a special:
-		 (not (match-re "special" (torrent-filename torrent)
-				:case-fold t :return nil))))))
+	  (if* season
+	     then (let (pretty)
+		    (setq pretty
+		      (user::season-and-episode-to-pretty-epnum season
+								episode))
+		    (setf (torrent-name torrent)
+		      (format nil "~a ~a" series-name pretty))
+		    (setf (torrent-season torrent) season)
+		    (setf (torrent-episode torrent) episode)
+		    (setf (torrent-seasonp torrent)
+		      (and season
+			   (null episode)
+			   ;; episode might be null if this is a special:
+			   (not (match-re "special" (torrent-filename torrent)
+					  :case-fold t :return nil)))))
+	     else (setf (torrent-name torrent) series-name))
+	  (setf (torrent-series-name torrent) series-name)))
       
       (when (string/= "100%" (torrent-percent-done torrent))
 	;; skip it since it's not done

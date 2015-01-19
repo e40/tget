@@ -96,7 +96,7 @@
     (test-values '("Foo" 3 4)       "Foo.3x04"           t   t  )
     (test-values '("Foo" 3 4)       "Foo.3x04"           t   nil)
     (test-values '("Foo" 3 4 t)     "Foo.304.mp4"        t   t  )
-    (test-values '("Foo" 3 4 t)     "Foo.304.720pmp4"    t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.304.720p.mp4"   t   t  )
     (test-values '("Foo" 3 4 t)     "Foo.304"            t   t  )
     (test-values '("Foo" 3 4 t)     "Foo.304"            t   nil)
     (test-values '("Foo" 3 4 t)     "Foo.0304.mp4"       t   t  )
@@ -113,6 +113,10 @@
     (test-values '("Foo" 3 nil)     "Foo S03.mp4"        nil t  )
     (test-values '("Foo" 3 nil)     "Foo S03"            nil nil)
     (test-values '(nil)             "Foo S03"            t   nil)
+    (test-values '("Foo")           "Foo.720p.mp4"       nil t  )
+    (test-values '(nil)             "Foo.720p.mp4"       t   t  )
+    (test-values '(nil)             "Foo.720p.mp4"       nil nil)
+    (test-values '(nil)             "Foo.720p.mp4"       t   nil)
 
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar.2014.01.02.mp4" nil t)

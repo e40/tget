@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.3")
+(defvar *tget-version* "4.0.4")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2720,6 +2720,8 @@ transmission-remote ~a:~a ~
 			  source codec resolution)
 	(extract-episode-info-from-filename (file-namestring torrent))
       (declare (ignore repack))
+      (when (null season)
+	(.error "Manual add: no season and episode information in torrent."))
       (when (null
 	     (multiple-value-setq (series series-name)
 	       (query-series-name-to-series series-name)))

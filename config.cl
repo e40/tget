@@ -69,12 +69,12 @@
 ;; Quality settings
 
 (defquality :high-1080p
-    :priority -1
+    :priority -1			; never download
     :codec *codec-x264* 
     :resolution :1080p)
 
 (defquality :high-1080i
-    :priority -1
+    :priority -1			; never download
     :codec *codec-x264* 
     :resolution :1080i)
 

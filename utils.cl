@@ -342,6 +342,9 @@
 	    (match-re "\\.(repack|proper)\\." filename :case-fold t)
 	    container source codec resolution)))
 
+;; for debugging episode parsing
+;;(eval-when (compile eval) (pushnew :debug-episode-parser *features*))
+
 (eval-when (compile eval)
 (defun alt0-name-season-ep-re (episode-required junk-allowed)
   ;; examples:
@@ -362,7 +365,7 @@
     "e([0-9]{2,3})"			; episode
     ")"
     (if episode-required "" "?")
-    (if junk-allowed "" "$")))
+    (junk-re junk-allowed)))
 (defun alt1-name-season-ep-re (junk-allowed)
   ;; example: downton.abbey.5x03.hdtv_x264-fov.mp4
   ;; \1 is name
@@ -371,7 +374,7 @@
   (concatenate 'simple-string
     "^(.*)(\\s|\\.+)"
     "([0-9]{1,2})x([0-9]{2,3})"		; season & episode
-    (if junk-allowed "" "$")))
+    (junk-re junk-allowed)))
 (defun alt2-name-season-ep-re (junk-allowed)
   ;; example: downton.abbey.503.hdtv_x264-fov.mp4
   ;; \1 is name
@@ -380,11 +383,15 @@
   (concatenate 'simple-string
     "^(.*?)(\\s|\\.+)"
     "([0-9]{1,2})([0-9]{2})"		; season & episode
-    (if* junk-allowed
-       then ;' so resolution isn't mistaken for season & episode
-	    "(?:.*720p)?"
-       else "")
-    (if junk-allowed "" "$")))
+    (junk-re junk-allowed)))
+(defun alt3-name-re (episode-required junk-allowed)
+  ;; example: UFC.187.720p.mp4
+  ;; \1 is name
+  (assert (null episode-required))
+  (assert junk-allowed)
+  (concatenate 'simple-string
+    "^(.*?)(\\s|\\.+)"
+    (junk-re junk-allowed)))
 (defun date1-re (junk-allowed)
   ;; example: The.Daily.Show.2014x10.13.hdtv.x264-fov.mp4
   ;;          The.Daily.Show.2014.10.13.hdtv.x264-fov.mp4
@@ -395,7 +402,7 @@
   (concatenate 'simple-string
     "^(.*)(\\s|\\.+)"
     "(\\d\\d\\d\\d)[.x](\\d\\d)\\.(\\d\\d|all)"
-    (if junk-allowed "" "$")))
+    (junk-re junk-allowed)))
 (defun date2-re (junk-allowed)
   ;; example: The.Daily.Show.141013.hdtv.x264-fov.mp4
   ;; \1 is name
@@ -404,7 +411,14 @@
   ;; \5 is day
   (concatenate 'simple-string
     "^(.*)(\\s|\\.+)(\\d\\d)(\\d\\d)(\\d\\d)"
-    (if junk-allowed "" "$")))
+    (junk-re junk-allowed)))
+
+(defun junk-re (junk-allowed)
+  (if* junk-allowed
+     then ;; make sure the resolution isn't mistaken for an episode
+	  #+ignore "(?:.*720p)?"
+	  ""
+     else "$"))
 )
 
 (defparameter *alt0-name-season-ep-re-t-t*
@@ -426,6 +440,9 @@
 (defparameter *alt2-name-season-ep-re-nil*
     (compile-re #.(alt2-name-season-ep-re nil) :case-fold t))
 
+(defparameter *alt3-name-re*
+    (compile-re #.(alt3-name-re nil t) :case-fold t))
+
 (defparameter *date1-re-t* (compile-re #.(date1-re t) :case-fold t))
 (defparameter *date1-re-nil* (compile-re #.(date1-re nil) :case-fold t))
 
@@ -437,6 +454,19 @@
   ;; Parse THING to extract and return values for SERIES-NAME, SEASON and
   ;; EPISODE.  A fourth value indicates whether Plex Media Server (PMS)
   ;; will fail to see the file, if THING is interpreted as a filename.
+  #+debug-episode-parser (format t "thing=~s~%" thing)
+  
+  ;; The presence of the resolution 720p is very tricky to deal with, so if
+  ;; junk-allowed is non-nil, we just remove "720.*" from the string.
+  (when junk-allowed
+    (multiple-value-bind (match whole new-thing)
+	(match-re "(.*)720p.*" thing :case-fold t)
+      (declare (ignore whole))
+      (when match
+	(setq thing new-thing)
+	#+debug-episode-parser (format t "  new thing=~s~%" thing)
+	)))
+  
   (let* ((pms-fail nil)
 	 (normal-re
 	  (if* episode-required
@@ -452,6 +482,8 @@
 	 (alt2-re (if* junk-allowed
 		     then *alt2-name-season-ep-re-t*
 		     else *alt2-name-season-ep-re-nil*))
+	 (alt3-re (when (and (not episode-required) junk-allowed)
+		    *alt3-name-re*))
 	 (date1-re (if* junk-allowed
 		      then *date1-re-t*
 		      else *date1-re-nil*))
@@ -470,6 +502,7 @@
 			    #|5:|# epnum-start #|6:|# epnum-end
 			    #|7:|# epnum)
 	(match-re normal-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH normal-re~%" thing)
       (setq season (parse-integer season))
       (if* (and epnum-start epnum-end)
 	 then (setq episode (cons (parse-integer epnum-start)
@@ -489,6 +522,7 @@
 			      month day)
 	  (match-re re thing :case-fold t))
 	(when match (return t)))
+      #+debug-episode-parser (format t "  MATCH date?-re~%" thing)
       (when (= 2 (length year)) ;; fix the broken year
 	(setq pms-fail t)
 	(setq year (concatenate 'simple-string "20" year)))
@@ -502,15 +536,23 @@
      
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt1-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt1-re~%" thing)
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
       (values series-name season episode))
      
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt2-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt2-re~%" thing)
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
-      (values series-name season episode t)))
+      (values series-name season episode t))
+     
+     ((and alt3-re
+	   (multiple-value-setq (match whole series-name)
+	     (match-re alt3-re thing :case-fold t)))
+      (values series-name))
+     )
 ;;;; values are returned from the cond above, do NOT insert more forms
 ;;;; here...
     ))
