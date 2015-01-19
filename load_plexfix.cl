@@ -4,5 +4,5 @@
 
 (format t "~
 ;; Do this:
-(plexfix \"...\")
+(plexfix \"...\" :no-execute t)
 ")

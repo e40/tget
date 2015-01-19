@@ -8,12 +8,17 @@
 
 (defun transmission-filename-to-tracker (given-filename
 					 &key debug hash
-					 &aux temp)
+					 &aux temp
+					      temp2)
   (when (null *filename-to-torrent-cache*)
     (setq *filename-to-torrent-cache*
       (make-hash-table :size 777 :test #'equal)))
   (when (setq temp (gethash given-filename *filename-to-torrent-cache*))
     (return-from transmission-filename-to-tracker temp))
+  (setq temp2
+    (excl.osi:command-output
+	     (format nil "ls -la \"~a\"" (truename *transmission-directory*))
+	     :whole t))
   (dolist (torrent-file (directory
 			 (merge-pathnames "*.torrent"
 					  *transmission-directory*)))
@@ -40,7 +45,7 @@
 		(and debug (format t "~a: ~s~%" given-filename temp))
 		(return temp)))
        else ;; For reasons I don't understand, torrent-file sometimes
-	    ;; disappears. I'm sure it's not a race condition, because the
-	    ;; files that disappear always finished seeding some time
-	    ;; before we are executed.
-	    (warn "torrent file disappeared! ~a" torrent-file))))
+	    ;; disappears. WTF?  It was there at the top of the loop?
+	    (warn "torrent file disappeared! ~a" torrent-file)
+	    (format t "~a~%" temp2)
+	    )))
