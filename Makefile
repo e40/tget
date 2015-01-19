@@ -129,6 +129,8 @@ endif
 
 ###############################################################################
 
+mini2: plexfix tcleanup install_plexfix install_tcleanup
+
 tags: FORCE
 	etags *.cl bittorrent/*.cl
 
