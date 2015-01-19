@@ -551,9 +551,13 @@
 	 epnum-start epnum-end year month day)
     (declare (ignore-if-unused whole ignore1 ignore2))
     (cond
-     ;; Do the full, regular episode naming first, since it includes ranges
-     ;; and might give false positives for other formats.
-     ;;
+     ;; alt4 needs to go before alt0 because when :episode-required is nil
+     ;; and an episode is given in format alt4, alt0 will match.
+     ((multiple-value-setq (match whole series-name season epnum)
+	(match-re alt4-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt4-re~%" thing)
+      (values series-name (parse-integer season) (parse-integer epnum)))
+     
      ((multiple-value-setq (match whole #|1:|# series-name ignore1
 			    #|3:|# season ignore2
 			    #|5:|# epnum-start #|6:|# epnum-end
@@ -571,11 +575,6 @@
 	 else (error "Should not get here"))
       (values series-name season episode))
 
-     ((multiple-value-setq (match whole series-name season epnum)
-	(match-re alt4-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt4-re~%" thing)
-      (values series-name (parse-integer season) (parse-integer epnum)))
-     
      ;; Do date1-re and date2-re before alt1-re and alt2-re because the
      ;; latter will give false positives for date-based episode naming.
      ;;

@@ -150,6 +150,12 @@
     (test-values '("UFC.FN.59.Prelims" 2015 18 nil "2015" "01" "18")
 		 "UFC.FN.59.Prelims.Jan.18th.2015.HDTV.x264-Sir.Paul.mp4"
 		 nil t)
+    (test-values '("Frontline.US" 2015 2)
+		 "Frontline.US.S2015E02.Putins.Way.720p.HDTV.x264-TOPKEK.mkv"
+		 t t)
+    (test-values '("Frontline.US" 2015 2)
+		 "Frontline.US.S2015E02.Putins.Way.720p.HDTV.x264-TOPKEK.mkv"
+		 nil t)
     
     (test-values
      '("UFC.FN.59.McGregor.vs.Siver.Early.Prelims")
