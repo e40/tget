@@ -2,6 +2,24 @@ TODO:
 
 high:
 
+- matching-episodes: see TODO -- the issue is: should a series delay
+  of 0 trump a tracker delay??  The whole point of :delay 0 is to get
+  the thing as fast as possible.  A :download-delay on a tracker could
+  delay getting that ep for some time. 
+
+- document plexfix and tcleanup
+
+- when a series switches (back and forth, sometimes) from date-based
+  to season-based naming, how to deal with this?  It's a real
+  problem that comes up all the time since TVT shutdown.
+
+- new (!) naming style seen on BTN: S2015E02
+  cripes, what will they think of next...
+
+- test tracker-specific delays in test suite
+
+medium high:
+
 - remove episodes when a series is removed
 
   - during a compact, delete all episodes not associated with any
@@ -22,7 +40,7 @@ high:
 
 - adding a new series to the config file and NOT using :catch-up
   causes the first episode to create a complete-to with the caught up
-  episode
+  episode -- not sure how to deal with this...
 
 - new argument --ignore-episode: I want to add "Would I Lie to You?"
   but I downloaded S06 and S07E08.  I need to have some way to tell
@@ -77,3 +95,5 @@ low:
 - have a mode where the episodes *not* downloaded (but from the same
   series) are printed -- the ep.log shows this, so it's unclear it is
   needed...
+
+- build Web UI for tget??  Might be useful

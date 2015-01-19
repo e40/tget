@@ -1,4 +1,4 @@
-# tget 4.0.2 - torrent get
+# tget 4.0.3 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -716,6 +716,16 @@ Catch up series to a specific episode:
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Quality settings
     
+    (defquality :high-1080p
+        :priority -1
+        :codec *codec-x264* 
+        :resolution :1080p)
+    
+    (defquality :high-1080i
+        :priority -1
+        :codec *codec-x264* 
+        :resolution :1080i)
+    
     (defquality :normal
         ;; The priority of a quality allows selection of episodes when more
         ;; than one quality is available at the same time, as is often the
@@ -750,16 +760,18 @@ Catch up series to a specific episode:
     ;; waiting for a normal or high quality one to become available
     (defvar *download-lq-delay* #-debug 24 #+debug 24)
     
+    ;; While I'm tuning the new delays, let's be verbose:
     (pushnew :tget-config-debug *features*)
     
     (defun my-quality (episode &aux (tracker (episode-tracker episode))
     				temp)
       (flet
-          ((announce (temp)
-    	 ;; we would have downloaded this if enough time had passed, so
-    	 ;; let's say that
-    	 (format t "Will download episode in ~d more hours:~%   ~a~%"
-    		 episode (- temp (hours-available episode)))))
+          ((pending-msg (temp)
+    	 (when temp
+    	   ;; we would have downloaded this if enough time had passed, so
+    	   ;; let's say that
+    	   (format t "Will download episode in ~d more hours:~%   ~a~%"
+    		   episode (- temp (hours-available episode))))))
         ;; My defined quality, as a function.  This allows me to download
         ;; different qualities based on different criteria.
         ;;
@@ -786,7 +798,7 @@ Catch up series to a specific episode:
           ;; one
           (return-from my-quality :high))
       
-        #+tget-config-debug (when temp (announce temp))
+        #+tget-config-debug (pending-msg temp)
       
         (when (=~ "broadcasthe.net" (episode-torrent-url episode))
           (return-from my-quality :btn))
@@ -806,7 +818,7 @@ Catch up series to a specific episode:
     			     *download-lq-delay*)))))
           (return-from my-quality :low))
         
-        #+tget-config-debug (when temp (announce temp))
+        #+tget-config-debug (pending-msg temp)
       
         :normal))
     

@@ -299,6 +299,12 @@
 
 (defun test-tget-complete-to ()
   (reset-and-open-test-database)
+  
+  ;; Test catching up a date-based series
+  (let ((s (query-series-name-to-series "the daily show")))
+    (catch-up-series "the daily show 2015.01.15")
+    (test '(2015 . 15) (series-complete-to s) :test #'equal))
+  
   (with-tget-tests ()
     (macrolet
 	((with-series ((var &key name complete-to discontinuous-episodes)
@@ -946,4 +952,14 @@
     (setq ep (query-episode :series-name "vikings" :season 1
 			    :ep-number '(6 . 7) :repack t))
     (test 1 (length ep))
-))
+
+;;;;;;;;;;;
+    (format t ";;;;; test 10: do NOT download 1080p or 1080i~%")
+    (setq *debug-feed* "tget-test-data/test010.xml")
+    (setq *now*
+      (excl:string-to-universal-time "Sun, 28 Jul 2013 20:00:00 +0000"))
+    (process-groups)
+    (test 247 (count-eps) :test #'=)
+
+    
+    ))

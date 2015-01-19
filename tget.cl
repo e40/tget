@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.2")
+(defvar *tget-version* "4.0.3")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2402,16 +2402,22 @@ Catch up series to a specific episode:
 
 	   ;; Check quality of episode.
 	   ;;
-	   (if* (series-quality series)
-	      then ;; We have a series quality override.  Only accept that.
-		   (if* (eq (episode-quality ep)
-			    (series-quality series))
-		      then (@log "  quality == series override")
-		      else (@log "  quality (~a) != series override (~a)"
-				 (episode-quality ep)
-				 (series-quality series))
-			   nil)
-	      else (quality-acceptable-p ep quality))
+	   (let* ((q (quality (episode-quality ep)))
+		  (pri (when q (quality-priority q))))
+	     (if* (eql -1 pri)
+		then (@log "  this quality is disabled: ~s"
+			   (episode-quality ep))
+		     nil
+	      elseif (series-quality series)
+		then ;; We have a series quality override.  Only accept that.
+		     (if* (eq (episode-quality ep)
+			      (series-quality series))
+			then (@log "  quality == series override")
+			else (@log "  quality (~a) != series override (~a)"
+				   (episode-quality ep)
+				   (series-quality series))
+			     nil)
+		else (quality-acceptable-p ep quality)))
 	   
 	   ;; Check for a series or group delay.
 	   ;;
@@ -2795,8 +2801,9 @@ transmission-remote ~a:~a ~
   ;;       command line or from a defseries option.
   ;;
   ;; The episode descriptor is at the end of the series.
-  (multiple-value-bind (series-name season epnum)
+  (multiple-value-bind (series-name season epnum ignore1 year month day)
       (parse-name-season-and-episode what :junk-allowed nil)
+    (declare (ignore ignore1))
     (when (null series-name)
       (.error "Could not parse series name and episode info: ~a." what))
     
@@ -2804,6 +2811,9 @@ transmission-remote ~a:~a ~
     (let ((series (or series
 		      (query-series-name-to-series series-name)
 		      (.error "Could not find series: ~s." series-name))))
+      (when year
+	;; date-based naming
+	(setq epnum (month-day-to-ordinal year month day)))
       (setq epnum
 	(if* epnum
 	   thenret
@@ -2952,7 +2962,8 @@ transmission-remote ~a:~a ~
      
      ((null (series-discontinuous-episodes series))
       ;; No discontinuous-episodes...
-      (if* (contiguous-episodes ct new-ct)
+      (if* (or (series-date-based series)
+	       (contiguous-episodes ct new-ct))
 	 then ;; ...and the epsisodes are contiguous, so save it
 	      (setf (series-complete-to series) new-ct)
 	 else ;; ...and the epsisodes are not contiguous, so start

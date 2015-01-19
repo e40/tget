@@ -331,6 +331,8 @@
 	 then :720p
        elseif (match-re "\\.1080p\\." filename :case-fold t)
 	 then :1080p
+       elseif (match-re "\\.1080i\\." filename :case-fold t)
+	 then :1080i
 	 else :sd))
 
     (with-verbosity 4
@@ -526,8 +528,9 @@
 
 (defun month-day-to-ordinal (year month day)
   ;; Args are all strings representing the given quantities.
-  (let ((month (parse-integer month))
-	(day (parse-integer day)))
+  (let ((year (if (stringp year) (parse-integer year) year))
+	(month (if (stringp month) (parse-integer month) month))
+	(day (if (stringp day) (parse-integer day) day)))
     ;; Sometimes it's MM.DD and sometimes it's
     ;; DD.MM.  The latter is rare, but does occur.
     ;; Only thing we can do is look for a month > 12
