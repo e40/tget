@@ -134,6 +134,29 @@
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar 2014x01.02"     nil t)
     (test-values '(nil)              "The.Bar 2014x01"        nil nil)
+    
+    (test-values '("UFC.112" 2015 18 nil "2015" "01" "18")
+		 "UFC.112.Jan.18th.2015.HDTV.x264-Sir.Paul.mp4"
+		 nil t)
+    (test-values '("UFC.112.Prelims" 2015 18 nil "2015" "01" "18")
+		 "UFC.112.Prelims.Jan.18th.2015.HDTV.x264-Sir.Paul.mp4"
+		 nil t)
+    (test-values '("UFC.FN.59" 2015 18 nil "2015" "01" "18")
+		 "UFC.FN.59.Jan.18th.2015.HDTV.x264-Sir.Paul.mp4"
+		 nil t)
+    (test-values '("UFC.FN.59.Prelims" 2015 18 nil "2015" "01" "18")
+		 "UFC.FN.59.Prelims.Jan.18th.2015.HDTV.x264-Sir.Paul.mp4"
+		 nil t)
+    
+    (test-values
+     '("UFC.FN.59.McGregor.vs.Siver.Early.Prelims")
+     "UFC.FN.59.McGregor.vs.Siver.Early.Prelims.720p.WEB.DL.x264.mp4"
+     nil t)
+    
+    ;; this present a challenge! ;-)
+    #|
+    "UFC.112.McGregor.vs.Siver.Early.Prelims.720p.WEB.DL.x264.mp4"
+    |#
     ))
  
 (defun test-tget-epnum-comparisions ()

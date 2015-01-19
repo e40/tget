@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-404---torrent-get" class="anchor" href="#tget-404---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.0.4 - torrent get</h1>
+<a id="user-content-tget-405---torrent-get" class="anchor" href="#tget-405---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.0.5 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -875,12 +875,12 @@ $ tget --catch-up-series "breaking bad s04"
 ;; Quality settings
 
 (defquality :high-1080p
-    :priority -1
+    :priority -1            ; never download
     :codec *codec-x264* 
     :resolution :1080p)
 
 (defquality :high-1080i
-    :priority -1
+    :priority -1            ; never download
     :codec *codec-x264* 
     :resolution :1080i)
 
