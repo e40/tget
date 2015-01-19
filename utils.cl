@@ -571,7 +571,11 @@
       (setq season (parse-integer year))
       (setq month temp)
       (setq episode (month-day-to-ordinal year month day))
-      (values series-name season episode pms-fail year
+      (values series-name season episode
+	      ;; technically, PMS would fail on this, but the items that
+	      ;; use it are not episode based
+	      nil
+	      year
 	      (format nil "~2,'0d" month)
 	      day))
      
@@ -593,6 +597,8 @@
 	   (multiple-value-setq (match whole series-name)
 	     (match-re alt3-re thing :case-fold t)))
       #+debug-episode-parser (format t "  MATCH alt3-re~%" thing)
+      ;; technically, PMS could fail on this, but the items that
+      ;; use it are not episode based
       (values series-name))
      )
 ;;;; values are returned from the cond above, do NOT insert more forms
