@@ -366,6 +366,17 @@
     ")"
     (if episode-required "" "?")
     (junk-re junk-allowed)))
+(defun alt4-name-year-season-ep-re (episode-required junk-allowed)
+  ;; example: Frontline.US.S2015E02.Putins.Way.720p.HDTV.x264-TOPKEK.mkv
+  ;; \1 is name
+  ;; \2 is year/season
+  ;; \3 is episode
+  (concatenate 'simple-string
+    "^(.*)(?:\\s|\\.+)"
+    "s(20[0-9]{2})"			; season
+    "(?:e([0-9]{2,3}))"			; episode
+    (if episode-required "" "?")
+    (junk-re junk-allowed)))
 (defun alt1-name-season-ep-re (junk-allowed)
   ;; example: downton.abbey.5x03.hdtv_x264-fov.mp4
   ;; \1 is name
@@ -443,6 +454,15 @@
 (defparameter *alt0-name-season-ep-re-nil-nil*
     (compile-re #.(alt0-name-season-ep-re nil nil) :case-fold t))
 
+(defparameter *alt4-name-year-season-ep-re-t-t*
+    (compile-re #.(alt4-name-year-season-ep-re t t) :case-fold t))
+(defparameter *alt4-name-year-season-ep-re-t-nil*
+    (compile-re #.(alt4-name-year-season-ep-re t nil) :case-fold t))
+(defparameter *alt4-name-year-season-ep-re-nil-t*
+    (compile-re #.(alt4-name-year-season-ep-re nil t) :case-fold t))
+(defparameter *alt4-name-year-season-ep-re-nil-nil*
+    (compile-re #.(alt4-name-year-season-ep-re nil nil) :case-fold t))
+
 (defparameter *alt1-name-season-ep-re-t*
     (compile-re #.(alt1-name-season-ep-re t) :case-fold t))
 (defparameter *alt1-name-season-ep-re-nil*
@@ -494,7 +514,7 @@
 	#+debug-episode-parser (format t "  new thing=~s~%" thing))))
   
   (let* ((pms-fail nil)
-	 (normal-re
+	 (alt0-re
 	  (if* episode-required
 	     then (if* junk-allowed
 		     then *alt0-name-season-ep-re-t-t*
@@ -502,6 +522,14 @@
 	     else (if* junk-allowed
 		     then *alt0-name-season-ep-re-nil-t*
 		     else *alt0-name-season-ep-re-nil-nil*)))
+	 (alt4-re
+	  (if* episode-required
+	     then (if* junk-allowed
+		     then *alt4-name-year-season-ep-re-t-t*
+		     else *alt4-name-year-season-ep-re-t-nil*)
+	     else (if* junk-allowed
+		     then *alt4-name-year-season-ep-re-nil-t*
+		     else *alt4-name-year-season-ep-re-nil-nil*)))
 	 (alt1-re (if* junk-allowed
 		     then *alt1-name-season-ep-re-t*
 		     else *alt1-name-season-ep-re-nil*))
@@ -530,8 +558,8 @@
 			    #|3:|# season ignore2
 			    #|5:|# epnum-start #|6:|# epnum-end
 			    #|7:|# epnum)
-	(match-re normal-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH normal-re~%" thing)
+	(match-re alt0-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt0-re~%" thing)
       (setq season (parse-integer season))
       (if* (and epnum-start epnum-end)
 	 then (setq episode (cons (parse-integer epnum-start)
@@ -542,6 +570,11 @@
 	 thenret
 	 else (error "Should not get here"))
       (values series-name season episode))
+
+     ((multiple-value-setq (match whole series-name season epnum)
+	(match-re alt4-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt4-re~%" thing)
+      (values series-name (parse-integer season) (parse-integer epnum)))
      
      ;; Do date1-re and date2-re before alt1-re and alt2-re because the
      ;; latter will give false positives for date-based episode naming.

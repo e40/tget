@@ -92,6 +92,9 @@
     (test-values '("Foo" 3 (4 . 5)) "Foo.S03E04E05"      t   nil)
     (test-values '("Foo" 3 (4 . 5)) "Foo.S03E04E05"      nil nil)
     (test-values '("Foo" 3 4)       "Foo.S03E04"         t   t  )
+    (test-values '("Foo" 2015 2)    "Foo.S2015E02"       t   nil)
+    (test-values '("Foo" 2015 2)    "Foo.S2015E02.mp4"   t   t  )
+    
     (test-values '("Foo" 3 4)       "Foo.3x04.mp4"       t   t  )
     (test-values '("Foo" 3 4)       "Foo.3x04"           t   t  )
     (test-values '("Foo" 3 4)       "Foo.3x04"           t   nil)
