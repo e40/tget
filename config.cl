@@ -45,21 +45,30 @@
     :url "https://ezrss.it/..."
     :debug-feed :eztv
     :public t
-    :download-delay #-debug 1 #+debug 0
+    :download-delay #-debug 0 #+debug 0
     :disabled t ;; RSS is still offline 
     :ratio 1.0)
 
 (deftracker :freshon
     :url "https://freshon.tv/..."
     :debug-feed :freshon
-    :download-delay #-debug 1 #+debug 0
+    :download-delay #-debug 0 #+debug 0
     :ratio 1.3)
 
 (deftracker :btn
+    ;; RSS feed configured by creating a notification filter with these
+    ;; options: 
+    ;; - categories: episode
+    ;; - containers: avi, mkv, mp4
+    ;; - codecs: x264, h.264
+    ;; - resolutions: sd, 720p
+    ;; All other checkboxs were unchecked.
+    ;;
     :url "https://broadcasthe.net/..."
     :debug-feed :btn
     :disabled #-debug nil #+debug t
-    :download-delay #-debug 6 #+debug 0
+    ;; Can't make the delay too long or shows will fall off the RSS feed
+    :download-delay #-debug 1 #+debug 0
     :ratio 1.5)
 
 (defvar *trackers*
@@ -123,7 +132,7 @@
 	   ;; we would have downloaded this if enough time had passed, so
 	   ;; let's say that
 	   (format t "Will download episode in ~d more hours:~%   ~a~%"
-		   episode (- temp (hours-available episode))))))
+		   (- temp (hours-available episode)) episode))))
     ;; My defined quality, as a function.  This allows me to download
     ;; different qualities based on different criteria.
     ;;
@@ -270,8 +279,6 @@
 (defseries "Sherlock" :kevin)
 (defseries "Sirens (2014)" :kevin)
 (defseries "The Americans (2013)" :kevin)
-(defseries "The Colbert Report" :kevin :subdir "The.Colbert.Report"
-	   :date-based t :remove t)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
 	   :date-based t
 	   :aliases ("The Daily Show"))
@@ -281,6 +288,8 @@
 (defseries "The Mentalist" :adrian+kevin)
 (defseries "The Neighbors (2012)" :adrian+kevin)
 (defseries "The Newsroom (2012)" :kevin :private t)
+(defseries "The Nightly Show with Larry Wilmore" :kevin
+  :subdir "The.Nightly.Show" :date-based t)
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download

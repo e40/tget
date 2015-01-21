@@ -366,6 +366,37 @@
     ")"
     (if episode-required "" "?")
     (junk-re junk-allowed)))
+(defun alt1-name-season-ep-re (junk-allowed)
+  ;; example: downton.abbey.5x03.hdtv_x264-fov.mp4
+  ;; \1 is name
+  ;; \3 is season
+  ;; \4 is episode
+  (concatenate 'simple-string
+    "^(.*)(\\s|\\.+)"
+    "([0-9]{1,2})x([0-9]{2,3})"		; season & episode
+    (junk-re junk-allowed)))
+
+;; Bogus format!
+(defun alt2-name-season-ep-re (junk-allowed)
+  ;; example: downton.abbey.503.hdtv_x264-fov.mp4
+  ;; \1 is name
+  ;; \3 is season
+  ;; \4 is episode
+  (concatenate 'simple-string
+    "^(.*?)(\\s|\\.+)"
+    "([0-9]{1,2})([0-9]{2})"		; season & episode
+    (junk-re junk-allowed)))
+
+(defun alt3-name-re (episode-required junk-allowed)
+  ;; example: UFC.187.720p.mp4
+  ;; \1 is name
+  (assert (null episode-required))
+  (assert junk-allowed)
+  (concatenate 'simple-string
+    "^(.*)(\\s|\\.+)"
+    (junk-re junk-allowed)))
+
+;; Completely bogus format from BTN:
 (defun alt4-name-year-season-ep-re (episode-required junk-allowed)
   ;; example: Frontline.US.S2015E02.Putins.Way.720p.HDTV.x264-TOPKEK.mkv
   ;; \1 is name
@@ -377,32 +408,19 @@
     "(?:e([0-9]{2,3}))"			; episode
     (if episode-required "" "?")
     (junk-re junk-allowed)))
-(defun alt1-name-season-ep-re (junk-allowed)
-  ;; example: downton.abbey.5x03.hdtv_x264-fov.mp4
+
+;; Completely bogus format from BTN:
+(defun alt5-season-abbrev-multi-ep-re (junk-allowed)
+  ;; example: parks.and.recreation.70304.hdtv-lol.mp4
   ;; \1 is name
-  ;; \3 is season
-  ;; \4 is episode
+  ;; \2 is year
+  ;; \3 is episode start
+  ;; \4 is episode end
   (concatenate 'simple-string
-    "^(.*)(\\s|\\.+)"
-    "([0-9]{1,2})x([0-9]{2,3})"		; season & episode
+    "^(.*)(?:\\s|\\.+)"
+    "([0-9]{1,2})([0-9]{2})([0-9]{2})"	; season & episodes
     (junk-re junk-allowed)))
-(defun alt2-name-season-ep-re (junk-allowed)
-  ;; example: downton.abbey.503.hdtv_x264-fov.mp4
-  ;; \1 is name
-  ;; \3 is season
-  ;; \4 is episode
-  (concatenate 'simple-string
-    "^(.*?)(\\s|\\.+)"
-    "([0-9]{1,2})([0-9]{2})"		; season & episode
-    (junk-re junk-allowed)))
-(defun alt3-name-re (episode-required junk-allowed)
-  ;; example: UFC.187.720p.mp4
-  ;; \1 is name
-  (assert (null episode-required))
-  (assert junk-allowed)
-  (concatenate 'simple-string
-    "^(.*)(\\s|\\.+)"
-    (junk-re junk-allowed)))
+
 (defun date1-re (junk-allowed)
   ;; example: The.Daily.Show.2014x10.13.hdtv.x264-fov.mp4
   ;;          The.Daily.Show.2014.10.13.hdtv.x264-fov.mp4
@@ -454,15 +472,6 @@
 (defparameter *alt0-name-season-ep-re-nil-nil*
     (compile-re #.(alt0-name-season-ep-re nil nil) :case-fold t))
 
-(defparameter *alt4-name-year-season-ep-re-t-t*
-    (compile-re #.(alt4-name-year-season-ep-re t t) :case-fold t))
-(defparameter *alt4-name-year-season-ep-re-t-nil*
-    (compile-re #.(alt4-name-year-season-ep-re t nil) :case-fold t))
-(defparameter *alt4-name-year-season-ep-re-nil-t*
-    (compile-re #.(alt4-name-year-season-ep-re nil t) :case-fold t))
-(defparameter *alt4-name-year-season-ep-re-nil-nil*
-    (compile-re #.(alt4-name-year-season-ep-re nil nil) :case-fold t))
-
 (defparameter *alt1-name-season-ep-re-t*
     (compile-re #.(alt1-name-season-ep-re t) :case-fold t))
 (defparameter *alt1-name-season-ep-re-nil*
@@ -476,6 +485,20 @@
 (defparameter *alt3-name-re*
     (compile-re #.(alt3-name-re nil t) :case-fold t))
 
+(defparameter *alt4-name-year-season-ep-re-t-t*
+    (compile-re #.(alt4-name-year-season-ep-re t t) :case-fold t))
+(defparameter *alt4-name-year-season-ep-re-t-nil*
+    (compile-re #.(alt4-name-year-season-ep-re t nil) :case-fold t))
+(defparameter *alt4-name-year-season-ep-re-nil-t*
+    (compile-re #.(alt4-name-year-season-ep-re nil t) :case-fold t))
+(defparameter *alt4-name-year-season-ep-re-nil-nil*
+    (compile-re #.(alt4-name-year-season-ep-re nil nil) :case-fold t))
+
+(defparameter *alt5-season-abbrev-multi-ep-re-t*
+    (compile-re #.(alt5-season-abbrev-multi-ep-re t) :case-fold t))
+(defparameter *alt5-season-abbrev-multi-ep-re-nil*
+    (compile-re #.(alt5-season-abbrev-multi-ep-re nil) :case-fold t))
+
 (defparameter *date1-re-t* (compile-re #.(date1-re t) :case-fold t))
 (defparameter *date1-re-nil* (compile-re #.(date1-re nil) :case-fold t))
 
@@ -487,7 +510,12 @@
 
 (defun parse-name-season-and-episode (thing &key episode-required
 						 (junk-allowed t)
-				      &aux temp)
+				      &aux temp
+					   (this-year
+					    (nth-value
+					     5
+					     (decode-universal-time
+					      (get-universal-time)))))
   ;; Parse THING to extract and return values for SERIES-NAME, SEASON and
   ;; EPISODE.  A fourth value indicates whether Plex Media Server (PMS)
   ;; will fail to see the file, if THING is interpreted as a filename.
@@ -522,14 +550,6 @@
 	     else (if* junk-allowed
 		     then *alt0-name-season-ep-re-nil-t*
 		     else *alt0-name-season-ep-re-nil-nil*)))
-	 (alt4-re
-	  (if* episode-required
-	     then (if* junk-allowed
-		     then *alt4-name-year-season-ep-re-t-t*
-		     else *alt4-name-year-season-ep-re-t-nil*)
-	     else (if* junk-allowed
-		     then *alt4-name-year-season-ep-re-nil-t*
-		     else *alt4-name-year-season-ep-re-nil-nil*)))
 	 (alt1-re (if* junk-allowed
 		     then *alt1-name-season-ep-re-t*
 		     else *alt1-name-season-ep-re-nil*))
@@ -538,6 +558,17 @@
 		     else *alt2-name-season-ep-re-nil*))
 	 (alt3-re (when (and (not episode-required) junk-allowed)
 		    *alt3-name-re*))
+	 (alt4-re
+	  (if* episode-required
+	     then (if* junk-allowed
+		     then *alt4-name-year-season-ep-re-t-t*
+		     else *alt4-name-year-season-ep-re-t-nil*)
+	     else (if* junk-allowed
+		     then *alt4-name-year-season-ep-re-nil-t*
+		     else *alt4-name-year-season-ep-re-nil-nil*)))	 
+	 (alt5-re (if* junk-allowed
+		     then *alt5-season-abbrev-multi-ep-re-t*
+		     else *alt5-season-abbrev-multi-ep-re-nil*))
 	 (date1-re (if* junk-allowed
 		      then *date1-re-t*
 		      else *date1-re-nil*))
@@ -551,6 +582,15 @@
 	 epnum-start epnum-end year month day)
     (declare (ignore-if-unused whole ignore1 ignore2))
     (cond
+     ((multiple-value-setq (match whole series-name season epnum-start
+			    epnum-end)
+	(match-re alt5-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt5-re~%" thing)
+      (values series-name (parse-integer season)
+	      (cons (parse-integer epnum-start) (parse-integer epnum-end))
+	      ;; Definitely PMS fail:
+	      t))
+     
      ;; alt4 needs to go before alt0 because when :episode-required is nil
      ;; and an episode is given in format alt4, alt0 will match.
      ((multiple-value-setq (match whole series-name season epnum)
@@ -577,16 +617,12 @@
 
      ;; Do date1-re and date2-re before alt1-re and alt2-re because the
      ;; latter will give false positives for date-based episode naming.
-     ;;
-     ((dolist (re (list date1-re date2-re))
-	(multiple-value-setq (match whole series-name ignore1 year
-			      month day)
-	  (match-re re thing :case-fold t))
-	(when match (return t)))
-      #+debug-episode-parser (format t "  MATCH date?-re~%" thing)
-      (when (= 2 (length year)) ;; fix the broken year
-	(setq pms-fail t)
-	(setq year (concatenate 'simple-string "20" year)))
+
+     ((multiple-value-setq (match whole series-name ignore1 year
+			    month day)
+	(match-re date1-re thing :case-fold t))
+      match ;; squash bogus warning
+      #+debug-episode-parser (format t "  MATCH date1-re~%" thing)
       (setq season (parse-integer year))
       (setq episode
 	(if* (equalp "all" day)
@@ -594,6 +630,24 @@
 	   else ;; use the ordinal day of the year
 		(month-day-to-ordinal year month day)))
       (values series-name season episode pms-fail year month day))
+     
+     ((and (multiple-value-setq (match whole series-name ignore1 year
+				 month day)
+	     (match-re date2-re thing :case-fold t))
+	   (setq year (+ 2000 (parse-integer year)))
+	   ;; Make sure this bogus format doesn't result in episodes from
+	   ;; the future
+	   (<= year this-year))
+      match ;; squash bogus warning
+      #+debug-episode-parser (format t "  MATCH date2-re~%" thing)
+      (setq year (concatenate 'simple-string "20" year))
+      (setq season (parse-integer year))
+      (setq episode
+	(if* (equalp "all" day)
+	   then :all
+	   else ;; use the ordinal day of the year
+		(month-day-to-ordinal year month day)))
+      (values series-name season episode t year month day))
      
      ((and
        (multiple-value-setq (match whole series-name month day year)

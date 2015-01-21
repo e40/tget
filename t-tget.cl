@@ -157,6 +157,14 @@
 		 "Frontline.US.S2015E02.Putins.Way.720p.HDTV.x264-TOPKEK.mkv"
 		 nil t)
     
+    ;; Crikey, when will they stop making up new formats!!!!!!
+    (test-values '("parks.and.recreation" 7 (3 . 4) t)
+		 "parks.and.recreation.70304.hdtv-lol.mp4"
+		 t t)
+    (test-values '("parks.and.recreation" 7 (3 . 4) t)
+		 "parks.and.recreation.70304.hdtv-lol.mp4"
+		 nil t)
+    
     (test-values
      '("UFC.FN.59.McGregor.vs.Siver.Early.Prelims")
      "UFC.FN.59.McGregor.vs.Siver.Early.Prelims.720p.WEB.DL.x264.mp4"
