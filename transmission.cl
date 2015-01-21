@@ -19,6 +19,10 @@
     (excl.osi:command-output
 	     (format nil "ls -la \"~a\"" (truename *transmission-directory*))
 	     :whole t))
+  (setq temp2 (list temp2
+		    (directory
+			 (merge-pathnames "*.torrent"
+					  *transmission-directory*))))
   (dolist (torrent-file (directory
 			 (merge-pathnames "*.torrent"
 					  *transmission-directory*)))
@@ -47,5 +51,5 @@
        else ;; For reasons I don't understand, torrent-file sometimes
 	    ;; disappears. WTF?  It was there at the top of the loop?
 	    (warn "torrent file disappeared! ~a" torrent-file)
-	    (format t "~a~%" temp2)
+	    (format t "~s~%" temp2)
 	    )))
