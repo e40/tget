@@ -7,8 +7,6 @@ high:
   the thing as fast as possible.  A :download-delay on a tracker could
   delay getting that ep for some time. 
 
-- document plexfix and tcleanup
-
 - when a series switches (back and forth, sometimes) from date-based
   to season-based naming, how to deal with this?  It's a real
   problem that comes up all the time since TVT shutdown.
@@ -16,6 +14,8 @@ high:
 - test tracker-specific delays in test suite
 
 medium high:
+
+- document plexfix and tcleanup
 
 - remove episodes when a series is removed
 
