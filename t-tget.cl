@@ -165,6 +165,14 @@
 		 "parks.and.recreation.70304.hdtv-lol.mp4"
 		 nil t)
     
+    (test-values '("at.midnight" 2015 19 t "2015" "01" "19")
+		 "at.midnight.150119-yestv.mp4"
+		 t t)
+    
+    (test-values '("at.midnight" 2015 19 t "2015" "01" "19")
+		 "at.midnight.150119-yestv.mp4"
+		 nil t)
+    
     (test-values
      '("UFC.FN.59.McGregor.vs.Siver.Early.Prelims")
      "UFC.FN.59.McGregor.vs.Siver.Early.Prelims.720p.WEB.DL.x264.mp4"

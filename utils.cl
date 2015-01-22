@@ -418,7 +418,7 @@
   ;; \4 is episode end
   (concatenate 'simple-string
     "^(.*)(?:\\s|\\.+)"
-    "([0-9]{1,2})([0-9]{2})([0-9]{2})"	; season & episodes
+    "([0-9])([0-9]{2})([0-9]{2})"	; season & episodes
     (junk-re junk-allowed)))
 
 (defun date1-re (junk-allowed)
@@ -582,6 +582,24 @@
 	 epnum-start epnum-end year month day)
     (declare (ignore-if-unused whole ignore1 ignore2))
     (cond
+     ;; Must be before alt5-re
+     ((and (multiple-value-setq (match whole series-name ignore1 year
+				 month day)
+	     (match-re date2-re thing :case-fold t))
+	   (setq year (+ 2000 (parse-integer year)))
+	   ;; Make sure this bogus format doesn't result in episodes from
+	   ;; the future
+	   (<= year this-year))
+      match ;; squash bogus warning
+      #+debug-episode-parser (format t "  MATCH date2-re~%" thing)
+      (setq season year)
+      (setq episode
+	(if* (equalp "all" day)
+	   then :all
+	   else ;; use the ordinal day of the year
+		(month-day-to-ordinal year month day)))
+      (values series-name season episode t (format nil "~d" year) month day))
+     
      ((multiple-value-setq (match whole series-name season epnum-start
 			    epnum-end)
 	(match-re alt5-re thing :case-fold t))
@@ -630,24 +648,6 @@
 	   else ;; use the ordinal day of the year
 		(month-day-to-ordinal year month day)))
       (values series-name season episode pms-fail year month day))
-     
-     ((and (multiple-value-setq (match whole series-name ignore1 year
-				 month day)
-	     (match-re date2-re thing :case-fold t))
-	   (setq year (+ 2000 (parse-integer year)))
-	   ;; Make sure this bogus format doesn't result in episodes from
-	   ;; the future
-	   (<= year this-year))
-      match ;; squash bogus warning
-      #+debug-episode-parser (format t "  MATCH date2-re~%" thing)
-      (setq year (concatenate 'simple-string "20" year))
-      (setq season (parse-integer year))
-      (setq episode
-	(if* (equalp "all" day)
-	   then :all
-	   else ;; use the ordinal day of the year
-		(month-day-to-ordinal year month day)))
-      (values series-name season episode t year month day))
      
      ((and
        (multiple-value-setq (match whole series-name month day year)
