@@ -63,6 +63,9 @@
 	 then ;; date-based name
 	      (format nil "~a.~d.~2,'0d.~2,'0d.~a"
 		      series-name year month day type)
+       elseif (consp episode)
+	 then (format nil "~a.S~2,'0dE~2,'0dE~2,'0d.~a"
+		      series-name season (car episode) (cdr episode) type)
 	 else (format nil "~a.S~2,'0dE~2,'0d.~a"
 		      series-name season episode type)))
     (setq new-name (merge-pathnames new-name filename))
