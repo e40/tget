@@ -1,4 +1,4 @@
-# tget 4.0.9 - torrent get
+# tget 4.0.10 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -693,14 +693,14 @@ Catch up series to a specific episode:
         :url "https://ezrss.it/..."
         :debug-feed :eztv
         :public t
-        :download-delay #-debug 0 #+debug 0
+        :download-delay 0
         :disabled t ;; RSS is still offline 
         :ratio 1.0)
     
     (deftracker :freshon
         :url "https://freshon.tv/..."
         :debug-feed :freshon
-        :download-delay #-debug 0 #+debug 0
+        :download-delay 0
         :ratio 1.3)
     
     (deftracker :btn

@@ -100,7 +100,9 @@
   ;; read the feed given by the url and return a feed value
   ;;
   (multiple-value-bind (content code headers)
-      (handler-case (do-http-request url :timeout timeout)
+      (handler-case (do-http-request 
+			url :timeout timeout
+			:headers '(("User-Agent" . "Wget/1.12")))
 	(socket-error (c)
 	  (error 'feed-error
 		 :format-control "Socket error from do-http-request to ~a: ~a"

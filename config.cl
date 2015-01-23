@@ -45,14 +45,14 @@
     :url "https://ezrss.it/..."
     :debug-feed :eztv
     :public t
-    :download-delay #-debug 0 #+debug 0
+    :download-delay 0
     :disabled t ;; RSS is still offline 
     :ratio 1.0)
 
 (deftracker :freshon
     :url "https://freshon.tv/..."
     :debug-feed :freshon
-    :download-delay #-debug 0 #+debug 0
+    :download-delay 0
     :ratio 1.3)
 
 (deftracker :btn
