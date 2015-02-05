@@ -42,11 +42,14 @@
 ;; Trackers
 
 (deftracker :eztv
-    :url "https://ezrss.it/..."
+    ;; The usual place for EZTV is down (https://ezrss.it/feed/),
+    ;; try this, which I got from this page:
+    ;;   http://www.bt-chat.com/rsstag.php?
+    :url "http://rss.bt-chat.com/..."
     :debug-feed :eztv
     :public t
     :download-delay 0
-    :disabled t ;; RSS is still offline 
+    :disabled nil
     :ratio 1.0)
 
 (deftracker :freshon
@@ -131,7 +134,7 @@
 	 (when temp
 	   ;; we would have downloaded this if enough time had passed, so
 	   ;; let's say that
-	   (format t "Will download episode in ~d more hours:~%   ~a~%"
+	   (format t "PENDING: will download episode in ~d more hours:~%   ~a~%"
 		   (- temp (hours-available episode)) episode))))
     ;; My defined quality, as a function.  This allows me to download
     ;; different qualities based on different criteria.

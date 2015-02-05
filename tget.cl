@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.10")
+(defvar *tget-version* "4.0.11")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3080,7 +3080,14 @@ transmission-remote ~a:~a ~
 	 (items (cdr (find 'net.rss:all-items channel :key #'car))))
     (multiple-value-bind (match whole source-name)
 	(match-re
-	 "(tvtorrents\\.com|freshon\\.tv|broadcasthe\\.net|ezrss\\.it)"
+	 #.(concatenate 'simple-string
+	     "("
+	     "tvtorrents\\.com|"
+	     "freshon\\.tv|"
+	     "broadcasthe\\.net|"
+	     "ezrss\\.it|"
+	     "bt-chat\\.com"		;really eztv
+	     ")")
 	 source)
       (declare (ignore whole))
       (when (not match) (.error "don't grok the feed source: ~s." source))
@@ -3418,6 +3425,10 @@ transmission-remote ~a:~a ~
        :source source
        :codec codec
        :resolution resolution))))
+
+(defmethod convert-rss-to-episode ((type (eql :bt-chat.com)) rss)
+  (convert-rss-to-episode :ezrss.it rss))
+
 
 (defmethod convert-rss-to-episode ((type (eql :ezrss.it)) rss)
   (let ((des (rss-item-description rss))
