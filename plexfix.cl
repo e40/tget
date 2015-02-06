@@ -31,6 +31,8 @@
 			      ((:no-execute *no-execute*) *no-execute*))
   (if* (not (probe-file filename))
      then (.error "~a does not exist." filename)
+   elseif (ignore-file-p filename)
+     thenret
    elseif (file-directory-p filename)
      then (let ((files (directory (pathname-as-directory filename))))
 	    (if* (member "rar" files :key #'pathname-type :test #'string=)
@@ -47,6 +49,9 @@
 			 thenret
 			 else (format stream "Unknown file:~a.~%" file)))))
      else (plexfix-1 stream filename)))
+
+(defun ignore-file-p (filename)
+  (match-re "^UFC" (file-namestring filename) :return nil))
 
 (defun plexfix-1 (stream filename &aux new-name type)
   (multiple-value-bind (series-name season episode pms-fail year month day)

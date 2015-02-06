@@ -8,21 +8,12 @@
 
 (defun transmission-filename-to-tracker (given-filename
 					 &key debug hash
-					 &aux temp
-					      temp2)
+					 &aux temp)
   (when (null *filename-to-torrent-cache*)
     (setq *filename-to-torrent-cache*
       (make-hash-table :size 777 :test #'equal)))
   (when (setq temp (gethash given-filename *filename-to-torrent-cache*))
     (return-from transmission-filename-to-tracker temp))
-  (setq temp2
-    (excl.osi:command-output
-	     (format nil "ls -la \"~a\"" (truename *transmission-directory*))
-	     :whole t))
-  (setq temp2 (list temp2
-		    (directory
-			 (merge-pathnames "*.torrent"
-					  *transmission-directory*))))
   (dolist (torrent-file (directory
 			 (merge-pathnames "*.torrent"
 					  *transmission-directory*)))
@@ -50,6 +41,5 @@
 		(return temp)))
        else ;; For reasons I don't understand, torrent-file sometimes
 	    ;; disappears. WTF?  It was there at the top of the loop?
-	    (warn "torrent file disappeared! ~a" torrent-file)
-	    (format t "~s~%" temp2)
-	    )))
+	    #+ignore (warn "torrent file disappeared! ~a" torrent-file)
+	    #-ignore nil)))
