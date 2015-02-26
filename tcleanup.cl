@@ -572,7 +572,7 @@ where mi.id = p.media_item_id AND
     ;; Return if not watched
     (when (not hours) (return-from watchedp nil))
     ;; Return if seeding
-    (when (seedingp (file-namestring file))
+    (when (seedingp file)
       (return-from watchedp (values nil "seeding")))
 
     (when (< hours *ignore-watched-within*)
@@ -588,7 +588,13 @@ where mi.id = p.media_item_id AND
 	  then (format nil ">~dd" (truncate (/ hours 24)))
 	  else (format nil ">~dh" hours))))))
 
-(defun seedingp (name)
+(defun seedingp (file &aux name)
+  ;; Return non-nil if we are seeding FILE.  Need to be careful, though,
+  ;; since we might be looking at a symlink and not the original file being
+  ;; seeded.
+  (if* (setq name (symbolic-link-p file))
+     then (setq name (file-namestring name))
+     else (setq name (file-namestring file)))
   (let ((torrent (gethash name *torrents*)))
     (and torrent (null (torrent-removed torrent)))))
 
