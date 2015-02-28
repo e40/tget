@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.11")
+(defvar *tget-version* "4.0.12")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2184,6 +2184,9 @@ Catch up series to a specific episode:
 				elseif (stringp (tracker-debug-feed tracker))
 				  then (tracker-debug-feed tracker))))
 		(setq group-processed t)))
+	  (net.rss:feed-error-ignore ()
+	    (setq *http-timeout* 30)
+	    (incf (cdr temp)))
 	  (net.rss:feed-error (c)
 	    (format t "~&~a~%" c)
 	    ;; reduce *http-timeout* dramatically, since we already got an
@@ -3065,7 +3068,7 @@ transmission-remote ~a:~a ~
      (net.rss:item ...))))
   (let* ((lxml (if* url
 		  then (with-verbosity 1
-			 (format t ";; reading feed from ~a..."
+			 (format t "~&;; reading feed from ~a..."
 				 (net.uri:uri-host (net.uri:parse-uri url))))
 		       (prog1 (net.rss:read-feed url :timeout *http-timeout*
 						 :verbose (> *verbose* 1))

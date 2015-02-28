@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-4011---torrent-get" class="anchor" href="#tget-4011---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.0.11 - torrent get</h1>
+<a id="user-content-tget-4012---torrent-get" class="anchor" href="#tget-4012---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.0.12 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -880,8 +880,15 @@ $ tget --catch-up-series "breaking bad s04"
     :download-delay #-debug 1 #+debug 0
     :ratio 1.5)
 
+(deftracker :shazbat
+    :url "https://www.shazbat.tv/..."
+    :debug-feed :shazbat
+    :disabled t
+    :download-delay 0
+    :ratio 1.5)
+
 (defvar *trackers*
-    (list :freshon :eztv :btn))
+    (list :shazbat :freshon :eztv :btn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Quality settings
@@ -1045,6 +1052,7 @@ $ tget --catch-up-series "breaking bad s04"
        :aliases ("@midnight"))
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Bear Grylls: Escape From Hell" :kevin)
+(defseries "Better Call Saul" :kevin)
 (defseries "Black Mirror" :kevin)
 (defseries "Brooklyn Nine-Nine" :kevin)
 (defseries "Childrens Hospital (US)" :kevin)
@@ -1096,19 +1104,16 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
 (defseries "The Mentalist" :adrian+kevin)
 (defseries "The Neighbors (2012)" :adrian+kevin)
-(defseries "The Newsroom (2012)" :kevin :private t)
 (defseries "The Nightly Show with Larry Wilmore" :kevin
   :subdir "The.Nightly.Show" :date-based t)
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
 (defseries "Top Gear" :adrian+kevin :quality :high)
-(defseries "Top of the Lake" :anh+kevin)
 (defseries "Tosh.0" :kevin)
 (defseries "True Detective" :kevin :private t)
 (defseries "Vikings" :kevin)
 (defseries "Wallander" :anh+kevin)
-(defseries "White Collar" :anh+kevin :remove t)
 (defseries "Witness (2012)" :kevin :private t)
 (defseries "World's Craziest Fools" :adrian+kevin)
 (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
@@ -1117,6 +1122,9 @@ $ tget --catch-up-series "breaking bad s04"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; These items are for the test suite only, and are not used in production
 ;; mode:
+
+(defseries "The Newsroom (2013)" :kevin)
+(defseries "Top of the Lake" :kevin)
 </code></pre>
 
 </div>

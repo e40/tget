@@ -1,4 +1,4 @@
-# tget 4.0.11 - torrent get
+# tget 4.0.12 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -722,8 +722,15 @@ Catch up series to a specific episode:
         :download-delay #-debug 1 #+debug 0
         :ratio 1.5)
     
+    (deftracker :shazbat
+        :url "https://www.shazbat.tv/..."
+        :debug-feed :shazbat
+        :disabled t
+        :download-delay 0
+        :ratio 1.5)
+    
     (defvar *trackers*
-        (list :freshon :eztv :btn))
+        (list :shazbat :freshon :eztv :btn))
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Quality settings
@@ -887,6 +894,7 @@ Catch up series to a specific episode:
     	   :aliases ("@midnight"))
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin)
+    (defseries "Better Call Saul" :kevin)
     (defseries "Black Mirror" :kevin)
     (defseries "Brooklyn Nine-Nine" :kevin)
     (defseries "Childrens Hospital (US)" :kevin)
@@ -938,19 +946,16 @@ Catch up series to a specific episode:
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
-    (defseries "The Newsroom (2012)" :kevin :private t)
     (defseries "The Nightly Show with Larry Wilmore" :kevin
       :subdir "The.Nightly.Show" :date-based t)
     (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
     (defseries "Top Gear" :adrian+kevin :quality :high)
-    (defseries "Top of the Lake" :anh+kevin)
     (defseries "Tosh.0" :kevin)
     (defseries "True Detective" :kevin :private t)
     (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
-    (defseries "White Collar" :anh+kevin :remove t)
     (defseries "Witness (2012)" :kevin :private t)
     (defseries "World's Craziest Fools" :adrian+kevin)
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
@@ -960,6 +965,8 @@ Catch up series to a specific episode:
     ;; These items are for the test suite only, and are not used in production
     ;; mode:
     
+    (defseries "The Newsroom (2012)" :kevin)
+    (defseries "Top of the Lake" :kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

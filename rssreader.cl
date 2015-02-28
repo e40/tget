@@ -46,6 +46,7 @@
 		     #:version
 
 		     #:feed-error
+		     #:feed-error-ignore
 		     
 		     ;; for EZTV:
 		     #:torrent
@@ -92,6 +93,8 @@
   ((http-code :initarg :http-code :reader feed-error-httpcode
 	      :initform nil)))
 
+(define-condition feed-error-ignore (feed-error) ())
+
 (defun read-feed (url &key timeout verbose
 		  &aux (host (net.uri:uri-host (net.uri:parse-uri url))))
   ;;
@@ -113,7 +116,10 @@
 		 :format-arguments (list host c))))
     (declare (ignore headers))
     
-    (if* (not (eq 200 code))
+    (if* (eq 502 code)
+       then (signal 'feed-error-ignore)
+	    (return-from read-feed)
+     elseif (not (eq 200 code))
        then (if* verbose
 	       then (error
 		     'feed-error
