@@ -106,10 +106,9 @@
       (handler-case (do-http-request 
 			url :timeout timeout
 			:headers '(("User-Agent" . "Wget/1.12")))
-	(socket-error (c)
-	  (error 'feed-error
-		 :format-control "Socket error from do-http-request to ~a: ~a"
-		 :format-arguments (list host c)))
+	(socket-error ()
+	  (signal 'feed-error-ignore)
+	  (return-from read-feed))
 	(error (c)
 	  (error 'feed-error
 		 :format-control "Error from do-http-request to ~a: ~a"
