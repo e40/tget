@@ -136,7 +136,7 @@
 
 (defun parse-feed (content)
   (when (and (< (length content) 100)
-	     (match-re "database error" content))
+	     (match-re "database error" content :case-fold t))
     (error "bad feed"))
   (setq content
     ;; WTF?  Control chars in feeds?  Cripes, what'll they think of next?

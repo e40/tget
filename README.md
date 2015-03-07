@@ -1,4 +1,4 @@
-# tget 4.0.13 - torrent get
+# tget 4.0.14 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -894,12 +894,12 @@ Catch up series to a specific episode:
     	   :aliases ("@midnight"))
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Bear Grylls: Escape From Hell" :kevin)
-    (defseries "Better Call Saul" :kevin)
-    (defseries "Black Mirror" :kevin)
-    (defseries "Brooklyn Nine-Nine" :kevin)
-    (defseries "Childrens Hospital (US)" :kevin)
+    (defseries "Better Call Saul" :adrian+kevin)
+    (defseries "Black Mirror" :adrian+kevin)
+    (defseries "Brooklyn Nine-Nine" :adrian+kevin)
+    (defseries "Childrens Hospital (US)" :adrian+kevin)
     (defseries "Community" :adrian+kevin)
-    (defseries "Curb your Enthusiasm" :anh+kevin)
+    (defseries "Curb your Enthusiasm" :adrian+kevin)
     (defseries "Doc Martin" :anh+kevin)
     (defseries "Downton Abbey" :anh)
     (defseries "Dragons Den (UK)" :kevin)
@@ -927,7 +927,6 @@ Catch up series to a specific episode:
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :kevin)
-    (defseries "Parks and Recreation" :adrian+kevin)
     (defseries "Person of Interest" :kevin)
     (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
     (defseries "Ray Donovan" :kevin :private t)
@@ -943,6 +942,7 @@ Catch up series to a specific episode:
     	   :aliases ("The Daily Show"))
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
+    (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
@@ -967,6 +967,7 @@ Catch up series to a specific episode:
     
     (defseries "The Newsroom (2012)" :kevin)
     (defseries "Top of the Lake" :kevin)
+    (defseries "Parks and Recreation" :adrian+kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
