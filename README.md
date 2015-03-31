@@ -1,4 +1,4 @@
-# tget 4.0.14 - torrent get
+# tget 4.0.15 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -767,8 +767,8 @@ Catch up series to a specific episode:
     
     (defquality :btn
         :priority 60
-        :container :mp4
-        :source :hdtv
+        :container '(:mkv :mp4)
+        ;;:source :hdtv
         :codec *codec-x264*)
     
     ;; The additional delay waiting to download a high quality ep while

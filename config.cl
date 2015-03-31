@@ -119,8 +119,8 @@
 
 (defquality :btn
     :priority 60
-    :container :mp4
-    :source :hdtv
+    :container '(:mkv :mp4)
+    ;;:source :hdtv
     :codec *codec-x264*)
 
 ;; The additional delay waiting to download a high quality ep while

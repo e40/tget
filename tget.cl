@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.14")
+(defvar *tget-version* "4.0.15")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2381,6 +2381,11 @@ Catch up series to a specific episode:
 		      else (@log "  don't have ep, before complete-to [REPACK]")
 			   nil)
 	      else (@log "  don't have ep")
+		   (@log "  ep quality: container=~s src=~s codec=~s res=~s"
+			 (episode-container ep)
+			 (episode-source ep)
+			 (episode-codec ep)
+			 (episode-resolution ep))
 		   t)
 	   
 	   (progn
@@ -2463,7 +2468,8 @@ Catch up series to a specific episode:
   (if* (quality-match-p episode quality)
      then (@log "    matches [hours avail=~s]" hours)
 	  t
-     else (@log "    no match [hours avail=~s]" hours)
+     else (@log "    no match [quality=~s, hours avail=~s]"
+		(episode-quality episode) hours)
 	  nil))
 
 (defun quality-match-p (ep q &aux temp)
