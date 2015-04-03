@@ -197,12 +197,12 @@
 		  (setq path (format nil "~a/~a" location name))
 		  (file-directory-p path))
 	   then (setq path (pathname-as-directory path))
-		(with-verbosity 1
+		(with-verbosity 2
 		  (format t ";; Torrent directory:~%"))
 		(dolist (file (directory path))
 		  (when (member (pathname-type file) *video-types*
 				:test #'equalp)
-		    (with-verbosity 1
+		    (with-verbosity 2
 		      (format t ";;   file: ~a~%" (file-namestring file)))
 		    (setf (gethash (file-namestring file) *torrents*)
 		      torrent)))
