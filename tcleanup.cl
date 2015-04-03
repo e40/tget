@@ -149,6 +149,8 @@
     ;; torrent structure object.
     nil)
 
+(defvar *video-types* '("avi" "mp4" "mkv" "wmv"))
+
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
 	      1.04
@@ -173,6 +175,7 @@
   (dolist (info (init-torrent-data))
     (let* ((data (cdr info))
 	   (name (get-torrent-info "Name" data))
+	   (location (get-torrent-info "Location" data))
 	   (torrent
 	    (make-torrent
 	     :id (car info)
@@ -189,7 +192,21 @@
 						  :missing-ok t))))
       
       ;; used by PART II
-      (setf (gethash name *torrents*) torrent)
+      (let (path)
+	(if* (and location name
+		  (setq path (format nil "~a/~a" location name))
+		  (file-directory-p path))
+	   then (setq path (pathname-as-directory path))
+		(with-verbosity 1
+		  (format t ";; Torrent directory:~%"))
+		(dolist (file (directory path))
+		  (when (member (pathname-type file) *video-types*
+				:test #'equalp)
+		    (with-verbosity 1
+		      (format t ";;   file: ~a~%" (file-namestring file)))
+		    (setf (gethash (file-namestring file) *torrents*)
+		      torrent)))
+	   else (setf (gethash name *torrents*) torrent)))
       
       (multiple-value-bind (series-name season episode)
 	  (user::extract-episode-info-from-filename (torrent-filename torrent)
@@ -429,8 +446,6 @@
     ;;   key=  :: path to video
     ;;   value :: hours since video was watched
     nil)
-
-(defvar *video-types* '("avi" "mp4" "mkv" "wmv"))
 
 (defun tcleanup-files (&aux (initial-newline t) header #+ignore symlink-pass)
   (flet ((announce (format-string &rest args)
