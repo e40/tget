@@ -135,8 +135,12 @@
 
 
 (defun parse-feed (content)
-  (when (and (< (length content) 100)
-	     (match-re "database error" content :case-fold t))
+  (when (or (and (< (length content) 100)
+		 (match-re "database error" content :case-fold t))
+	    (match-re "down for .?maintenance.?"
+		      content
+		      :end (or (min (length content) 1024))
+		      :case-fold t))
     (error 'feed-error-ignore))
   (setq content
     ;; WTF?  Control chars in feeds?  Cripes, what'll they think of next?
