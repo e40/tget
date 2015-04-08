@@ -947,6 +947,7 @@ Catch up series to a specific episode:
     (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
     (defseries "The Nightly Show with Larry Wilmore" :kevin
+      :aliases ("The Nightly Show")
       :subdir "The.Nightly.Show" :date-based t)
     (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
