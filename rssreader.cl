@@ -106,6 +106,9 @@
       (handler-case (do-http-request 
 			url :timeout timeout
 			:headers '(("User-Agent" . "Wget/1.12")))
+	(excl::ssl-error ()
+	  (signal 'feed-error-ignore)
+	  (return-from read-feed))
 	(socket-error ()
 	  (signal 'feed-error-ignore)
 	  (return-from read-feed))
