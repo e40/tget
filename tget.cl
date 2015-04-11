@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.0.17")
+(defvar *tget-version* "4.1.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -135,6 +135,13 @@
     ;;
     ;; see the db-upgrade methods for details.
     12)
+
+;; Adding this because I've noticed problems with aserve AND
+;; transmission-remote using https.  Grrrrr.
+(defvar *avoid-https* t)
+
+;; Non-nil if we're using --add command line argument
+(defvar *manual-add-mode* nil)
 
 (defvar *tget-data-directory* "~/.tget.d/")
 (defvar *auto-backup* t)
@@ -1491,6 +1498,7 @@ Catch up series to a specific episode:
 	    elseif add-mode
 	      then (when (not (probe-file add-mode))
 		     (usage "--add requires an existing directory argument"))
+		   (setq *manual-add-mode* t)
 		   (let ((torrent-files 
 			  (directory
 				(merge-pathnames
@@ -2112,10 +2120,18 @@ Catch up series to a specific episode:
 (defun hours-available (episode)
   ;; Return the number of hours EPISODE has been available in the feed in
   ;; which it was found.
-  (values
-   (floor (- (or *now* (get-universal-time))
-	     (episode-pub-date episode))
-	  3600)))
+  (let ((hours (values
+		(floor (- (or *now* (get-universal-time))
+			  (episode-pub-date episode))
+		       3600))))
+    (if* (>= hours 0)
+       then hours
+       else (with-verbosity 2
+	      (format t "~&negative hours-available ~d, now ~s, pub date ~s~%"
+		      hours
+		      (get-universal-time)
+		      (episode-pub-date episode)))
+	    0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; the meat
@@ -2251,7 +2267,7 @@ Catch up series to a specific episode:
   ;; Now, we comb through the series for this group and look for matches
   ;; to download
   (dolist (series (query-group-to-series group))
-    (with-verbosity 2 (format t "processing series ~a...~%" series))
+    (with-verbosity 2 (format t "~&processing series ~a...~%" series))
     
     ;; Find any transient episodes that match the series name
     ;;
@@ -2577,10 +2593,20 @@ Catch up series to a specific episode:
 		    :resolution (episode-resolution episode))))
   (tget-commit *main*))
 
+(defun uri-maybe-force-http (uri-or-string)
+  (if* *avoid-https*
+     then (net.uri:copy-uri (net.uri:parse-uri uri-or-string)
+			    :scheme :http)
+     else uri-or-string))
+
 (defmethod torrent-handler ((obj transmission) episode group
 			    &aux (tracker
 				  (when episode (episode-tracker episode))))
   (let* ((series (episode-series episode))
+	 (raw-url (episode-torrent-url episode))
+	 (url (if* (not *manual-add-mode*)
+		 then (uri-maybe-force-http raw-url)
+		 else raw-url))
 	 (cmd
 	  (format nil "~
 transmission-remote ~a:~a ~
@@ -2593,7 +2619,7 @@ transmission-remote ~a:~a ~
 		  (transmission-port obj)
 		  (transmission-username obj)
 		  (transmission-password obj)
-		  (episode-torrent-url episode)
+		  url
 		  (if* (transmission-add-paused obj)
 		     then "--start-paused"
 		     else "--no-start-paused")
@@ -3076,8 +3102,10 @@ transmission-remote ~a:~a ~
 		  then (with-verbosity 1
 			 (format t "~&;; reading feed from ~a..."
 				 (net.uri:uri-host (net.uri:parse-uri url))))
-		       (prog1 (net.rss:read-feed url :timeout *http-timeout*
-						 :verbose (> *verbose* 1))
+		       (prog1 (net.rss:read-feed
+			       (uri-maybe-force-http url)
+			       :timeout *http-timeout*
+			       :verbose (> *verbose* 0))
 			 (with-verbosity 1
 			   (format t "done.~%")))
 		elseif file

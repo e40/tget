@@ -106,10 +106,16 @@
       (handler-case (do-http-request 
 			url :timeout timeout
 			:headers '(("User-Agent" . "Wget/1.12")))
-	(excl::ssl-error ()
+	(excl::ssl-error (c)
+	  (when verbose
+	    (format t "~&;; SSL error reading ~a feed:~%~a~%"
+		    host c))
 	  (signal 'feed-error-ignore)
 	  (return-from read-feed))
-	(socket-error ()
+	(socket-error (c)
+	  (when verbose
+	    (format t "~&;; socket error reading ~a feed:~%~a~%"
+		    host c))
 	  (signal 'feed-error-ignore)
 	  (return-from read-feed))
 	(error (c)
