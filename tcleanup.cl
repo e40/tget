@@ -306,8 +306,6 @@
 	   else (error "Bad torrent ratio: ~s."
 		       (torrent-ratio torrent))))
       
-      (pprint torrent)
-      
       ;; First, determine if seeding is complete.
       ;; transmission-remote doesn't give us a "seeding complete"
       ;; indication, so we use "Ratio" >= "Ratio Limit".
