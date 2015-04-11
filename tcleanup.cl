@@ -190,7 +190,7 @@
 	     :hash (get-torrent-info "Hash" data)
 	     :tracker-seed-time (get-torrent-info "Seeding Time" data
 						  :missing-ok t))))
-      
+
       ;; used by PART II
       (let (path)
 	(if* (and location name
@@ -300,6 +300,14 @@
 		    (torrent-tracker torrent)
 		    (torrent-name torrent)))
 
+      (when (symbolp (torrent-ratio torrent))
+	(if* (eq 'Inf (torrent-ratio torrent))
+	   then (setf (torrent-ratio torrent) 0.0)
+	   else (error "Bad torrent ratio: ~s."
+		       (torrent-ratio torrent))))
+      
+      (pprint torrent)
+      
       ;; First, determine if seeding is complete.
       ;; transmission-remote doesn't give us a "seeding complete"
       ;; indication, so we use "Ratio" >= "Ratio Limit".
@@ -312,19 +320,24 @@
 
       ;; Seeding is not complete.  See if we've seeded for the minimum
       ;; amount of time.
-      
-      (if* (> (torrent-seeded-for torrent)
-	      (or
-	       ;; Prefer the torrent-specific value over the global one
-	       (torrent-seed-min-time torrent)
-	       *minimum-seed-seconds*))
+
+      (if* (null (torrent-seeded-for torrent))
+	 then (push (cons torrent :seeding) print-other)
+       elseif (> (torrent-seeded-for torrent)
+		 (or
+		  ;; Prefer the torrent-specific value over the global one
+		  (torrent-seed-min-time torrent)
+		  *minimum-seed-seconds*))
 	 then (push (cons torrent :complete-time) print-done)
 	      (remove-torrent torrent)
 	 else (with-verbosity 1
 		(setf (torrent-seed-for torrent)
-		  (- (or (torrent-seed-min-time torrent) *minimum-seed-seconds*)
+		  (- (or (torrent-seed-min-time torrent)
+			 *minimum-seed-seconds*)
 		     (torrent-seeded-for torrent)))
-		(push (cons torrent :seeding) print-other))))
+		(push (cons torrent :seeding) print-other)))
+      
+      )
    :next
     )
 
@@ -393,7 +406,9 @@
 	       (relative-time-formatter (torrent-seed-for torrent))))))))
 
 (defun relative-time-formatter (seconds &key brief)
-  (if* brief
+  (if* (null seconds)
+     then "---"
+   elseif brief
      then (if* (> seconds #.(* 3600 24))
 	     then (universal-time-to-string
 		   (+ *now* seconds)
