@@ -301,7 +301,7 @@
 		    (torrent-name torrent)))
 
       (when (symbolp (torrent-ratio torrent))
-	(if* (eq 'Inf (torrent-ratio torrent))
+	(if* (string= "Inf" (symbol-name (torrent-ratio torrent)))
 	   then (setf (torrent-ratio torrent) 0.0)
 	   else (error "Bad torrent ratio: ~s."
 		       (torrent-ratio torrent))))
