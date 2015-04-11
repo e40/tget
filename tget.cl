@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.1.0")
+(defvar *tget-version* "4.1.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3598,10 +3598,10 @@ transmission-remote ~a:~a ~
 	    (match-re " (repack|proper) " (rss-item-title rss)
 		      :case-fold t)))
 
-      (with-verbosity 2 (format t "TvT: query: ~a~%" series-name))
+      (with-verbosity 3 (format t "TvT: query: ~a~%" series-name))
       (when (null (multiple-value-setq (series series-name)
 		    (query-series-name-to-series series-name)))
-	(with-verbosity 2 (format t "TvT: ignore2: ~a~%" series-name))
+	(with-verbosity 3 (format t "TvT: ignore2: ~a~%" series-name))
 	(return-from convert-rss-to-episode))
       ;; a series we care about...
       

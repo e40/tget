@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-410---torrent-get" class="anchor" href="#tget-410---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.1.0 - torrent get</h1>
+<a id="user-content-tget-411---torrent-get" class="anchor" href="#tget-411---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.1.1 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -859,8 +859,7 @@ $ tget --catch-up-series "breaking bad s04"
     :ratio 1.0)
 
 (deftracker :freshon
-;;;;HTTPS not working ATM
-    :url "http://freshon.tv/..."
+    :url "https://freshon.tv/..."
     :debug-feed :freshon
     :download-delay 0
     :ratio 1.3)
@@ -874,8 +873,7 @@ $ tget --catch-up-series "breaking bad s04"
     ;; - resolutions: sd, 720p
     ;; All other checkboxs were unchecked.
     ;;
-;;;;HTTPS not working ATM
-    :url "http://broadcasthe.net/..."
+    :url "https://broadcasthe.net/..."
     :debug-feed :btn
     :disabled #-debug nil #+debug t
     ;; Can't make the delay too long or shows will fall off the RSS feed
