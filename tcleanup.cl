@@ -301,10 +301,8 @@
 		    (torrent-name torrent)))
 
       (when (symbolp (torrent-ratio torrent))
-	(if* (string= "Inf" (symbol-name (torrent-ratio torrent)))
-	   then (setf (torrent-ratio torrent) 0.0)
-	   else (error "Bad torrent ratio: ~s."
-		       (torrent-ratio torrent))))
+	;; Inf or None, either way, call ratio 0.0.
+	(setf (torrent-ratio torrent) 0.0))
       
       ;; First, determine if seeding is complete.
       ;; transmission-remote doesn't give us a "seeding complete"
