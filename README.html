@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-411---torrent-get" class="anchor" href="#tget-411---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.1.1 - torrent get</h1>
+<a id="user-content-tget-420---torrent-get" class="anchor" href="#tget-420---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.2.0 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -502,6 +502,30 @@ series should be removed:</p>
 been run once.</p>
 
 <h2>
+<a id="user-content-maintenance-task-removing-an-episode-or-episodes" class="anchor" href="#maintenance-task-removing-an-episode-or-episodes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Maintenance task: removing an episode or episodes</h2>
+
+<p>You may remove a single episode or episodes.</p>
+
+<p>Let's say someone uploaded pre-release versions of some really
+popular show, in SD with a really crappy frame rate.  Say it was the
+first 4 episodes of the new Season 5 of the show.  <em>tget</em> downloaded
+them and you want to delete them:</p>
+
+<pre><code>$ tget --delete-episode "Game of Bones S05E01"
+$ tget --delete-episode "Game of Bones S05E02"
+$ tget --delete-episode "Game of Bones S05E03"
+$ tget --delete-episode "Game of Bones S05E04"
+$ tget --catch-up-series "Game of Bones S04"
+</code></pre>
+
+<p>The last command was to make sure you get them in the future, but also
+make sure to upgrade your config file so that only high quality
+episodes will be downloaded in the future:</p>
+
+<pre><code>(defseries "Game of Bones :me :private t :delay 0 :quality :720p)
+</code></pre>
+
+<h2>
 <a id="user-content-usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
 
 <p>Primary behavior determining arguments (one of these must be given):</p>
@@ -514,6 +538,7 @@ been run once.</p>
 --clean-database
 --compact-database
 --delete-episodes series-name
+--delete-episode episode-description
 --delete-orphans
 --delete-series series-name
 --dump-all
@@ -604,8 +629,16 @@ See examples below.</p>
 <li>
 <p><code>--delete-episodes series-name</code></p>
 
-<p>Delete episodes with series name matching <code>series-name</code>.  This is permanant!
+<p>Delete episodes with series name matching <code>series-name</code>.  This is permanent!
 Using this option with --auto-backup force is recommended.</p>
+</li>
+<li>
+<p><code>--delete-episode episode-description</code></p>
+
+<p>Delete the episode matching <code>episode-description</code>.  This is permanent!
+Using this option with --auto-backup force is recommended.  Example:</p>
+
+<p>--delete-episode "I Love Lucy S05E01"</p>
 </li>
 <li>
 <p><code>--delete-orphans</code></p>
@@ -616,7 +649,7 @@ Using this option with --auto-backup force is recommended.</p>
 <li>
 <p><code>--delete-series series-name</code></p>
 
-<p>Delete series with series name matching <code>series-name</code>.  This is permanant!
+<p>Delete series with series name matching <code>series-name</code>.  This is permanent!
 Using this option with --auto-backup force is recommended.</p>
 </li>
 <li>
@@ -1066,10 +1099,10 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Elementary" :kevin)
 (defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
-(defseries "Game of Thrones" :kevin :private t :delay 0) ;; immediate download
-(defseries "Hannibal" :kevin :delay 0) ;; immediate download
+(defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
+(defseries "Hannibal" :kevin :delay 0)
 (defseries "Hell on Wheels" :kevin)
-(defseries "Homeland" :kevin :private t :delay 0) ;; immediate download
+(defseries "Homeland" :kevin :private t :delay 0)
 (defseries "Intruders" :kevin :catch-up "S01E02")
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin)
@@ -1109,7 +1142,7 @@ $ tget --catch-up-series "breaking bad s04"
   :subdir "The.Nightly.Show" :date-based t)
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
-(defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
+(defseries "The Walking Dead" :kevin :delay 0)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Tosh.0" :kevin)
 (defseries "True Detective" :kevin :private t)
@@ -1124,9 +1157,9 @@ $ tget --catch-up-series "breaking bad s04"
 ;; These items are for the test suite only, and are not used in production
 ;; mode:
 
-(defseries "The Newsroom (2012)" :kevin)
-(defseries "Top of the Lake" :kevin)
-(defseries "Parks and Recreation" :adrian+kevin)
+#+testing (defseries "The Newsroom (2012)" :kevin)
+#+testing (defseries "Top of the Lake" :kevin)
+#+testing (defseries "Parks and Recreation" :adrian+kevin)
 </code></pre>
 
 </div>

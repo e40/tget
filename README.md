@@ -1,4 +1,4 @@
-# tget 4.1.1 - torrent get
+# tget 4.2.0 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -403,6 +403,27 @@ series should be removed:
 You can remove this entry in the configuration file after _tget_ has
 been run once.
 
+## Maintenance task: removing an episode or episodes
+
+You may remove a single episode or episodes.
+
+Let's say someone uploaded pre-release versions of some really
+popular show, in SD with a really crappy frame rate.  Say it was the
+first 4 episodes of the new Season 5 of the show.  _tget_ downloaded
+them and you want to delete them:
+
+    $ tget --delete-episode "Game of Bones S05E01"
+    $ tget --delete-episode "Game of Bones S05E02"
+    $ tget --delete-episode "Game of Bones S05E03"
+    $ tget --delete-episode "Game of Bones S05E04"
+    $ tget --catch-up-series "Game of Bones S04"
+
+The last command was to make sure you get them in the future, but also
+make sure to upgrade your config file so that only high quality
+episodes will be downloaded in the future:
+
+    (defseries "Game of Bones :me :private t :delay 0 :quality :720p)
+
 ## Usage
 
 Primary behavior determining arguments (one of these must be given):
@@ -415,6 +436,7 @@ Primary behavior determining arguments (one of these must be given):
     --clean-database
     --compact-database
     --delete-episodes series-name
+    --delete-episode episode-description
     --delete-orphans
     --delete-series series-name
     --dump-all
@@ -489,8 +511,15 @@ The following are arguments controlling primary behavior:
 
 * `--delete-episodes series-name`
 
-  Delete episodes with series name matching `series-name`.  This is permanant!
+  Delete episodes with series name matching `series-name`.  This is permanent!
   Using this option with --auto-backup force is recommended.
+
+* `--delete-episode episode-description`
+
+  Delete the episode matching `episode-description`.  This is permanent!
+  Using this option with --auto-backup force is recommended.  Example:
+
+    --delete-episode "I Love Lucy S05E01"
 
 * `--delete-orphans`
 
@@ -499,7 +528,7 @@ The following are arguments controlling primary behavior:
 
 * `--delete-series series-name`
 
-  Delete series with series name matching `series-name`.  This is permanant!
+  Delete series with series name matching `series-name`.  This is permanent!
   Using this option with --auto-backup force is recommended.
 
 * `--dump-all`
@@ -908,10 +937,10 @@ Catch up series to a specific episode:
     (defseries "Elementary" :kevin)
     (defseries "Fargo" :kevin)
     (defseries "Frontline (US)" :kevin)
-    (defseries "Game of Thrones" :kevin :private t :delay 0) ;; immediate download
-    (defseries "Hannibal" :kevin :delay 0) ;; immediate download
+    (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
+    (defseries "Hannibal" :kevin :delay 0)
     (defseries "Hell on Wheels" :kevin)
-    (defseries "Homeland" :kevin :private t :delay 0) ;; immediate download
+    (defseries "Homeland" :kevin :private t :delay 0)
     (defseries "Intruders" :kevin :catch-up "S01E02")
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Justified" :kevin)
@@ -951,7 +980,7 @@ Catch up series to a specific episode:
       :subdir "The.Nightly.Show" :date-based t)
     (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
-    (defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
+    (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Tosh.0" :kevin)
     (defseries "True Detective" :kevin :private t)
@@ -966,9 +995,9 @@ Catch up series to a specific episode:
     ;; These items are for the test suite only, and are not used in production
     ;; mode:
     
-    (defseries "The Newsroom (2012)" :kevin)
-    (defseries "Top of the Lake" :kevin)
-    (defseries "Parks and Recreation" :adrian+kevin)
+    #+testing (defseries "The Newsroom (2012)" :kevin)
+    #+testing (defseries "Top of the Lake" :kevin)
+    #+testing (defseries "Parks and Recreation" :adrian+kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

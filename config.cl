@@ -260,10 +260,10 @@
 (defseries "Elementary" :kevin)
 (defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
-(defseries "Game of Thrones" :kevin :private t :delay 0) ;; immediate download
-(defseries "Hannibal" :kevin :delay 0) ;; immediate download
+(defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
+(defseries "Hannibal" :kevin :delay 0)
 (defseries "Hell on Wheels" :kevin)
-(defseries "Homeland" :kevin :private t :delay 0) ;; immediate download
+(defseries "Homeland" :kevin :private t :delay 0)
 (defseries "Intruders" :kevin :catch-up "S01E02")
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Justified" :kevin)
@@ -303,7 +303,7 @@
   :subdir "The.Nightly.Show" :date-based t)
 (defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
-(defseries "The Walking Dead" :kevin :delay 0) ;; immediate download
+(defseries "The Walking Dead" :kevin :delay 0)
 (defseries "Top Gear" :adrian+kevin :quality :high)
 (defseries "Tosh.0" :kevin)
 (defseries "True Detective" :kevin :private t)
@@ -318,6 +318,6 @@
 ;; These items are for the test suite only, and are not used in production
 ;; mode:
 
-(defseries "The Newsroom (2012)" :kevin)
-(defseries "Top of the Lake" :kevin)
-(defseries "Parks and Recreation" :adrian+kevin)
+#+testing (defseries "The Newsroom (2012)" :kevin)
+#+testing (defseries "Top of the Lake" :kevin)
+#+testing (defseries "Parks and Recreation" :adrian+kevin)

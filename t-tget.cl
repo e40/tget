@@ -23,7 +23,9 @@
   ;; Define this before loading the config file, so we don't rely on that
   ;; value.  The test suite requires the value `6'.
   (pushnew :debug *features* :test #'eq)
-  (load "tget-config/config.cl" :verbose t))
+  (let ((*features* *features*))
+    (push :testing *features*)
+    (load "tget-config/config.cl" :verbose t)))
 
 (defvar *debug-feed* nil)
 

@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.1.1")
+(defvar *tget-version* "4.2.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -965,6 +965,7 @@ Primary behavior determining arguments (one of these must be given):
     --clean-database
     --compact-database
     --delete-episodes series-name
+    --delete-episode episode-description
     --delete-orphans
     --delete-series series-name
     --dump-all
@@ -1042,8 +1043,15 @@ The following are arguments controlling primary behavior:
 
 * `--delete-episodes series-name`
 
-  Delete episodes with series name matching `series-name`.  This is permanant!
+  Delete episodes with series name matching `series-name`.  This is permanent!
   Using this option with --auto-backup force is recommended.
+
+* `--delete-episode episode-description`
+
+  Delete the episode matching `episode-description`.  This is permanent!
+  Using this option with --auto-backup force is recommended.  Example:
+
+    --delete-episode \"I Love Lucy S05E01\"
 
 * `--delete-orphans`
 
@@ -1052,7 +1060,7 @@ The following are arguments controlling primary behavior:
 
 * `--delete-series series-name`
 
-  Delete series with series name matching `series-name`.  This is permanant!
+  Delete series with series name matching `series-name`.  This is permanent!
   Using this option with --auto-backup force is recommended.
 
 * `--dump-all`
@@ -1285,6 +1293,7 @@ Catch up series to a specific episode:
 	      ("clean-database" :long clean-database)
 	      ("compact-database" :long compact)
 	      ("delete-episodes" :long delete-episodes :required-companion)
+	      ("delete-episode" :long delete-episode :required-companion)
 	      ("delete-orphans" :long delete-orphans)
 	      ("delete-series" :long delete-series :required-companion)
 	      ("dump-all" :long dump-all)
@@ -1387,7 +1396,8 @@ Catch up series to a specific episode:
 				   (if* (or dump-all dump-complete-to
 					    dump-stats dump-series
 					    delete-orphans dump-orphans
-					    dump-episodes delete-episodes
+					    dump-episodes
+					    delete-episodes delete-episode
 					    delete-series
 					    catch-up-mode catch-up-series
 					    check-database clean-database)
@@ -1472,6 +1482,10 @@ Catch up series to a specific episode:
 				(canonicalize-series-name delete-episodes)))
 		     (format t "removing ~a~%" ep)
 		     (delete-instance ep))
+		   (tget-commit *main*)
+		   (done)
+	    elseif delete-episode
+	      then (delete-episode delete-episode)
 		   (tget-commit *main*)
 		   (done)
 	    elseif delete-series
@@ -2858,6 +2872,25 @@ transmission-remote ~a:~a ~
       (update-complete-to series season epnum :verbose t :force t)
       ;; This needs to be reset, too:
       (setf (series-discontinuous-episodes series) nil))))
+
+(defun delete-episode (ep-description)
+  (multiple-value-bind (series-name season epnum)
+      (parse-name-season-and-episode ep-description :junk-allowed nil)
+    (when (or (null series-name)
+	      (null season)
+	      (null epnum))
+      (.error "Could not parse series name and episode info: ~a."
+	      ep-description))
+
+    (setq series-name (canonicalize-series-name series-name))
+    (let ((ep (or (query-episode :series-name series-name
+				 :season season
+				 :ep-number epnum)
+		  (.error "Could not find episode: ~s." ep-description))))
+      (when (cdr ep)
+	(.error "There is more than one episode matching:~%~{  ~a~}" ep))
+      (format t "removing episode ~a~%" (car ep))
+      (delete-instance (car ep)))))
 
 (defun skip-next (series)
   ;; NOTE: this is only called through direct user action via the

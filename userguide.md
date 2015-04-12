@@ -403,3 +403,24 @@ series should be removed:
 
 You can remove this entry in the configuration file after _tget_ has
 been run once.
+
+## Maintenance task: removing an episode or episodes
+
+You may remove a single episode or episodes.
+
+Let's say someone uploaded pre-release versions of some really
+popular show, in SD with a really crappy frame rate.  Say it was the
+first 4 episodes of the new Season 5 of the show.  _tget_ downloaded
+them and you want to delete them:
+
+    $ tget --delete-episode "Game of Bones S05E01"
+    $ tget --delete-episode "Game of Bones S05E02"
+    $ tget --delete-episode "Game of Bones S05E03"
+    $ tget --delete-episode "Game of Bones S05E04"
+    $ tget --catch-up-series "Game of Bones S04"
+
+The last command was to make sure you get them in the future, but also
+make sure to upgrade your config file so that only high quality
+episodes will be downloaded in the future:
+
+    (defseries "Game of Bones :me :private t :delay 0 :quality :720p)
