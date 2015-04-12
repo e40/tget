@@ -1,4 +1,4 @@
-# tget 4.2.0 - torrent get
+# tget 4.2.1 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -730,6 +730,9 @@ Catch up series to a specific episode:
         :ratio 1.0)
     
     (deftracker :freshon
+        ;; The feed URL is
+        ;;  https://freshon.tv/rss.php?feed=dl&passkey=<passkey>"
+        ;; Get the <passkey> from your profile page.
         :url "https://freshon.tv/..."
         :debug-feed :freshon
         :download-delay 0

@@ -53,6 +53,9 @@
     :ratio 1.0)
 
 (deftracker :freshon
+    ;; The feed URL is
+    ;;  https://freshon.tv/rss.php?feed=dl&passkey=<passkey>"
+    ;; Get the <passkey> from your profile page.
     :url "https://freshon.tv/..."
     :debug-feed :freshon
     :download-delay 0

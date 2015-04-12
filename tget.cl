@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.2.0")
+(defvar *tget-version* "4.2.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2622,10 +2622,14 @@ Catch up series to a specific episode:
 		 then (uri-maybe-force-http raw-url)
 		 else raw-url))
 	 (cmd
+	  ;; -t all added because of
+	  ;;    https://trac.transmissionbt.com/ticket/4409
+	  ;; It's a horrible bug that's been known about for 4+ years.
+	  ;; Grrrrrrrr.  -t all seems to do the trick, though.
 	  (format nil "~
 transmission-remote ~a:~a ~
   --auth=~a:~a ~
-  -a '~a' ~
+  -t all -a '~a' ~
   ~a ~
   -sr ~a ~@[--trash-torrent~*~] ~
   --download-dir '~a'"
