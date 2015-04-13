@@ -892,6 +892,9 @@ $ tget --catch-up-series "breaking bad s04"
     :ratio 1.0)
 
 (deftracker :freshon
+    ;; The feed URL is
+    ;;  https://freshon.tv/rss.php?feed=dl&amp;passkey=&lt;passkey&gt;"
+    ;; Get the &lt;passkey&gt; from your profile page.
     :url "https://freshon.tv/..."
     :debug-feed :freshon
     :download-delay 0

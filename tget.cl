@@ -3475,30 +3475,34 @@ transmission-remote ~a:~a ~
       
       (setq pretty-epnum (season-and-episode-to-pretty-epnum season episode))
 
-      (make-episode
-       :transient t
-       :tracker *tracker*
-       :full-title rss-title
-       :torrent-url (rss-item-link rss)
-       :pub-date (and (rss-item-pub-date rss)
-		      (parse-rss20-date (rss-item-pub-date rss)))
-       ;;both `nil' for BTN!
-       :type (rss-item-type rss)
-       :length (and (rss-item-length rss)
-		    (parse-integer (rss-item-length rss)))
+      (let (ep)
+	(setq ep
+	  (make-episode
+	   :transient t
+	   :tracker *tracker*
+	   :full-title rss-title
+	   :torrent-url (rss-item-link rss)
+	   :pub-date (and (rss-item-pub-date rss)
+			  (parse-rss20-date (rss-item-pub-date rss)))
+	   ;;both `nil' for BTN!
+	   :type (rss-item-type rss)
+	   :length (and (rss-item-length rss)
+			(parse-integer (rss-item-length rss)))
 
-       :series series
-       :series-name series-name
-       :title des-title
-       :season season
-       :episode episode
-       :pretty-epnum pretty-epnum
-       :repack repack
-       ;; no :filename in BTN feed!
-       :container container
-       :source source
-       :codec codec
-       :resolution resolution))))
+	   :series series
+	   :series-name series-name
+	   :title des-title
+	   :season season
+	   :episode episode
+	   :pretty-epnum pretty-epnum
+	   :repack repack
+	   ;; no :filename in BTN feed!
+	   :container container
+	   :source source
+	   :codec codec
+	   :resolution resolution))
+	(with-verbosity 2 (format t "BTN: consider ep: ~a~%" ep))
+	ep))))
 
 (defmethod convert-rss-to-episode ((type (eql :bt-chat.com)) rss)
   (convert-rss-to-episode :ezrss.it rss))
