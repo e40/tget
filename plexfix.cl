@@ -80,7 +80,7 @@
 
     (if* *no-execute*
        then (format stream "Would symlink ~a ~a~%" filename new-name)
-       else (symlink filename new-name))
+       else (make-symlink filename new-name))
     
     ;; Look for .srt file with the same name, and make a symlink for that,
     ;; too.  The Roku can't use subtitles unless the file has the same
@@ -94,7 +94,14 @@
 	(setq new-srt (merge-pathnames (make-pathname :type "srt") new-name))
 	(if* *no-execute*
 	   then (format stream "Would symlink ~a ~a~%" srt new-srt)
-	   else (symlink srt new-srt))))))
+	   else (make-symlink srt new-srt))))))
+
+(defun make-symlink (target link-name)
+  ;; like symlink, but the link-name is relative, meaning we need to change
+  ;; to the directory first
+  (chdir (path-pathname link-name))
+  (symlink (file-namestring target) (file-namestring link-name)
+	   :raw t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
