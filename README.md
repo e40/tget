@@ -1,4 +1,4 @@
-# tget 4.2.1 - torrent get
+# tget 4.3.0 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -429,7 +429,7 @@ episodes will be downloaded in the future:
 Primary behavior determining arguments (one of these must be given):
 
     --run
-    --add
+    --add file-or-directory
     --catch-up   
     --catch-up-series series-episode-name
     --check-database
@@ -454,6 +454,7 @@ Behavior modifying arguments:
     --cron
     --db database-name
     --debug
+    --force
     --learn
     --reset
     --root data-directory
@@ -477,13 +478,17 @@ The following are arguments controlling primary behavior:
   The primary mode of operation, whereby RSS feeds are retrieved, searched
   for new episodes and those episode torrents downloaded.
 
-* `--add directory`
+* `--add thing`
 
-  Manually add the `.torrent` files in `directory`.  This circumvents any
-  matching and assumes they episodes should be downloaded.  The series name,
-  episode and season numbers are taken directly from the file name.  If
-  the information cannot be extracted, you can rename the files to suit
-  `tget`.
+  If `thing` is a file, it should be a `.torrent` file, which is 
+  manually added.  If `thing` is a directory, then all the `.torrent` files
+  in the directory are added.  This circumvents any matching and assumes
+  the episodes should be downloaded.  The series name,episode and
+  season numbers are taken directly from the file name.  If the information
+  cannot be extracted, you can rename the files to suit `tget`.
+
+  If the episode has already been downloaded, then `--force` is required
+  to make `tget` download it again.
 
 * `--catch-up`
 
@@ -609,6 +614,11 @@ effects:
   debug feed defined by the configuration file is used.  Also, the program
   is more verbose.  This is for testing and is not recommended.  It implies
   `--learn`.
+
+* `--force`
+
+  The meaning of this argument depends on the other arguments and context
+  in which it is given.
 
 * `--learn`
 

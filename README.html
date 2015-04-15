@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-421---torrent-get" class="anchor" href="#tget-421---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.2.1 - torrent get</h1>
+<a id="user-content-tget-430---torrent-get" class="anchor" href="#tget-430---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.3.0 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -531,7 +531,7 @@ episodes will be downloaded in the future:</p>
 <p>Primary behavior determining arguments (one of these must be given):</p>
 
 <pre><code>--run
---add
+--add file-or-directory
 --catch-up   
 --catch-up-series series-episode-name
 --check-database
@@ -557,6 +557,7 @@ episodes will be downloaded in the future:</p>
 --cron
 --db database-name
 --debug
+--force
 --learn
 --reset
 --root data-directory
@@ -589,13 +590,17 @@ original form.</p>
 for new episodes and those episode torrents downloaded.</p>
 </li>
 <li>
-<p><code>--add directory</code></p>
+<p><code>--add thing</code></p>
 
-<p>Manually add the <code>.torrent</code> files in <code>directory</code>.  This circumvents any
-matching and assumes they episodes should be downloaded.  The series name,
-episode and season numbers are taken directly from the file name.  If
-the information cannot be extracted, you can rename the files to suit
-<code>tget</code>.</p>
+<p>If <code>thing</code> is a file, it should be a <code>.torrent</code> file, which is 
+manually added.  If <code>thing</code> is a directory, then all the <code>.torrent</code> files
+in the directory are added.  This circumvents any matching and assumes
+the episodes should be downloaded.  The series name,episode and
+season numbers are taken directly from the file name.  If the information
+cannot be extracted, you can rename the files to suit <code>tget</code>.</p>
+
+<p>If the episode has already been downloaded, then <code>--force</code> is required
+to make <code>tget</code> download it again.</p>
 </li>
 <li>
 <p><code>--catch-up</code></p>
@@ -757,6 +762,12 @@ directory (see the --root).  This name will itself become a directory.</p>
 debug feed defined by the configuration file is used.  Also, the program
 is more verbose.  This is for testing and is not recommended.  It implies
 <code>--learn</code>.</p>
+</li>
+<li>
+<p><code>--force</code></p>
+
+<p>The meaning of this argument depends on the other arguments and context
+in which it is given.</p>
 </li>
 <li>
 <p><code>--learn</code></p>

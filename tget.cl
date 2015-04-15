@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.2.1")
+(defvar *tget-version* "4.3.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -958,7 +958,7 @@
 Primary behavior determining arguments (one of these must be given):
 
     --run
-    --add
+    --add file-or-directory
     --catch-up   
     --catch-up-series series-episode-name
     --check-database
@@ -983,6 +983,7 @@ Behavior modifying arguments:
     --cron
     --db database-name
     --debug
+    --force
     --learn
     --reset
     --root data-directory
@@ -1009,13 +1010,17 @@ The following are arguments controlling primary behavior:
   The primary mode of operation, whereby RSS feeds are retrieved, searched
   for new episodes and those episode torrents downloaded.
 
-* `--add directory`
+* `--add thing`
 
-  Manually add the `.torrent` files in `directory`.  This circumvents any
-  matching and assumes they episodes should be downloaded.  The series name,
-  episode and season numbers are taken directly from the file name.  If
-  the information cannot be extracted, you can rename the files to suit
-  `tget`.
+  If `thing` is a file, it should be a `.torrent` file, which is 
+  manually added.  If `thing` is a directory, then all the `.torrent` files
+  in the directory are added.  This circumvents any matching and assumes
+  the episodes should be downloaded.  The series name,episode and
+  season numbers are taken directly from the file name.  If the information
+  cannot be extracted, you can rename the files to suit `tget`.
+
+  If the episode has already been downloaded, then `--force` is required
+  to make `tget` download it again.
 
 * `--catch-up`
 
@@ -1141,6 +1146,11 @@ effects:
   debug feed defined by the configuration file is used.  Also, the program
   is more verbose.  This is for testing and is not recommended.  It implies
   `--learn`.
+
+* `--force`
+
+  The meaning of this argument depends on the other arguments and context
+  in which it is given.
 
 * `--learn`
 
@@ -1311,6 +1321,7 @@ Catch up series to a specific episode:
 	      ("db" :long database :required-companion)
 	      ("debug" :long debug-mode)
 	      ("feed-interval" :long feed-interval :required-companion)
+	      ("force" :long force-mode)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
 	      ("root" :long root :required-companion)
@@ -1510,30 +1521,9 @@ Catch up series to a specific episode:
 	      then ;; already did that, just exit
 		   (done)
 	    elseif add-mode
-	      then (when (not (probe-file add-mode))
-		     (usage "--add requires an existing directory argument"))
-		   (setq *manual-add-mode* t)
-		   (let ((torrent-files 
-			  (directory
-				(merge-pathnames
-				 #p(:type "torrent")
-				 (pathname-as-directory add-mode))))
-			 (episodes '())
-			 ep)
-		     (dolist (torrent torrent-files)
-		       (with-verbosity 1
-			 (format t ";; Manually adding ~a~%"
-				 (file-namestring torrent)))
-		       (setq ep (manual-add-file torrent))
-		       (when ep (push ep episodes)))
-		     
-		     (download-episodes (group-name-to-group :manual)
-					episodes
-					(lambda (ep) (format t "~&~a~%" ep)))
-		     (dolist (ep episodes)
-		       (delete-instance ep))
-		     (tget-commit *temp*)
-		     (tget-commit *main*))
+	      then (manual-add add-mode force-mode)
+		   (tget-commit *temp*)
+		   (tget-commit *main*)
 	    elseif run-mode
 	      then (process-groups)
 	      else (usage "no primary arguments given."))
@@ -2615,7 +2605,9 @@ Catch up series to a specific episode:
 
 (defmethod torrent-handler ((obj transmission) episode group
 			    &aux (tracker
-				  (when episode (episode-tracker episode))))
+				  (when (and episode
+					     (slot-boundp episode 'tracker))
+				    (episode-tracker episode))))
   (let* ((series (episode-series episode))
 	 (raw-url (episode-torrent-url episode))
 	 (url (if* (not *manual-add-mode*)
@@ -2766,9 +2758,47 @@ transmission-remote ~a:~a ~
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun manual-add-file (torrent)
+(defun manual-add (thing force)
+  (when (not (probe-file thing))
+    (usage "--add requires an existing file or directory argument"))
+  (setq *manual-add-mode* t)
+  (cond
+   ((file-directory-p thing)
+    (with-verbosity 1
+      (format t ";; Manually adding files from ~a~%" thing))
+    (let ((torrent-files 
+	   (directory
+	    (merge-pathnames
+	     #p(:type "torrent")
+	     (pathname-as-directory thing))))
+	  (episodes '())
+	  ep)
+      (dolist (torrent torrent-files)
+	(with-verbosity 1
+	  (format t ";;   Manually adding ~a~%" (file-namestring torrent)))
+	(setq ep (manual-add-file torrent force))
+	(when ep (push ep episodes)))
+		     
+      (download-episodes (group-name-to-group :manual)
+			 episodes
+			 (lambda (ep) (format t "~&~a~%" ep)))
+    
+      ;; delete the transient episodes:
+      (dolist (ep episodes) (delete-instance ep))))
+   (t ;; single file
+    (with-verbosity 1
+      (format t ";; Manually adding ~a~%" (file-namestring thing)))
+    (let ((ep (manual-add-file thing force)))
+      (when ep
+	(download-episodes (group-name-to-group :manual)
+			   (list ep)
+			   (lambda (ep) (format t "~&~a~%" ep)))
+	;; delete the transient episode:
+	(delete-instance ep))))))
+
+(defun manual-add-file (torrent force)
   ;; This attempts to add TORRENT manually.
-  (let (series)
+  (let (series ep)
     (multiple-value-bind (series-name season episode repack container
 			  source codec resolution)
 	(extract-episode-info-from-filename (file-namestring torrent))
@@ -2782,6 +2812,17 @@ transmission-remote ~a:~a ~
 	  (format t "Manual add: unknown series: ~a~%" series-name))
 	(return-from manual-add-file))
       ;; a series we care about...
+
+      (setq ep (query-episode :series-name series-name
+			      :season season
+			      :ep-number episode))
+      (when (cdr ep)
+	(.error "There is more than one episode matching:~%~{  ~a~}" ep))
+      (when ep
+	(setq ep (car ep))
+	(when (not force) (.error "episode already downloaded: ~a." ep))
+	(delete-instance ep)
+	(tget-commit *main*))
       
       (make-episode
        :transient t
