@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-430---torrent-get" class="anchor" href="#tget-430---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.3.0 - torrent get</h1>
+<a id="user-content-tget-440---torrent-get" class="anchor" href="#tget-440---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.4.0 - torrent get</h1>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -340,7 +340,7 @@ Valid values:</p>
 </code></pre>
 
 <h3>
-<a id="user-content-deftracker-name-key-url-debug-feed-public-download-delay-disabled-ratio" class="anchor" href="#deftracker-name-key-url-debug-feed-public-download-delay-disabled-ratio" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>deftracker name &amp;key url debug-feed public download-delay disabled ratio</code>
+<a id="user-content-deftracker-name-key-url-debug-feed-public-download-delay-disabled-ratio-upload-limit" class="anchor" href="#deftracker-name-key-url-debug-feed-public-download-delay-disabled-ratio-upload-limit" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>deftracker name &amp;key url debug-feed public download-delay disabled ratio upload-limit</code>
 </h3>
 
 <p><code>name</code> -- the name of the tracker, a keyword (e.g. :eztv).</p>
@@ -365,6 +365,12 @@ It is useful when trackers go offline for extended periods of time.</p>
 <p><code>ratio</code> -- the ratio to be applied to this specific tracker.  It takes
 precedence over the global ratio specified for Transmission, if that
 is used.</p>
+
+<p><code>upload-limit</code> -- set the upload limit for this tracker.  This is
+useful for when the tracker unreliably gives you upload credit for
+what you upload (I'm looking at you TvT!).  Sometimes, if you upload
+too fast the tracker will not count a significant amount of your upload
+data.</p>
 
 <h3>
 <a id="user-content-defgroup-name-key-rss-url-trackers-delay-ratio-quality-download-path" class="anchor" href="#defgroup-name-key-rss-url-trackers-delay-ratio-quality-download-path" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defgroup name &amp;key rss-url trackers delay ratio quality download-path</code>
@@ -909,6 +915,9 @@ $ tget --catch-up-series "breaking bad s04"
     :url "https://freshon.tv/..."
     :debug-feed :freshon
     :download-delay 0
+    ;; See if limiting the upload rate allows freshon to correctly count my
+    ;; upload credits.  Sick of uploading lots and not getting credit for it.
+    :upload-limit 100 ;; KB/s
     :ratio 1.3)
 
 (deftracker :btn
@@ -935,7 +944,9 @@ $ tget --catch-up-series "breaking bad s04"
     :ratio 1.5)
 
 (defvar *trackers*
-    (list :shazbat :freshon :eztv :btn))
+    ;; move :freshon to last.  Their tracker is being very annoying lately
+    ;; and not giving me upload credit.  Grrr.
+    (list :btn :shazbat :eztv :freshon))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Quality settings
@@ -1098,7 +1109,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
        :aliases ("@midnight"))
 (defseries "Bates Motel" :anh+kevin)
-(defseries "Bear Grylls: Escape From Hell" :kevin)
 (defseries "Better Call Saul" :adrian+kevin)
 (defseries "Black Mirror" :adrian+kevin)
 (defseries "Brooklyn Nine-Nine" :adrian+kevin)
@@ -1108,7 +1118,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Doc Martin" :anh+kevin)
 (defseries "Downton Abbey" :anh)
 (defseries "Dragons Den (UK)" :kevin)
-(defseries "Drunk History" :kevin :catch-up "S02")
 (defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin)
 (defseries "Fargo" :kevin)
@@ -1133,7 +1142,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :kevin)
 (defseries "Person of Interest" :kevin)
-(defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
 (defseries "Ray Donovan" :kevin :private t)
 (defseries "Regular Show" :adrian+kevin)
 (defseries "Rick and Morty" :adrian+kevin)
@@ -1154,7 +1162,6 @@ $ tget --catch-up-series "breaking bad s04"
 (defseries "The Nightly Show with Larry Wilmore" :kevin
   :aliases ("The Nightly Show")
   :subdir "The.Nightly.Show" :date-based t)
-(defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0)
 (defseries "Top Gear" :adrian+kevin :quality :high)
@@ -1174,6 +1181,9 @@ $ tget --catch-up-series "breaking bad s04"
 #+testing (defseries "The Newsroom (2012)" :kevin)
 #+testing (defseries "Top of the Lake" :kevin)
 #+testing (defseries "Parks and Recreation" :adrian+kevin)
+#+testing (defseries "The Simpsons" :adrian+kevin)
+#+testing (defseries "Drunk History" :kevin)
+#+testing (defseries "White Collar" :anh+kevin)
 </code></pre>
 
 </div>

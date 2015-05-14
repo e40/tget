@@ -258,7 +258,7 @@ Valid values:
 
 %%VALUE: *valid-resolutions*
 
-### `deftracker name &key url debug-feed public download-delay disabled ratio`
+### `deftracker name &key url debug-feed public download-delay disabled ratio upload-limit`
 
 `name` -- the name of the tracker, a keyword (e.g. :eztv).
 
@@ -282,6 +282,12 @@ It is useful when trackers go offline for extended periods of time.
 `ratio` -- the ratio to be applied to this specific tracker.  It takes
 precedence over the global ratio specified for Transmission, if that
 is used.
+
+`upload-limit` -- set the upload limit for this tracker.  This is
+useful for when the tracker unreliably gives you upload credit for
+what you upload (I'm looking at you TvT!).  Sometimes, if you upload
+too fast the tracker will not count a significant amount of your upload
+data.
 
 ### `defgroup name &key rss-url trackers delay ratio quality download-path`
 

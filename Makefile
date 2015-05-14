@@ -50,7 +50,7 @@ endif
 test: test-lisp test-other
 
 test-lisp: FORCE
-	rm -f build.tmp
+	rm -f build.tmp main.db.lock
 	echo '(load "load.cl")' >> build.tmp
 	echo '(exit (test-tget))' >> build.tmp
 	$(runlisp)

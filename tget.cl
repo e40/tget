@@ -111,7 +111,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.3.0")
+(defvar *tget-version* "4.4.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -471,7 +471,8 @@
   public
   download-delay
   disabled
-  ratio)
+  ratio
+  upload-limit)
 
 (defvar *tracker-name-to-tracker* (make-hash-table :size 777 :test #'eq))
 (push '(clrhash *tracker-name-to-tracker*)
@@ -596,7 +597,7 @@
 		:resolution resolution)))))
 
 (defmacro deftracker (name &key url debug-feed public download-delay
-				disabled ratio)
+				disabled ratio upload-limit)
   `(.make-tracker
     :name ,name
     :url ,url
@@ -604,15 +605,17 @@
     :public ,public
     :download-delay ,download-delay
     :disabled ,disabled
-    :ratio ,ratio))
+    :ratio ,ratio
+    :upload-limit ,upload-limit))
 
 (defmacro .make-tracker (&key name url debug-feed public download-delay
-			      disabled ratio)
+			      disabled ratio upload-limit)
   (when (tracker-name-to-tracker name)
     (.error "Tracker ~s defined more than once in config file." name))
   (check-url "Tracker :url" url)
   ;; Don't check debug-feed because it's a function
   (check-integer "Tracker :download-delay" download-delay)
+  (check-integer "Tracker :upload-limit" upload-limit)
   (check-ratio ratio)
   (setf (tracker-name-to-tracker name)
     (make-tracker
@@ -622,7 +625,8 @@
      :public public
      :download-delay download-delay
      :disabled disabled
-     :ratio ratio)))
+     :ratio ratio
+     :upload-limit upload-limit)))
 
 (defmacro defgroup (name &key trackers rss-url delay ratio quality
 			      download-path)
@@ -2624,7 +2628,8 @@ transmission-remote ~a:~a ~
   -t all -a '~a' ~
   ~a ~
   -sr ~a ~@[--trash-torrent~*~] ~
-  --download-dir '~a'"
+  --download-dir '~a' ~
+  ~@[--uplimit ~a~]"
 		  (transmission-host obj)
 		  (transmission-port obj)
 		  (transmission-username obj)
@@ -2648,7 +2653,8 @@ transmission-remote ~a:~a ~
 			    dir)
 		     else (let ((dir (group-download-path group)))
 			    (ensure-remote-directory-exists obj dir)
-			    dir)))))
+			    dir))
+		  (and tracker (tracker-upload-limit tracker)))))
     (cond
      ((or *debug* *test* *learn*)
       (when *debug* (@log "cmd[not executed]: ~a" cmd))

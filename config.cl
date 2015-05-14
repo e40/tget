@@ -59,6 +59,9 @@
     :url "https://freshon.tv/..."
     :debug-feed :freshon
     :download-delay 0
+    ;; See if limiting the upload rate allows freshon to correctly count my
+    ;; upload credits.  Sick of uploading lots and not getting credit for it.
+    :upload-limit 100 ;; KB/s
     :ratio 1.3)
 
 (deftracker :btn
@@ -85,7 +88,9 @@
     :ratio 1.5)
 
 (defvar *trackers*
-    (list :shazbat :freshon :eztv :btn))
+    ;; move :freshon to last.  Their tracker is being very annoying lately
+    ;; and not giving me upload credit.  Grrr.
+    (list :btn :shazbat :eztv :freshon))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Quality settings
@@ -248,7 +253,6 @@
 (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
 	   :aliases ("@midnight"))
 (defseries "Bates Motel" :anh+kevin)
-(defseries "Bear Grylls: Escape From Hell" :kevin)
 (defseries "Better Call Saul" :adrian+kevin)
 (defseries "Black Mirror" :adrian+kevin)
 (defseries "Brooklyn Nine-Nine" :adrian+kevin)
@@ -258,7 +262,6 @@
 (defseries "Doc Martin" :anh+kevin)
 (defseries "Downton Abbey" :anh)
 (defseries "Dragons Den (UK)" :kevin)
-(defseries "Drunk History" :kevin :catch-up "S02")
 (defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin)
 (defseries "Fargo" :kevin)
@@ -283,7 +286,6 @@
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :kevin)
 (defseries "Person of Interest" :kevin)
-(defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
 (defseries "Ray Donovan" :kevin :private t)
 (defseries "Regular Show" :adrian+kevin)
 (defseries "Rick and Morty" :adrian+kevin)
@@ -304,7 +306,6 @@
 (defseries "The Nightly Show with Larry Wilmore" :kevin
   :aliases ("The Nightly Show")
   :subdir "The.Nightly.Show" :date-based t)
-(defseries "The Simpsons" :adrian+kevin)
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0)
 (defseries "Top Gear" :adrian+kevin :quality :high)
@@ -324,3 +325,6 @@
 #+testing (defseries "The Newsroom (2012)" :kevin)
 #+testing (defseries "Top of the Lake" :kevin)
 #+testing (defseries "Parks and Recreation" :adrian+kevin)
+#+testing (defseries "The Simpsons" :adrian+kevin)
+#+testing (defseries "Drunk History" :kevin)
+#+testing (defseries "White Collar" :anh+kevin)

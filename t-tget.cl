@@ -598,6 +598,8 @@
     ("8 out of 10 cats" 15 10)
     ("bates motel" 1 6)
     ("childrens hospital (us)" 5 1)
+    ("drunk history" 1 1)
+    ("drunk history" 1 2)
     ("eagleheart" 2 11)
     ("elementary" 1 8)
     ("elementary" 1 9)
@@ -830,7 +832,11 @@
     ("tosh 0" 5 12)
     ("tosh 0" 5 13)
     ("tosh 0" 5 14)
-    ("tosh 0" 5 15)))
+    ("tosh 0" 5 15)
+    ("white collar" 4 12 :repack)
+    ("white collar" 4 13)
+    ("white collar" 4 14)
+    ))
 
 (setq *base-series*
   '("8 out of 10 cats"
@@ -864,7 +870,8 @@
 (defun test-tget-processing (&aux (*debug* 
 				   ;; `t' is too verbose
 				   nil)
-				  ep)
+				  ep
+				  (neps (length *initial-base-episodes*)))
   (with-tget-tests ()
     ;; First thing to do is populate the database with a known set of
     ;; things, then we run further tests that should add episodes, or not,
@@ -891,7 +898,7 @@
     (setq *debug-feed* "tget-test-data/test001.xml")
     (time (process-groups))
 
-    (test 240 (count-eps) :test #'=)
+    (test neps (count-eps) :test #'=)
     (test t (check-episodes *base-episodes*))
     (check-series *base-series*)
 
@@ -901,7 +908,7 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 05:59:00 +0000"))
     (process-groups)
-    (test 240 (count-eps) :test #'=)
+    (test neps (count-eps) :test #'=)
 
 ;;;;;;;;;;;
     (format t ";;;;; test 3: grab :high~%")
@@ -909,7 +916,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 06:00:10 +0000"))
     (process-groups)
-    (test 241 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 1))
 
 ;;;;;;;;;;; 
@@ -918,7 +926,7 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 06:30:00 +0000"))
     (process-groups)
-    (test 241 (count-eps) :test #'=)
+    (test neps (count-eps) :test #'=)
 
 ;;;;;;;;;;; 
     (format t ";;;;; test 5: get :normal not :high~%")
@@ -926,7 +934,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 07:00:00 +0000"))
     (process-groups)
-    (test 242 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 2))
     (setq ep (query-episode :series-name "vikings" :season 1 :ep-number 2))
     (test 1 (length ep))
@@ -939,7 +948,7 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 07:30:00 +0000"))
     (process-groups)
-    (test 242 (count-eps) :test #'=)
+    (test neps (count-eps) :test #'=)
 
 ;;;;;;;;;;; 
     (format t ";;;;; test 6: Get repack over non-repack ep~%")
@@ -947,7 +956,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 07:00:00 +0000"))
     (process-groups)
-    (test 243 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 3))
     (setq ep (query-episode :series-name "vikings" :season 1 :ep-number 3))
     (test 1 (length ep))
@@ -961,7 +971,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 07:30:00 +0000"))
     (process-groups)
-    (test 244 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 4))
 
 ;;;;;;;;;;;
@@ -970,7 +981,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 07:45:00 +0000"))
     (process-groups)
-    (test 245 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 4))
     (setq ep (query-episode :series-name "vikings" :season 1 :ep-number 4
 			    :repack t))
@@ -984,7 +996,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sat, 27 Jul 2013 07:55:00 +0000"))
     (process-groups)
-    (test 246 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 5))
 
 ;;;;;;;;;;;
@@ -993,7 +1006,7 @@
     (setq *now*
       (excl:string-to-universal-time "Sun, 28 Jul 2013 20:00:00 +0000"))
     (process-groups)
-    (test 246 (count-eps) :test #'=)
+    (test neps (count-eps) :test #'=)
 
 ;;;;;;;;;;;
     (format t ";;;;; test 9: grab REPACK~%")
@@ -1001,7 +1014,8 @@
     (setq *now*
       (excl:string-to-universal-time "Sun, 28 Jul 2013 20:00:00 +0000"))
     (process-groups)
-    (test 247 (count-eps) :test #'=)
+    (incf neps)
+    (test neps (count-eps) :test #'=)
     (note-episode '("vikings" 1 (6 . 7)))
     (setq ep (query-episode :series-name "vikings" :season 1
 			    :ep-number '(6 . 7) :repack t))
@@ -1013,7 +1027,6 @@
     (setq *now*
       (excl:string-to-universal-time "Sun, 28 Jul 2013 20:00:00 +0000"))
     (process-groups)
-    (test 247 (count-eps) :test #'=)
-
+    (test neps (count-eps) :test #'=)
     
     ))

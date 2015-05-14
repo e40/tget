@@ -1,4 +1,4 @@
-# tget 4.3.0 - torrent get
+# tget 4.4.0 - torrent get
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -258,7 +258,7 @@ Valid values:
 
     :sd, :720p, :1080p, :1080i
 
-### `deftracker name &key url debug-feed public download-delay disabled ratio`
+### `deftracker name &key url debug-feed public download-delay disabled ratio upload-limit`
 
 `name` -- the name of the tracker, a keyword (e.g. :eztv).
 
@@ -282,6 +282,12 @@ It is useful when trackers go offline for extended periods of time.
 `ratio` -- the ratio to be applied to this specific tracker.  It takes
 precedence over the global ratio specified for Transmission, if that
 is used.
+
+`upload-limit` -- set the upload limit for this tracker.  This is
+useful for when the tracker unreliably gives you upload credit for
+what you upload (I'm looking at you TvT!).  Sometimes, if you upload
+too fast the tracker will not count a significant amount of your upload
+data.
 
 ### `defgroup name &key rss-url trackers delay ratio quality download-path`
 
@@ -746,6 +752,9 @@ Catch up series to a specific episode:
         :url "https://freshon.tv/..."
         :debug-feed :freshon
         :download-delay 0
+        ;; See if limiting the upload rate allows freshon to correctly count my
+        ;; upload credits.  Sick of uploading lots and not getting credit for it.
+        :upload-limit 100 ;; KB/s
         :ratio 1.3)
     
     (deftracker :btn
@@ -772,7 +781,9 @@ Catch up series to a specific episode:
         :ratio 1.5)
     
     (defvar *trackers*
-        (list :shazbat :freshon :eztv :btn))
+        ;; move :freshon to last.  Their tracker is being very annoying lately
+        ;; and not giving me upload credit.  Grrr.
+        (list :btn :shazbat :eztv :freshon))
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Quality settings
@@ -935,7 +946,6 @@ Catch up series to a specific episode:
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
     	   :aliases ("@midnight"))
     (defseries "Bates Motel" :anh+kevin)
-    (defseries "Bear Grylls: Escape From Hell" :kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Black Mirror" :adrian+kevin)
     (defseries "Brooklyn Nine-Nine" :adrian+kevin)
@@ -945,7 +955,6 @@ Catch up series to a specific episode:
     (defseries "Doc Martin" :anh+kevin)
     (defseries "Downton Abbey" :anh)
     (defseries "Dragons Den (UK)" :kevin)
-    (defseries "Drunk History" :kevin :catch-up "S02")
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin)
     (defseries "Fargo" :kevin)
@@ -970,7 +979,6 @@ Catch up series to a specific episode:
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :kevin)
     (defseries "Person of Interest" :kevin)
-    (defseries "Running Wild with Bear Grylls" :kevin :catch-up "S01E04")
     (defseries "Ray Donovan" :kevin :private t)
     (defseries "Regular Show" :adrian+kevin)
     (defseries "Rick and Morty" :adrian+kevin)
@@ -991,7 +999,6 @@ Catch up series to a specific episode:
     (defseries "The Nightly Show with Larry Wilmore" :kevin
       :aliases ("The Nightly Show")
       :subdir "The.Nightly.Show" :date-based t)
-    (defseries "The Simpsons" :adrian+kevin)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "Top Gear" :adrian+kevin :quality :high)
@@ -1011,6 +1018,9 @@ Catch up series to a specific episode:
     #+testing (defseries "The Newsroom (2012)" :kevin)
     #+testing (defseries "Top of the Lake" :kevin)
     #+testing (defseries "Parks and Recreation" :adrian+kevin)
+    #+testing (defseries "The Simpsons" :adrian+kevin)
+    #+testing (defseries "Drunk History" :kevin)
+    #+testing (defseries "White Collar" :anh+kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
