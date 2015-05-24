@@ -145,11 +145,14 @@
 (defun my-quality (episode &aux (tracker (episode-tracker episode))
 				temp)
   (flet
-      ((pending-msg (temp)
+      (#+tget-config-debug
+       (debug-msg (temp)
 	 (when temp
 	   ;; we would have downloaded this if enough time had passed, so
 	   ;; let's say that
-	   (format t "PENDING: will download episode in ~d more hours:~%   ~a~%"
+	   (format t "~
+DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
+       ~a~%"
 		   (- temp (hours-available episode)) episode))))
     ;; My defined quality, as a function.  This allows me to download
     ;; different qualities based on different criteria.
@@ -177,7 +180,7 @@
       ;; one
       (return-from my-quality :high))
   
-    #+tget-config-debug (pending-msg temp)
+    #+tget-config-debug (debug-msg temp)
   
     (when (=~ "broadcasthe.net" (episode-torrent-url episode))
       (return-from my-quality :btn))
@@ -197,7 +200,7 @@
 			     *download-lq-delay*)))))
       (return-from my-quality :low))
     
-    #+tget-config-debug (pending-msg temp)
+    #+tget-config-debug (debug-msg temp)
   
     :normal))
 
@@ -272,7 +275,6 @@
 (defseries "Homeland" :kevin :private t :delay 0)
 (defseries "Intruders" :kevin :catch-up "S01E02")
 (defseries "James May's Man Lab" :adrian+kevin)
-(defseries "Justified" :kevin)
 (defseries "Last Week Tonight with John Oliver" :kevin :private t
   :subdir "Last.Week.Tonight.With.John.Oliver")
 (defseries "Longmire" :kevin)
@@ -285,7 +287,6 @@
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nova" :kevin)
-(defseries "Person of Interest" :kevin)
 (defseries "Ray Donovan" :kevin :private t)
 (defseries "Regular Show" :adrian+kevin)
 (defseries "Rick and Morty" :adrian+kevin)
@@ -328,3 +329,4 @@
 #+testing (defseries "The Simpsons" :adrian+kevin)
 #+testing (defseries "Drunk History" :kevin)
 #+testing (defseries "White Collar" :anh+kevin)
+#+testing (defseries "Justified" :kevin)

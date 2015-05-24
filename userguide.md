@@ -19,8 +19,8 @@ because the quality can be pretty crappy.  What I just described is
 not possible in [FlexGet][2].  _tget_ makes this pretty easy.
 
 _tget_ isn't nearly as functional as [FlexGet][2], though, and the feed
-parsing only works (currently) with three sites (TVT, EZTV and BTN).
-I'm always looking at adding more.
+parsing only works (currently) with two sites (TvT and BTN).
+I'm always looking to add more.
 
 ### Table of Contents
 **[How it works](#how-it-works)**  
