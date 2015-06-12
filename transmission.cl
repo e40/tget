@@ -2,7 +2,7 @@
 (in-package :user)
 
 (defvar *transmission-directory*
-    "~/Library/Application Support/Transmission/Torrents/")
+    "/me/tplex/transmission-daemon/info/torrents/")
 
 (defparameter *filename-to-torrent-cache* nil)
 

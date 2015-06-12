@@ -23,7 +23,7 @@ ifdef INSTALL_CONFIG_FILE
 build_config = config.cl
 endif
 
-default: clean build $(build_config)
+default: clean build $(build_config) tcleanup plexfix
 
 config.cl: tget-config/config.cl
 	sed -e 's,"\(http.*://[^/]*/\).*","\1...",g' \
@@ -78,7 +78,7 @@ else
 endif
 
 clean: FORCE
-	rm -fr tget
+	rm -fr tget plexfix tcleanup
 	rm -fr main.db*
 	rm -fr temp.db*
 	rm -f archive.before archive.after
@@ -127,9 +127,15 @@ else
 	@exit 1
 endif
 
+install_plexfix_docker: FORCE
+#TODO: give me sudo access to do this, or do it another way
+	sudo cp -p plexfix/plexfix* \
+	      /var/lib/docker/devicemapper/mnt/$(shell docker inspect -f '{{.Id}}' transmission)/rootfs/usr/local/lib/plexfix/
+
 ###############################################################################
 
-mini2: plexfix tcleanup install_plexfix install_tcleanup
+#TODO: get install_plexfix_docker working and add here:
+tines: install install_tcleanup
 
 tags: FORCE
 	etags *.cl bittorrent/*.cl

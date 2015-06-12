@@ -447,10 +447,12 @@
 
 (defvar *ignore-watched-within* nil)
 
+(defvar *sqlite3-binary* "sqlite3")
+
 (defvar *watch-directories* nil)
 
 (defvar *plex-db*
-    "~/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db")
+    "/me/tplex/plex-config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db")
 
 (defvar *watched-hash-table*
     ;; Hash table:
@@ -540,7 +542,7 @@
      else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
 	  (when (not *debug*) (delete-file p))))
 
-(defun initialize-watched (&aux (temp-file (sys:make-temp-file-name)))
+(defun initialize-watched ()
   (or (probe-file *plex-db*)
       (error "Couldn't find PMS database."))
   
@@ -548,42 +550,42 @@
     (if* *watched-hash-table*
        then (clrhash *watched-hash-table*)
        else (make-hash-table :size 777 :test #'equal)))
-  (unwind-protect
-      (let* ((sqlite-cmd
-	      ;; Use a vector so shell escaping isn't an issue
-	      (vector "sqlite3" "sqlite3" "-line"
-		      "-init" (namestring temp-file)
-		      (namestring (truename *plex-db*))))
-	     lines)
-	(setf (file-contents temp-file)
-	  (format nil "~
-select p.file,s.last_viewed_at
-from media_parts p, media_items mi, metadata_items md,metadata_item_settings s
-where mi.id = p.media_item_id AND
-      md.id = mi.metadata_item_id AND
-      md.guid = s.guid AND
-      s.view_count > 0;~%"))
-	(multiple-value-bind (stdout stderr exit-code)
-	    (command-output sqlite-cmd :input "" :whole t)
-	  (if* (/= 0 exit-code)
-	     then (error "~a." stderr)
-	   elseif (or (null stdout) (string= "" stdout))
-	     then ;; No watched shows??  I guess it's possible
-		  (return-from initialize-watched nil))
+  (let* ((sqlite-cmd
+	  ;; Use a vector so shell escaping isn't an issue, with spaces
+	  ;; in those filenames, etc.
+	  (vector *sqlite3-binary* "-csv" (namestring (truename *plex-db*))))
+	 (nl #\newline)
+	 (sql
+	  (util.string:string+
+	   "select p.file,s.last_viewed_at" nl
+	   "from media_parts p, media_items mi, metadata_items md,metadata_item_settings s" nl
+	   "where mi.id = p.media_item_id AND" nl
+	   "   md.id = mi.metadata_item_id AND" nl
+	   "   md.guid = s.guid AND" nl
+	   "   s.view_count > 0;" nl))
+	 lines)
+    (multiple-value-bind (stdout stderr exit-code)
+	(command-output sqlite-cmd :input sql :whole t)
+      (if* (/= 0 exit-code)
+	 then (error "~a." stderr)
+       elseif (or (null stdout) (string= "" stdout))
+	 then ;; No watched shows??  I guess it's possible
+	      (return-from initialize-watched nil))
 	  
-	  (when (not (setq lines (split-re "$" stdout :multiple-lines t)))
-	    (error "could not split sqlite3 output."))
+      (when (not (setq lines (split-re "$" stdout :multiple-lines t)))
+	(error "could not split sqlite3 output."))
 
-	  (dolist (line lines)
-	    (when (=~ "^\s*$" line) (return))
-	    (when (not (=~ "\\s*(.*)\\|(.*)\\s*" line))
-	      (error "Could not parse sqlite3 output: ~a." line))
-	    (let* ((file $1)
-		   (date (or (excl:string-to-universal-time $2)
-			     (error "couldn't parse date: ~a." $2)))
-		   (hours (truncate (/ (- *now* date) 3600))))
-	      (setf (gethash file *watched-hash-table*) hours))))))
-    (ignore-errors (delete-file temp-file)))
+      (dolist (line lines)
+	(when (=~ "^\s*$" line) (return))
+	(when (not (=~ "\\s*(.*)\\|(.*)\\s*" line))
+	  (error "Could not parse sqlite3 output: ~a." line))
+	(let* ((file $1)
+	       (date (or (excl:string-to-universal-time $2)
+			 (error "couldn't parse date: ~a." $2)))
+	       (hours (truncate (/ (- *now* date) 3600))))
+	  (with-verbosity 2
+	    (format t "add watched: ~s, ~s~%" file hours))
+	  (setf (gethash file *watched-hash-table*) hours))))))
 
 #+ignore ;; unused, keep tho
 (defun escape-for-sqlite (filename)

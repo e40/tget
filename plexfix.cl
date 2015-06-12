@@ -121,11 +121,13 @@
 	   (when (string/= "" body)
 	     (ignore-errors
 	      (when (not (eq 't stream))
-		(send-letter "192.168.0.1"
-			     (sys:getenv "USER")
-			     (sys:getenv "USER")
-			     body
-			     :subject "plexfix"))))))
+		(send-letter
+;;;;TODO: parameterize:
+		 "192.168.0.1"
+		 (sys:getenv "USER")
+		 (sys:getenv "USER")
+		 body
+		 :subject "plexfix"))))))
        (doit (&aux torrent-dir torrent-name)
 	 (system:with-command-line-arguments
 	     (("d" :short debug)

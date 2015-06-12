@@ -10,7 +10,9 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-440---torrent-get" class="anchor" href="#tget-440---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.4.0 - torrent get</h1>
+<a id="user-content-tget-450---torrent-get" class="anchor" href="#tget-450---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.5.0 - torrent get</h1>
+
+<p><em>tget</em> is a suite of programs: <em>tget</em>, <em>tcleanup</em> and <em>plexfix</em>.</p>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -34,6 +36,16 @@ not possible in <a href="http://flexget.com/" title="FlexGet">FlexGet</a>.  <em>
 parsing only works (currently) with two sites (TvT and BTN).
 I'm always looking to add more.</p>
 
+<p><em>tcleanup</em> has a dual use: remove torrents from <em>transmission</em> after
+they have seeded enough and to remove programs watched by Plex.</p>
+
+<p><em>plexfix</em> works around deficiencies in Plex, which doesn't recognize
+certain filename formats.  For example, <code>Foo-612.mp4</code> would not be
+recognized by Plex, perhaps because the naming convention is
+ambiguous--is it season 6 and espisode 12 or the June 12th episode of
+<em>Foo</em>?  Plex punts of filenames like this.  <em>plexfix</em> creates symbolic
+links so that Plex can see the correct season and episode.</p>
+
 <h3>
 <a id="user-content-table-of-contents" class="anchor" href="#table-of-contents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Table of Contents</h3>
 
@@ -42,6 +54,8 @@ I'm always looking to add more.</p>
 <strong><a href="#getting-started">Getting started</a></strong><br>
 <strong><a href="#configuration">Configuration</a></strong><br>
 <strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br>
+<strong><a href="#tcleanup">tcleanup</a></strong><br>
+<strong><a href="#plexfix">plexfix</a></strong><br>
 <strong><a href="#usage">Usage</a></strong><br>
 <strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
 
@@ -272,6 +286,14 @@ like this:</p>
 </td>
 </tr>
 <tr>
+<td align="center"><code>:docker-container-name</code></td>
+<td align="center">See below</td>
+</tr>
+<tr>
+<td align="center"><code>:docker-user</code></td>
+<td align="center">See below</td>
+</tr>
+<tr>
 <td align="center"><code>:ssh-user</code></td>
 <td align="center">See below</td>
 </tr>
@@ -282,11 +304,21 @@ like this:</p>
 </tbody>
 </table>
 
-<p>The <code>:ssh-user</code> and <code>:ssh-identity</code> are the user and identity file for
-SSH.  They are used to SSH to the remote machine and make sure
-directories exist.</p>
+<p>When a subdirectory is specified by defseries, <em>tget</em> must ensure it
+exists before telling <em>transmission</em> to download into it.  There are
+two methods for <em>tget</em> communicating with <em>transmission</em>: via <em>docker</em>
+or SSH.</p>
 
-<p>For example:</p>
+<p>You may specify one of the group of arguments, <code>:docker-*</code> or
+<code>:ssh-*</code>, but not both.</p>
+
+<p><code>:docker-container-name</code> and <code>:docker-user</code> are the container's name
+and user inside the container (for <code>su</code>) to create directories.</p>
+
+<p><code>:ssh-user</code> and <code>:ssh-identity</code> are the user and identity file to
+create directories.</p>
+
+<p>SSH example:</p>
 
 <pre><code>(set-torrent-handler
  (make-transmission-remote-handler
@@ -303,6 +335,16 @@ directories exist.</p>
 
 <p>In this example, the values for <code>:host</code> and other options are being
 pulled from the environment with <code>sys:getenv</code>.</p>
+
+<p>Docker example:</p>
+
+<pre><code>(set-torrent-handler
+ (make-transmission-remote-handler
+  ...
+  :docker-container-name "transmission"
+  :docker-user (sys:getenv "USER")
+  ...))
+</code></pre>
 
 <h3>
 <a id="user-content-defquality-key-priority-container-source-codec-resolution" class="anchor" href="#defquality-key-priority-container-source-codec-resolution" aria-hidden="true"><span class="octicon octicon-link"></span></a><code>defquality &amp;key priority container source codec resolution</code>
@@ -530,6 +572,43 @@ episodes will be downloaded in the future:</p>
 
 <pre><code>(defseries "Game of Bones :me :private t :delay 0 :quality :720p)
 </code></pre>
+
+<h2>
+<a id="user-content-tcleanup" class="anchor" href="#tcleanup" aria-hidden="true"><span class="octicon octicon-link"></span></a>tcleanup</h2>
+
+<p><em>tcleanup</em> is intended to be run manually or from cron.  I recommend
+that you run it manually for a while, since it will take a while to
+tune the configuration so that you do not receive hit and runs from
+any tracker.</p>
+
+<h2>
+<a id="user-content-plexfix" class="anchor" href="#plexfix" aria-hidden="true"><span class="octicon octicon-link"></span></a>plexfix</h2>
+
+<p><em>plexfix</em> is a simple program run from <em>transmission</em> after a torrent
+completes.  <em>plexfix</em> is given no arguments.  The directory and name
+are passed in the environment variables <code>TR_TORRENT_DIR</code> and
+<code>TR_TORRENT_NAME</code>.  <em>plexfix</em> uses these to determine if Plex needs a
+symlink to see the newly download torrent.  To enable it, use the
+<code>settings.json</code> file for <em>transmission</em>:</p>
+
+<pre><code>"script-torrent-done-enabled": true, 
+"script-torrent-done-filename": "/usr/local/lib/plexfix/plexfix", 
+</code></pre>
+
+<p><code>/usr/local/lib/plexfix</code> is the default location for the installation
+of <em>plexfix</em>.</p>
+
+<p>For debugging purposes, you can also give a complete pathname to
+<em>plexfix</em> on the command line, rather than setting the above
+environment variables.</p>
+
+<p><em>plexfix</em> also accepts these arguments:</p>
+
+<p><code>-d</code> :: debug mode
+<code>-m</code> :: do not send mail
+<code>-n</code> :: do not execute, just say what would be done
+<code>-q</code> :: be quiet, only print error messages
+<code>-v</code> :: be verbose</p>
 
 <h2>
 <a id="user-content-usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
@@ -876,8 +955,14 @@ $ tget --catch-up-series "breaking bad s04"
   :port (sys:getenv "TRANSMISSION_PORT")
   :username (sys:getenv "TRANSMISSION_USER")
   :password (sys:getenv "TRANSMISSION_PASS")
-  :ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
-  :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
+
+;;;; Now using transmission in a container, with no ssh
+  :docker-container-name "transmission"
+  :docker-user (sys:getenv "USER")
+;;;; 
+  ;;:ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
+  ;;:ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
+
   :add-paused nil
   :trash-torrent-file t
   ;; The default when there is tracker defined ratio
@@ -888,7 +973,8 @@ $ tget --catch-up-series "breaking bad s04"
 #+ignore
 (set-torrent-handler (pathname "~/Downloads/"))
 
-(setq *download-root* "/me/layer/videos/")
+;; Same in and outside the transmission container
+(setq *download-root* "/me/tplex/content/videos/")
 
 (defvar *codec-x264*
     ;; It goes by two different names:
@@ -897,6 +983,7 @@ $ tget --catch-up-series "breaking bad s04"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Trackers
 
+#+testing
 (deftracker :eztv
     ;; The usual place for EZTV is down (https://ezrss.it/feed/),
     ;; try this, which I got from this page:
@@ -946,7 +1033,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
-    (list :btn :shazbat :eztv :freshon))
+    (list :btn :shazbat #+testing :eztv :freshon))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Quality settings
@@ -1094,6 +1181,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
     :rss-url nil
     :delay 0
     :quality 'my-quality
+    ;; a dummy value, overridden by whatever group matches
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1126,7 +1214,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
 (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
-(defseries "Hannibal" :kevin :delay 0)
+(defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high)
 (defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin :private t :delay 0)
 (defseries "Intruders" :kevin :catch-up "S01E02")

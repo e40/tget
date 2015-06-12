@@ -20,8 +20,14 @@
   :port (sys:getenv "TRANSMISSION_PORT")
   :username (sys:getenv "TRANSMISSION_USER")
   :password (sys:getenv "TRANSMISSION_PASS")
-  :ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
-  :ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
+
+;;;; Now using transmission in a container, with no ssh
+  :docker-container-name "transmission"
+  :docker-user (sys:getenv "USER")
+;;;; 
+  ;;:ssh-user (sys:getenv "TRANSMISSION_SSH_USER")
+  ;;:ssh-identity (sys:getenv "TRANSMISSION_SSH_IDENTITY")
+
   :add-paused nil
   :trash-torrent-file t
   ;; The default when there is tracker defined ratio
@@ -32,7 +38,8 @@
 #+ignore
 (set-torrent-handler (pathname "~/Downloads/"))
 
-(setq *download-root* "/me/layer/videos/")
+;; Same in and outside the transmission container
+(setq *download-root* "/me/tplex/content/videos/")
 
 (defvar *codec-x264*
     ;; It goes by two different names:
@@ -41,6 +48,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Trackers
 
+#+testing
 (deftracker :eztv
     ;; The usual place for EZTV is down (https://ezrss.it/feed/),
     ;; try this, which I got from this page:
@@ -90,7 +98,7 @@
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
-    (list :btn :shazbat :eztv :freshon))
+    (list :btn :shazbat #+testing :eztv :freshon))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Quality settings
@@ -238,6 +246,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
     :rss-url nil
     :delay 0
     :quality 'my-quality
+    ;; a dummy value, overridden by whatever group matches
     :download-path (merge-pathnames "kevin/" *download-root*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -270,7 +279,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Fargo" :kevin)
 (defseries "Frontline (US)" :kevin)
 (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
-(defseries "Hannibal" :kevin :delay 0)
+(defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high)
 (defseries "Hell on Wheels" :kevin)
 (defseries "Homeland" :kevin :private t :delay 0)
 (defseries "Intruders" :kevin :catch-up "S01E02")

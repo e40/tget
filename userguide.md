@@ -1,5 +1,7 @@
 # tget ${*tget-version*} - torrent get
 
+_tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
+
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
 its own right, but there were some things I couldn't get it to do.
@@ -22,12 +24,24 @@ _tget_ isn't nearly as functional as [FlexGet][2], though, and the feed
 parsing only works (currently) with two sites (TvT and BTN).
 I'm always looking to add more.
 
+_tcleanup_ has a dual use: remove torrents from _transmission_ after
+they have seeded enough and to remove programs watched by Plex.
+
+_plexfix_ works around deficiencies in Plex, which doesn't recognize
+certain filename formats.  For example, `Foo-612.mp4` would not be
+recognized by Plex, perhaps because the naming convention is
+ambiguous--is it season 6 and espisode 12 or the June 12th episode of
+_Foo_?  Plex punts of filenames like this.  _plexfix_ creates symbolic
+links so that Plex can see the correct season and episode.
+
 ### Table of Contents
 **[How it works](#how-it-works)**  
 **[Installation](#installation)**  
 **[Getting started](#getting-started)**  
 **[Configuration](#configuration)**  
 **[Maintenance tasks](#maintenance-tasks)**  
+**[tcleanup](#tcleanup)**  
+**[plexfix](#plexfix)**  
 **[Usage](#usage)**  
 **[Example configuration file](#example-configuration-file)**  
 
@@ -205,14 +219,26 @@ The `:host` part must come before the value.
 | `:trash-torrent-file t`   | `--trash-torrent`              |
 | `:ratio`                  | `-sr` _ratio_                  |
 | `:download-path`          | `--download-dir` _path_        |
+| `:docker-container-name`  | See below                      |
+| `:docker-user`            | See below                      |
 | `:ssh-user`               | See below                      |
 | `:ssh-identity`           | See below                      |
 
-The `:ssh-user` and `:ssh-identity` are the user and identity file for
-SSH.  They are used to SSH to the remote machine and make sure
-directories exist.
+When a subdirectory is specified by defseries, _tget_ must ensure it
+exists before telling _transmission_ to download into it.  There are
+two methods for _tget_ communicating with _transmission_: via _docker_
+or SSH.
 
-For example:
+You may specify one of the group of arguments, `:docker-*` or
+`:ssh-*`, but not both.
+
+`:docker-container-name` and `:docker-user` are the container's name
+and user inside the container (for `su`) to create directories.
+
+`:ssh-user` and `:ssh-identity` are the user and identity file to
+create directories.
+
+SSH example:
 
     (set-torrent-handler
      (make-transmission-remote-handler
@@ -228,6 +254,15 @@ For example:
 
 In this example, the values for `:host` and other options are being
 pulled from the environment with `sys:getenv`.
+
+Docker example:
+
+    (set-torrent-handler
+     (make-transmission-remote-handler
+      ...
+      :docker-container-name "transmission"
+      :docker-user (sys:getenv "USER")
+      ...))
 
 ### `defquality &key priority container source codec resolution`
 
@@ -430,3 +465,37 @@ make sure to upgrade your config file so that only high quality
 episodes will be downloaded in the future:
 
     (defseries "Game of Bones :me :private t :delay 0 :quality :720p)
+
+## tcleanup
+
+_tcleanup_ is intended to be run manually or from cron.  I recommend
+that you run it manually for a while, since it will take a while to
+tune the configuration so that you do not receive hit and runs from
+any tracker.
+
+## plexfix
+
+_plexfix_ is a simple program run from _transmission_ after a torrent
+completes.  _plexfix_ is given no arguments.  The directory and name
+are passed in the environment variables `TR_TORRENT_DIR` and
+`TR_TORRENT_NAME`.  _plexfix_ uses these to determine if Plex needs a
+symlink to see the newly download torrent.  To enable it, use the
+`settings.json` file for _transmission_:
+
+    "script-torrent-done-enabled": true, 
+    "script-torrent-done-filename": "/usr/local/lib/plexfix/plexfix", 
+
+`/usr/local/lib/plexfix` is the default location for the installation
+of _plexfix_.
+
+For debugging purposes, you can also give a complete pathname to
+_plexfix_ on the command line, rather than setting the above
+environment variables.
+
+_plexfix_ also accepts these arguments:
+
+`-d` :: debug mode
+`-m` :: do not send mail
+`-n` :: do not execute, just say what would be done
+`-q` :: be quiet, only print error messages
+`-v` :: be verbose

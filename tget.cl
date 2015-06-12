@@ -66,7 +66,6 @@
 ;; #2 is attractive, but I can't see how to make it work in all cases.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (eval-when (compile eval load)
   (require :ssl)
   (require :ef-e-crcrlf)
@@ -111,7 +110,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.4.0")
+(defvar *tget-version* "4.5.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -520,6 +519,7 @@
 	    (:constructor .make-transmission 
 			  (&key host port username password add-paused
 				trash-torrent-file ratio
+				docker-container-name docker-user
 				ssh-identity ssh-user)))
   host
   port
@@ -528,6 +528,8 @@
   add-paused
   trash-torrent-file
   ratio
+  docker-container-name
+  docker-user
   ssh-identity
   ssh-user)
 
@@ -792,9 +794,11 @@
 		(format t "~%")))))
   (tget-commit *main*))
 
+#+ignore ;; not used nor documented
 (defmacro deftransmission (options &key host port username password
 					add-paused trash-torrent-file
-					ratio)
+					ratio docker-container-name
+					docker-user ssh-identity ssh-user)
   (declare (ignore options)) ;; just for indentation
   (let ((g-host (gensym "host"))
 	(g-port (gensym "port"))
@@ -802,14 +806,22 @@
 	(g-password (gensym "passwd"))
 	(g-add-paused (gensym "addpaused"))
 	(g-trash-torrent-file (gensym "trash"))
-	(g-ratio (gensym "ratio")))
+	(g-ratio (gensym "ratio"))
+	(g-docker-container-name (gensym "dockername"))
+	(g-docker-user (gensym "dockeruser"))
+	(g-ssh-user (gensym "sshuser"))
+	(g-ssh-identity (gensym "sshid")))
     `(let* ((,g-host ,host)
 	    (,g-port ,port)
 	    (,g-username ,username)
 	    (,g-password ,password)
 	    (,g-add-paused ,add-paused)
 	    (,g-trash-torrent-file ,trash-torrent-file)
-	    (,g-ratio ,ratio))
+	    (,g-ratio ,ratio)
+	    (,g-docker-container-name ,docker-container-name)
+	    (,g-docker-user ,docker-user)
+	    (,g-ssh-user ,ssh-user)
+	    (,g-ssh-identity ,ssh-identity))
        (set-torrent-handler
 	(make-transmission-remote-handler
 	 :host ,g-host
@@ -818,11 +830,15 @@
 	 :password ,g-password
 	 :add-paused ,g-add-paused
 	 :trash-torrent-file ,g-trash-torrent-file
-	 :ratio ,g-ratio)))))
+	 :ratio ,g-ratio
+	 :docker-container-name ,g-docker-container-name
+	 :docker-user ,g-docker-user
+	 :ssh-user ,g-ssh-user
+	 :ssh-identity ,g-ssh-identity)))))
 
 (defun make-transmission-remote-handler
     (&key host port username password add-paused trash-torrent-file ratio
-	  ssh-identity ssh-user)
+	  docker-container-name docker-user ssh-identity ssh-user)
   (or (stringp host)
       (.error "transmission host is not a string: ~s." host))
   (or (numberp port)
@@ -840,6 +856,13 @@
 	      password))
   (check-ratio ratio)
   
+  (or (null docker-container-name)
+      (stringp docker-container-name)
+      (.error "docker-container-name is not a string: ~s." docker-container-name))
+  (or (null docker-user)
+      (stringp docker-user)
+      (.error "docker-user is not a string: ~s." docker-user))
+  
   (or (null ssh-identity)
       (stringp ssh-identity)
       (.error "ssh-identity is not a string: ~s." ssh-identity))
@@ -855,8 +878,10 @@
    :add-paused add-paused
    :trash-torrent-file trash-torrent-file
    :ratio ratio
-   :ssh-identity ssh-identity
-   :ssh-user ssh-user))
+   :docker-container-name docker-container-name
+   :docker-user docker-user
+   :ssh-user ssh-user
+   :ssh-identity ssh-identity))
 
 ;; for compatibility
 (setf (symbol-function 'make-transmission-remote)
@@ -2738,6 +2763,8 @@ transmission-remote ~a:~a ~
 (defmethod ensure-remote-directory-exists ((obj transmission) dir)
   (when (not *learn*)
     ;; If the command to make the directory fails, then tget will exit
+;;;;TODO: can this be not remote?  Doesn't jkf use it in "local" mode?  If
+;;;;      so, then this function is badly named.
     (execute-remote-command obj (format nil "mkdir -p ~a" dir))))
 
 (defmethod execute-remote-command ((obj transmission) command-line)
@@ -2746,10 +2773,19 @@ transmission-remote ~a:~a ~
 	(transmission-ssh-user obj)
 	command-line)
   (multiple-value-bind (stdout stderr exit-code)
-      (ssh-command-output (transmission-ssh-user obj)
-			  (transmission-ssh-identity obj)
-			  (transmission-host obj)
-			  command-line)
+      (cond
+       ((transmission-docker-container-name obj)
+	(excl.osi:command-output
+	 (format nil "docker exec ~a su ~a -c '~a'"
+		 (transmission-docker-container-name obj)
+		 (transmission-docker-user obj)
+		 command-line)))
+       ((transmission-ssh-user obj)
+	(ssh-command-output (transmission-ssh-user obj)
+			    (transmission-ssh-identity obj)
+			    (transmission-host obj)
+			    command-line))
+       (t (.error "Neither docker nor ssh defined for transmission torrent handler.")))
     (cond
      ((= 0 exit-code)
       (@log "  success"))
