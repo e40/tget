@@ -504,11 +504,11 @@
 		       #+ignore
 		       (setq symlink-pass t)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
-	    ((equalp "rar" (pathname-type p))
-	     (announce "unwatchable rar file ~a~%" (file-namestring p)))
 	    ((or (member (file-namestring p) '(".DS_Store") :test #'equalp)
-		 (member (pathname-type p) '("iso" "nfo")
-			 :test #'equalp))
+		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv")
+			 :test #'equalp)
+		 ;; rar file parts:
+		 (match-re "^r\\d\\d$" (pathname-type p) :return nil))
 	     ;; ignore files
 	     )
 	    (t (announce "unknown: ~a~%" (file-namestring p)))))
@@ -530,17 +530,39 @@
 	   :recurse t
 	   :include-directories nil))))))
 
-(defun cleanup-file (p announce &aux aux-p)
-  ;; If `p' is a symlink, then delete the symlink and what it points to
+(defun cleanup-file (p announce &aux aux-p rar)
   (if* (setq aux-p (symbolic-link-p p))
-     then (setq aux-p (merge-pathnames aux-p p))
+     then ;; delete the symlink and what it points to
+	  (setq aux-p (merge-pathnames aux-p p))
 	  (when (probe-file aux-p)
 	    (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* aux-p)
 	    (when (not *debug*) (delete-file aux-p)))
 	  (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
 	  (when (not *debug*) (delete-file p))
+   elseif (or (probe-file (setq rar (merge-pathnames #p(:type "rar") p)))
+	      (probe-file (fiddle-case-filename rar :downcase))
+	      (probe-file (fiddle-case-filename rar :upcase)))
+     then ;; the watched file came from a downloaded rar file, remove
+	  ;; everything else, too
+	  (let* ((name (pathname-name p))
+		 (wildcard (merge-pathnames (merge-pathnames "*.*" p)))
+		 (files (directory wildcard)))
+	    (dolist (file files)
+	      (when (equalp name (pathname-name file))
+		(funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* file)
+		(when (not *debug*) (delete-file p)))))
      else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
 	  (when (not *debug*) (delete-file p))))
+
+(defun fiddle-case-filename (p direction)
+  (merge-pathnames
+   (make-pathname
+    :name (funcall (if* (eq :upcase direction)
+		      then #'string-upcase
+		      else #'string-downcase)
+		   (pathname-name p))
+    :type (pathname-type p))
+   p))
 
 (defun initialize-watched ()
   (or (probe-file *plex-db*)

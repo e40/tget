@@ -31,12 +31,16 @@
 			      ((:no-execute *no-execute*) *no-execute*))
   (if* (not (probe-file filename))
      then (.error "~a does not exist." filename)
-   elseif (ignore-file-p filename)
-     thenret
    elseif (file-directory-p filename)
-     then (let ((files (directory (pathname-as-directory filename))))
-	    (if* (member "rar" files :key #'pathname-type :test #'string=)
-	       then (.error "Can't handle rar files yet: ~a." filename)
+     then (let ((files (directory (pathname-as-directory filename)))
+		rar)
+	    (if* (setq rar
+		   (member "rar" files :key #'pathname-type :test #'string=))
+	       then (setq rar (car rar))
+		    (format stream "extracting ~a...~%" (file-namestring rar))
+		    (excl.osi:command-output
+		     (format nil "unrar e ~a ./" (file-namestring rar))
+		     :directory (directory-namestring rar))
 	       else (dolist (file files)
 		      ;; handle mp4 and mkv files, for now, warn of the
 		      ;; rest, ignoring some known files
@@ -48,6 +52,8 @@
 				      :test #'string=)
 			 thenret
 			 else (format stream "Unknown file:~a.~%" file)))))
+   elseif (ignore-file-p filename)
+     thenret
      else (plexfix-1 stream filename)))
 
 (defun ignore-file-p (filename)
@@ -117,10 +123,10 @@
 (defun user::main (&aux (stream t))
   (flet
       ((send-output ()
-	 (let ((body (get-output-stream-string stream)))
-	   (when (string/= "" body)
-	     (ignore-errors
-	      (when (not (eq 't stream))
+	 (when (not (eq 't stream))
+	   (let ((body (get-output-stream-string stream)))
+	     (when (string/= "" body)
+	       (ignore-errors
 		(send-letter
 ;;;;TODO: parameterize:
 		 "192.168.0.1"

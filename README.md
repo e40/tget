@@ -472,6 +472,158 @@ that you run it manually for a while, since it will take a while to
 tune the configuration so that you do not receive hit and runs from
 any tracker.
 
+With no arguments, _tcleanup_ does not remove anything.  It just gives
+you the status of your torrents and files:
+
+    $ tcleanup 
+    These torrents are complete:
+
+    T name                                     %done ratio seeded      left        
+    F at midnight 2015.06.10                   100%  1.22  1d 15:45:19 
+    F the daily show 2015.06.09                100%  0.64  3d 01:45:17 
+    F at midnight 2015.06.08                   100%  1.02  3d 18:37:16 
+
+    These torrents are incomplete:
+
+    T name                                     %done ratio seeded      left        
+    F the daily show 2015.06.10                100%  0.60  2d 00:45:26     23:14:34
+    B the daily show 2015.06.11                100%  0.22  23:45:30     2d 00:14:30
+    B the nightly show with larry wilmore 2015 100%  0.22  19:43:26     2d 04:16:34
+    F the graham norton show S17E10            100%  1.10  14:31:43     2d 09:28:17
+    B the nightly show with larry wilmore 2015 100%  0.24  1d 19:37:36  1d 04:22:24
+    F hannibal S03E02                          100%  1.10  1d 10:41:49  1d 13:18:11
+    F at midnight 2015.06.09                   100%  1.01  2d 18:44:23     05:15:37
+    F at midnight 2015.06.11                   100%  0.88  15:42:07     2d 08:17:53
+    F the ultimate fighter S21E08              100%  0.49  2d 09:36:32     14:23:28
+    B the nightly show with larry wilmore 2015 100%  0.23  1d 19:37:09  1d 04:22:51
+    B the nightly show with larry wilmore 2015 100%  0.29  1d 19:37:22  1d 04:22:38
+    B ridiculousness S06E29                    100%  0.24  10:45:16     2d 13:14:44
+    F childrens hospital us S06E13             100%  0.62  09:36:38     2d 14:23:22
+
+    TV:Adrian+Kevin:
+    NO seeding:ridiculousness.S06E29.mp4
+    TV:Kevin:
+    NO 68h<72h:Last.Week.Tonight.With.John.Oliver.S02E16.HDTV.x264-BATV.mp4
+    NO seeding:the.daily.show.2015.06.09.nick.offerman.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.10.colin.quinn.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.11.mark.ruffalo.hdtv.x264-crooks.mp4
+    NO 68h<72h:the.daily.show.2015.06.08.nicola.sturgeon.hdtv.x264-crooks.mp4
+    NO seeding:at.midnight.2015.06.08.mp4
+    NO seeding:at.midnight.2015.06.11.mp4
+    NO seeding:The.Graham.Norton.Show.S17E10.720p.HDTV.x264-FTP.mkv
+    NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
+
+To remove the completed torrents, use `--remove`:
+
+    $ tcleanup --remove
+    These torrents were removed:
+
+    T name                                     %done ratio seeded      left        
+    F at midnight 2015.06.10                   100%  1.22  1d 15:45:47 
+    F the daily show 2015.06.09                100%  0.64  3d 01:45:45 
+    F at midnight 2015.06.08                   100%  1.02  3d 18:37:44 
+
+    These torrents are incomplete:
+
+    T name                                     %done ratio seeded      left        
+    F the daily show 2015.06.10                100%  0.60  2d 00:45:54     23:14:06
+    B the daily show 2015.06.11                100%  0.22  23:45:58     2d 00:14:02
+    B the nightly show with larry wilmore 2015 100%  0.22  19:43:54     2d 04:16:06
+    F the graham norton show S17E10            100%  1.10  14:32:11     2d 09:27:49
+    B the nightly show with larry wilmore 2015 100%  0.24  1d 19:38:04  1d 04:21:56
+    F hannibal S03E02                          100%  1.10  1d 10:42:17  1d 13:17:43
+    F at midnight 2015.06.09                   100%  1.01  2d 18:44:51     05:15:09
+    F at midnight 2015.06.11                   100%  0.88  15:42:35     2d 08:17:25
+    F the ultimate fighter S21E08              100%  0.49  2d 09:37:00     14:23:00
+    B the nightly show with larry wilmore 2015 100%  0.23  1d 19:37:37  1d 04:22:23
+    B the nightly show with larry wilmore 2015 100%  0.29  1d 19:37:50  1d 04:22:10
+    B ridiculousness S06E29                    100%  0.24  10:45:44     2d 13:14:16
+    F childrens hospital us S06E13             100%  0.62  09:37:06     2d 14:22:54
+
+    TV:Adrian+Kevin:
+    NO seeding:ridiculousness.S06E29.mp4
+    TV:Kevin:
+    NO 68h<72h:Last.Week.Tonight.With.John.Oliver.S02E16.HDTV.x264-BATV.mp4
+    NO 32h<72h:the.daily.show.2015.06.09.nick.offerman.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.10.colin.quinn.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.11.mark.ruffalo.hdtv.x264-crooks.mp4
+    NO 68h<72h:the.daily.show.2015.06.08.nicola.sturgeon.hdtv.x264-crooks.mp4
+    NO 10h<72h:at.midnight.2015.06.08.mp4
+    NO seeding:at.midnight.2015.06.11.mp4
+    NO seeding:The.Graham.Norton.Show.S17E10.720p.HDTV.x264-FTP.mkv
+    NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
+
+Now we have:
+
+    $ tcleanup
+
+    These torrents are incomplete:
+
+    T name                                     %done ratio seeded      left        
+    F the daily show 2015.06.10                100%  0.60  2d 00:46:03     23:13:57
+    B the daily show 2015.06.11                100%  0.22  23:46:07     2d 00:13:53
+    B the nightly show with larry wilmore 2015 100%  0.22  19:44:03     2d 04:15:57
+    F the graham norton show S17E10            100%  1.10  14:32:20     2d 09:27:40
+    B the nightly show with larry wilmore 2015 100%  0.24  1d 19:38:13  1d 04:21:47
+    F hannibal S03E02                          100%  1.10  1d 10:42:26  1d 13:17:34
+    F at midnight 2015.06.09                   100%  1.01  2d 18:45:00     05:15:00
+    F at midnight 2015.06.11                   100%  0.88  15:42:44     2d 08:17:16
+    F the ultimate fighter S21E08              100%  0.49  2d 09:37:09     14:22:51
+    B the nightly show with larry wilmore 2015 100%  0.23  1d 19:37:46  1d 04:22:14
+    B the nightly show with larry wilmore 2015 100%  0.29  1d 19:37:59  1d 04:22:01
+    B ridiculousness S06E29                    100%  0.24  10:45:53     2d 13:14:07
+    F childrens hospital us S06E13             100%  0.62  09:37:15     2d 14:22:45
+
+    TV:Adrian+Kevin:
+    NO seeding:ridiculousness.S06E29.mp4
+    TV:Kevin:
+    NO 68h<72h:Last.Week.Tonight.With.John.Oliver.S02E16.HDTV.x264-BATV.mp4
+    NO 32h<72h:the.daily.show.2015.06.09.nick.offerman.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.10.colin.quinn.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.11.mark.ruffalo.hdtv.x264-crooks.mp4
+    NO 68h<72h:the.daily.show.2015.06.08.nicola.sturgeon.hdtv.x264-crooks.mp4
+    NO 10h<72h:at.midnight.2015.06.08.mp4
+    NO seeding:at.midnight.2015.06.11.mp4
+    NO seeding:The.Graham.Norton.Show.S17E10.720p.HDTV.x264-FTP.mkv
+    NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
+
+To remove the watched torrents before the configured waiting period of
+72h is up (set the waiting period to 0, for example):
+
+    $ tcleanup --remove -h0
+
+    These torrents are incomplete:
+
+    T name                                     %done ratio seeded      left        
+    F the daily show 2015.06.10                100%  0.60  2d 00:46:16     23:13:44
+    B the daily show 2015.06.11                100%  0.22  23:46:20     2d 00:13:40
+    B the nightly show with larry wilmore 2015 100%  0.22  19:44:16     2d 04:15:44
+    F the graham norton show S17E10            100%  1.10  14:32:33     2d 09:27:27
+    B the nightly show with larry wilmore 2015 100%  0.24  1d 19:38:26  1d 04:21:34
+    F hannibal S03E02                          100%  1.10  1d 10:42:39  1d 13:17:21
+    F at midnight 2015.06.09                   100%  1.01  2d 18:45:13     05:14:47
+    F at midnight 2015.06.11                   100%  0.88  15:42:57     2d 08:17:03
+    F the ultimate fighter S21E08              100%  0.49  2d 09:37:22     14:22:38
+    B the nightly show with larry wilmore 2015 100%  0.23  1d 19:37:59  1d 04:22:01
+    B the nightly show with larry wilmore 2015 100%  0.29  1d 19:38:12  1d 04:21:48
+    B ridiculousness S06E29                    100%  0.24  10:46:06     2d 13:13:54
+    F childrens hospital us S06E13             100%  0.62  09:37:28     2d 14:22:32
+
+    TV:Adrian+Kevin:
+    NO seeding:ridiculousness.S06E29.mp4
+    TV:Kevin:
+    rm /me/tplex/content/videos/kevin/Last.Week.Tonight.With.John.Oliver/Last.Week.Tonight.With.John.Oliver.S02E16.HDTV.x264-BATV.mp4
+    rm /me/tplex/content/videos/kevin/The.Daily.Show/the.daily.show.2015.06.09.nick.offerman.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.10.colin.quinn.hdtv.x264-crooks.mp4
+    NO seeding:the.daily.show.2015.06.11.mark.ruffalo.hdtv.x264-crooks.mp4
+    rm /me/tplex/content/videos/kevin/The.Daily.Show/the.daily.show.2015.06.08.nicola.sturgeon.hdtv.x264-crooks.mp4
+    rm /me/tplex/content/videos/kevin/At.Midnight/at.midnight.150608-yestv.mp4
+    rm /me/tplex/content/videos/kevin/At.Midnight/at.midnight.2015.06.08.mp4
+    NO seeding:at.midnight.2015.06.11.mp4
+    NO seeding:The.Graham.Norton.Show.S17E10.720p.HDTV.x264-FTP.mkv
+    NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
+    $ 
+
 ## plexfix
 
 _plexfix_ is a simple program run from _transmission_ after a torrent
@@ -498,6 +650,15 @@ _plexfix_ also accepts these arguments:
 `-n` :: do not execute, just say what would be done
 `-q` :: be quiet, only print error messages
 `-v` :: be verbose
+
+An example email:
+
+    From: layer@somewhere
+    To: layer@somewhere
+    Subject: plexfix
+
+    OLD name: /me/tplex/content/videos/adrian+kevin/ridiculousness.0629-yestv.mp4
+    NEW name: /me/tplex/content/videos/adrian+kevin/ridiculousness.S06E29.mp4
 
 ## Usage
 
