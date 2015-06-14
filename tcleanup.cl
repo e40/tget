@@ -550,7 +550,9 @@
 	    (dolist (file files)
 	      (when (equalp name (pathname-name file))
 		(funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* file)
-		(when (not *debug*) (delete-file p)))))
+		(when (not *debug*) (delete-file file)))))
+	  (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
+	  (when (not *debug*) (delete-file p))
      else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
 	  (when (not *debug*) (delete-file p))))
 
