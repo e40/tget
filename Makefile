@@ -65,7 +65,10 @@ else
 	@echo INSTALL_CONFIG_FILE not defined; exit 1
 endif
 
-install: FORCE
+# plexfix goes into the docker container 
+install-all: install-tget install-tcleanup
+
+install-tget: FORCE
 ifdef DESTDIR
 	rm -fr $(DESTDIR)/lib/tget.old
 	-mv $(DESTDIR)/lib/tget $(DESTDIR)/lib/tget.old
@@ -96,7 +99,7 @@ ifdef TCLEANUP_CONFIG
 	cp -p $(TCLEANUP_CONFIG) tcleanup/tcleanup-config.cl
 endif
 
-install_tcleanup: FORCE
+install-tcleanup: FORCE
 ifdef DESTDIR
 	rm -fr $(DESTDIR)/lib/tcleanup.old
 	-mv $(DESTDIR)/lib/tcleanup $(DESTDIR)/lib/tcleanup.old
@@ -133,9 +136,6 @@ install_plexfix_docker: FORCE
 	      /var/lib/docker/devicemapper/mnt/$(shell docker inspect -f '{{.Id}}' transmission)/rootfs/usr/local/lib/plexfix/
 
 ###############################################################################
-
-#TODO: get install_plexfix_docker working and add here:
-tines: install install_tcleanup
 
 tags: FORCE
 	etags *.cl bittorrent/*.cl

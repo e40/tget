@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-450---torrent-get" class="anchor" href="#tget-450---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.5.0 - torrent get</h1>
+<a id="user-content-tget-451---torrent-get" class="anchor" href="#tget-451---torrent-get" aria-hidden="true"><span class="octicon octicon-link"></span></a>tget 4.5.1 - torrent get</h1>
 
 <p><em>tget</em> is a suite of programs: <em>tget</em>, <em>tcleanup</em> and <em>plexfix</em>.</p>
 
@@ -1249,7 +1249,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defvar *download-lq-delay* #-debug 24 #+debug 24)
 
 ;; While I'm tuning the new delays, let's be verbose:
-(pushnew :tget-config-debug *features*)
+;;(pushnew :tget-config-debug *features*)
 
 (defun my-quality (episode &amp;aux (tracker (episode-tracker episode))
                 temp)

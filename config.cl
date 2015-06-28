@@ -148,7 +148,7 @@
 (defvar *download-lq-delay* #-debug 24 #+debug 24)
 
 ;; While I'm tuning the new delays, let's be verbose:
-(pushnew :tget-config-debug *features*)
+;;(pushnew :tget-config-debug *features*)
 
 (defun my-quality (episode &aux (tracker (episode-tracker episode))
 				temp)

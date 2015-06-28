@@ -97,9 +97,9 @@
     (test-values '("Foo" 2015 2)    "Foo.S2015E02"       t   nil)
     (test-values '("Foo" 2015 2)    "Foo.S2015E02.mp4"   t   t  )
     
-    (test-values '("Foo" 3 4)       "Foo.3x04.mp4"       t   t  )
-    (test-values '("Foo" 3 4)       "Foo.3x04"           t   t  )
-    (test-values '("Foo" 3 4)       "Foo.3x04"           t   nil)
+    (test-values '("Foo" 3 4 t)     "Foo.3x04.mp4"       t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.3x04"           t   t  )
+    (test-values '("Foo" 3 4 t)     "Foo.3x04"           t   nil)
     (test-values '("Foo" 3 4 t)     "Foo.304.mp4"        t   t  )
     (test-values '("Foo" 3 4 t)     "Foo.304.720p.mp4"   t   t  )
     (test-values '("Foo" 3 4 t)     "Foo.304"            t   t  )
@@ -129,16 +129,16 @@
 		   nil "2014" "01" "02") "The.Bar 2014.01.02"     nil nil)
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar 2014.01.02"     nil t)
-    (test-values '(nil)              "The.Bar 2014.01"        nil nil)
-    (test-values '("The.Bar" 20 14 t) "The.Bar 2014"           nil nil)
-    (test-values '("The.Bar" 20 14 t) "The.Bar 2014"           nil t)
+    (test-values '(nil)              "The.Bar 2014.01"            nil nil)
+    (test-values '("The.Bar" 20 14 t) "The.Bar 2014"              nil nil)
+    (test-values '("The.Bar" 20 14 t) "The.Bar 2014"              nil t)
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar.2014x01.02.mp4" nil t)
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar 2014x01.02"     nil nil)
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar 2014x01.02"     nil t)
-    (test-values '(nil)              "The.Bar 2014x01"        nil nil)
+    (test-values '(nil)              "The.Bar 2014x01"            nil nil)
     
     (test-values '("UFC.112" 2015 18 nil "2015" "01" "18")
 		 "UFC.112.Jan.18th.2015.HDTV.x264-Sir.Paul.mp4"

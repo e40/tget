@@ -670,7 +670,7 @@
       #+debug-episode-parser (format t "  MATCH alt1-re~%" thing)
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
-      (values series-name season episode))
+      (values series-name season episode t))
      
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt2-re thing :case-fold t))

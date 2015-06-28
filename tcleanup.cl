@@ -603,6 +603,8 @@
 	(when (=~ "^\s*$" line) (return))
 	(when (not (=~ "\\s*(.*)\\|(.*)\\s*" line))
 	  (error "Could not parse sqlite3 output: ~a." line))
+	;;(format t "file=~s~%" $1)
+	;;(format t "  exists=~s~%" (probe-file $1))
 	(let* ((file $1)
 	       (date (or (excl:string-to-universal-time $2)
 			 (error "couldn't parse date: ~a." $2)))
