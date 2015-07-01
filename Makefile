@@ -88,6 +88,7 @@ clean: FORCE
 	rm -f *.fasl */*.fasl *.out *.log build.in *.debug build.tmp
 
 ###############################################################################
+# tcleanup
 
 tcleanup: FORCE
 	test -d bittorrent || git clone https://github.com/e40/bittorrent
@@ -112,12 +113,15 @@ else
 endif
 
 ###############################################################################
+# plexfix
 
 plexfix: FORCE
 	rm -fr plexfix build.tmp
 	cat deliver_plexfix.cl >> build.tmp
 	$(runlisp)
 
+#### rule is not used, since it's in the transmission container
+ifdef NOTDEFINED
 install_plexfix: FORCE
 ifdef DESTDIR
 	rm -fr $(DESTDIR)/lib/plexfix.old
@@ -129,11 +133,21 @@ else
 	@echo There is no DESTDIR defined in Makefile.
 	@exit 1
 endif
+endif
 
+PLEXFIX_DEST := /var/lib/docker/devicemapper/mnt/$(shell docker inspect -f '{{.Id}}' transmission)/rootfs/usr/local/lib/plexfix/
+
+# run as root:
 install_plexfix_docker: FORCE
-#TODO: give me sudo access to do this, or do it another way
-	sudo cp -p plexfix/plexfix* \
-	      /var/lib/docker/devicemapper/mnt/$(shell docker inspect -f '{{.Id}}' transmission)/rootfs/usr/local/lib/plexfix/
+	@if [ "$(shell id -u)" != 0 ]; then \
+	    echo Error: run $@ as root; \
+	    exit 1; \
+	fi
+	if [ ! -d $(PLEXFIX_DEST) ]; then \
+	    echo Error: $(PLEXFIX_DEST) does not exist; \
+	    exit 1; \
+	fi
+	cp -p plexfix/plexfix* $(PLEXFIX_DEST)
 
 ###############################################################################
 

@@ -1,4 +1,4 @@
-# tget 4.5.1 - torrent get
+# tget 4.5.2 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1187,6 +1187,7 @@ Catch up series to a specific episode:
     (defseries "Archer (2009)" :kevin)
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
     	   :aliases ("@midnight"))
+    (defseries "Ballers" :kevin :private t)
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Black Mirror" :adrian+kevin)
@@ -1226,6 +1227,7 @@ Catch up series to a specific episode:
     (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
     (defseries "Sirens (2014)" :kevin)
+    (defseries "StarTalk with Neil deGrasse Tyson" :adrian+kevin :catch-up "S01")
     (defseries "The Americans (2013)" :kevin)
     (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
     	   :date-based t

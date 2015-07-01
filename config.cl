@@ -264,6 +264,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Archer (2009)" :kevin)
 (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
 	   :aliases ("@midnight"))
+(defseries "Ballers" :kevin :private t)
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Better Call Saul" :adrian+kevin)
 (defseries "Black Mirror" :adrian+kevin)
@@ -303,6 +304,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Shark Tank" :kevin)
 (defseries "Sherlock" :kevin)
 (defseries "Sirens (2014)" :kevin)
+(defseries "StarTalk with Neil deGrasse Tyson" :adrian+kevin :catch-up "S01")
 (defseries "The Americans (2013)" :kevin)
 (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
 	   :date-based t

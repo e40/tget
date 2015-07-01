@@ -110,7 +110,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.5.1")
+(defvar *tget-version* "4.5.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2843,7 +2843,8 @@ transmission-remote ~a:~a ~
   (let (series ep)
     (multiple-value-bind (series-name season episode repack container
 			  source codec resolution)
-	(extract-episode-info-from-filename (file-namestring torrent))
+	(extract-episode-info-from-filename (file-namestring torrent)
+					    :episode-required nil)
       (declare (ignore repack))
       (when (null season)
 	(.error "Manual add: no season and episode information in torrent."))
@@ -2857,7 +2858,7 @@ transmission-remote ~a:~a ~
 
       (setq ep (query-episode :series-name series-name
 			      :season season
-			      :ep-number episode))
+			      :ep-number (or episode *max-epnum*)))
       (when (cdr ep)
 	(.error "There is more than one episode matching:~%~{  ~a~}" ep))
       (when ep
@@ -2878,8 +2879,9 @@ transmission-remote ~a:~a ~
        :series-name series-name
        :title series-name
        :season season
-       :episode episode
-       :pretty-epnum (season-and-episode-to-pretty-epnum season episode)
+       :episode (or episode *max-epnum*)
+       :pretty-epnum (season-and-episode-to-pretty-epnum
+		      season (or episode *max-epnum*))
        
        :container container
        :source source
