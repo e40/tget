@@ -505,7 +505,7 @@
 		       (setq symlink-pass t)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
 	    ((or (member (file-namestring p) '(".DS_Store") :test #'equalp)
-		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv")
+		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part")
 			 :test #'equalp)
 		 ;; rar file parts:
 		 (match-re "^r\\d\\d$" (pathname-type p) :return nil))
@@ -531,30 +531,29 @@
 	   :include-directories nil))))))
 
 (defun cleanup-file (p announce &aux aux-p rar)
-  (if* (setq aux-p (symbolic-link-p p))
-     then ;; delete the symlink and what it points to
-	  (setq aux-p (merge-pathnames aux-p p))
-	  (when (probe-file aux-p)
-	    (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* aux-p)
-	    (when (not *debug*) (delete-file aux-p)))
-	  (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
-	  (when (not *debug*) (delete-file p))
-   elseif (or (probe-file (setq rar (merge-pathnames #p(:type "rar") p)))
-	      (probe-file (fiddle-case-filename rar :downcase))
-	      (probe-file (fiddle-case-filename rar :upcase)))
-     then ;; the watched file came from a downloaded rar file, remove
-	  ;; everything else, too
-	  (let* ((name (pathname-name p))
-		 (wildcard (merge-pathnames (merge-pathnames "*.*" p)))
-		 (files (directory wildcard)))
-	    (dolist (file files)
-	      (when (equalp name (pathname-name file))
-		(funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* file)
-		(when (not *debug*) (delete-file file)))))
-	  (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
-	  (when (not *debug*) (delete-file p))
-     else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
-	  (when (not *debug*) (delete-file p))))
+  (flet ((df (p)
+	   (when (probe-file p)
+	     (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
+	     (when (not *debug*)
+	       (delete-file p)))))
+    (if* (setq aux-p (symbolic-link-p p))
+       then ;; delete the symlink and what it points to
+	    (setq aux-p (merge-pathnames aux-p p))
+	    (df aux-p)
+	    (df p)
+     elseif (or (probe-file (setq rar (merge-pathnames #p(:type "rar") p)))
+		(probe-file (fiddle-case-filename rar :downcase))
+		(probe-file (fiddle-case-filename rar :upcase)))
+       then ;; the watched file came from a downloaded rar file, remove
+	    ;; everything else, too
+	    (let* ((name (pathname-name p))
+		   (wildcard (merge-pathnames (merge-pathnames "*.*" p)))
+		   (files (directory wildcard)))
+	      (dolist (file files)
+		(when (equalp name (pathname-name file))
+		  (df file))))
+	    (df p)
+       else (df p))))
 
 (defun fiddle-case-filename (p direction)
   (merge-pathnames
