@@ -149,7 +149,7 @@
     ;; torrent structure object.
     nil)
 
-(defvar *video-types* '("avi" "mp4" "mkv" "wmv"))
+(defvar *video-types* '("avi" "mp4" "mkv" "wmv" "ts"))
 
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
@@ -222,11 +222,7 @@
 		    (setf (torrent-season torrent) season)
 		    (setf (torrent-episode torrent) episode)
 		    (setf (torrent-seasonp torrent)
-		      (and season
-			   (null episode)
-			   ;; episode might be null if this is a special:
-			   (not (match-re "special" (torrent-filename torrent)
-					  :case-fold t :return nil)))))
+		      (and season (null episode))))
 	     else (setf (torrent-name torrent) series-name))
 	  (setf (torrent-series-name torrent) series-name)))
       
