@@ -78,9 +78,8 @@
   ;;   real	1m3.279s
   ;; 2.2.3's time is:
   ;;   real	0m37.939s
-  ;;(require :acache "acache-2.2.2.fasl")
-  (require :acache "acache-2.2.3.fasl")
-  ;;(require :acache "acache-3.0.0.fasl")
+  ;;(require :acache "acache-2.2.3.fasl")
+  (require :acache "acache-3.0.5.fasl")
   (require :autozoom))
 
 (defpackage :user
@@ -1269,7 +1268,10 @@ Catch up series to a specific episode:
 		    (let ((sym (intern $1 *package*)))
 		      (when (not (boundp sym))
 			(error "user::~a does not have a value." $1))
-		      (format s "    ~{~s~^, ~}~%" (symbol-value sym))))
+		      (let ((v (symbol-value sym)))
+			(if* (consp v)
+			   then (format s "    ~{~s~^, ~}~%" v)
+			   else (format s "    ~s~%" v)))))
 		   (t
 		    (write line :stream s :escape nil)
 		    (terpri s))))))
@@ -3457,7 +3459,7 @@ transmission-remote ~a:~a ~
       ;; some sporting events have no description and only a title.  Ignore
       ;; these.
       (with-verbosity 5
-	(format t "BTN: NULL rss-des... returning nil~5"))
+	(format t "BTN: NULL rss-des... returning nil~%"))
       (return-from convert-rss-to-episode nil))
     
     ;; Show name must be extracted from the rss-item-title

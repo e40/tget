@@ -390,6 +390,12 @@ Here's how you specify it:
 
     :aliases ("The Daily Show")
 
+### Configuration options
+
+`*repack-window-seconds*` -- the number of seconds within the download
+of an original file that a repack will be downloaded.  The default
+value is:
+
 %%VALUE: *repack-window-seconds*
 
 This value is the number of seconds after an episode is downloaded

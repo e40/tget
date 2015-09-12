@@ -57,7 +57,9 @@
      else (plexfix-1 stream filename)))
 
 (defun ignore-file-p (filename)
-  (match-re "^UFC" (file-namestring filename) :return nil))
+  (or (match-re "^ufc" (file-namestring filename) :return nil :case-fold t)
+      (match-re "^bellator" (file-namestring filename) :return nil
+		:case-fold t)))
 
 (defun plexfix-1 (stream filename &aux new-name type)
   (multiple-value-bind (series-name season episode pms-fail year month day)

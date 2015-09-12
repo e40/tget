@@ -149,7 +149,7 @@
     ;; torrent structure object.
     nil)
 
-(defvar *video-types* '("avi" "mp4" "mkv" "wmv" "ts"))
+(defvar *video-types* '("avi" "mp4" "mkv" "wmv" "ts" "flv"))
 
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
@@ -490,11 +490,7 @@
 			 ;; Watched, but not ready to remove for some reason
 			 (announce "NO ~a:~a~%" reason (file-namestring p))))))
 	    ((equalp "srt" (pathname-type p))
-	     (when (not (dolist (type *video-types*)
-			  (when (probe-file (merge-pathnames
-					     (make-pathname :type type)
-					     p))
-			    (return t))))
+	     (when (not (find-video-match-for-srt p))
 	       (if* *remove-watched*
 		  then (cleanup-file p #'announce)
 		       #+ignore
@@ -525,6 +521,33 @@
 	   (pathname-as-directory directory)
 	   :recurse t
 	   :include-directories nil))))))
+
+(defun find-video-match-for-srt (p &aux temp)
+  (flet ((simple-match (p)
+	   (dolist (type *video-types*)
+	     (when (probe-file (merge-pathnames (make-pathname :type type) p))
+	       ;; The easy case, named the same as the srt file
+	       (return t))))
+	 (reduce-filename (p)
+	   ;; Given a filename like
+	   ;;   "Foo 720p H264 AC3 - CODY.Portuguese-Bra.srt"
+	   ;; return
+	   ;;   "Foo 720p H264 AC3 - CODY.srt"
+	   (let ((name (pathname-name p)))
+	     (when (setq temp (position #\. name :from-end t))
+	       (merge-pathnames 
+		(make-pathname :name (subseq name 0 temp))
+		p)))))
+    ;; When given an srt file, see if there is an existing video to match
+    ;; it.
+    (if* (or (simple-match p)
+	     ;; See if a reduced version of the filename has a
+	     ;; corresponding video file
+	     (and (setq temp (reduce-filename p))
+		  (simple-match temp)))
+       thenret 
+       else (format t "didn't find video for p=~s~%" p)
+	    nil)))
 
 (defun cleanup-file (p announce &aux aux-p rar)
   (flet ((df (p)

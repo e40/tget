@@ -390,7 +390,14 @@ Here's how you specify it:
 
     :aliases ("The Daily Show")
 
-    #<Printer Error, obj=#x10000000af9: `86400' is not of the expected type `list'>
+### Configuration options
+
+`*repack-window-seconds*` -- the number of seconds within the download
+of an original file that a repack will be downloaded.  The default
+value is:
+
+    86400
+
 This value is the number of seconds after an episode is downloaded
 that we will download a *repack* of that episode.  A repack is a
 re-release of an episode to fix problems in the original.
@@ -1187,10 +1194,10 @@ Catch up series to a specific episode:
     (defseries "Archer (2009)" :kevin)
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
     	   :aliases ("@midnight"))
-    (defseries "Ballers" :kevin :private t)
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Black Mirror" :adrian+kevin)
+    (defseries "Blindspot" :kevin)
     (defseries "Brooklyn Nine-Nine" :adrian+kevin)
     (defseries "Childrens Hospital (US)" :adrian+kevin)
     (defseries "Community" :adrian+kevin)
@@ -1201,27 +1208,35 @@ Catch up series to a specific episode:
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin)
     (defseries "Fargo" :kevin)
+    (defseries "Fear the Walking Dead" :kevin :delay 0)
     (defseries "Frontline (US)" :kevin)
     (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
     (defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high)
     (defseries "Hell on Wheels" :kevin)
+    (defseries "Heroes Reborn" :kevin)
     (defseries "Homeland" :kevin :private t :delay 0)
-    (defseries "Intruders" :kevin :catch-up "S01E02")
+    (defseries "Inside Amy Schumer" :kevin :catch-up "S03")
     (defseries "James May's Man Lab" :adrian+kevin)
+    (defseries "Late Show with Stephen Colbert" :kevin
+      :subdir "Late.Show")
     (defseries "Last Week Tonight with John Oliver" :kevin :private t
       :subdir "Last.Week.Tonight.With.John.Oliver")
-    (defseries "Longmire" :kevin)
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
-    (defseries "Luther" :kevin)		;gone forever??
     (defseries "Mad Men" :kevin)
     (defseries "Midsomer Murders" :anh)
+    (defseries "Minority Report" :kevin)
     (defseries "Modern Family" :adrian+kevin)
+    (defseries "Mr Robot" :kevin)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nova" :kevin)
-    (defseries "Ray Donovan" :kevin :private t)
+    (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
+    	   :catch-up "S02E01"
+    	   :aliases ("Penn and Teller Fool Us"))
     (defseries "Regular Show" :adrian+kevin)
+    (defseries "Review" :kevin :catch-up "S01"
+    	   :aliases ("Review with Forrest MacNeil"))
     (defseries "Rick and Morty" :adrian+kevin)
     (defseries "Ridiculousness" :adrian+kevin)
     (defseries "Shark Tank" :kevin)
@@ -1229,26 +1244,22 @@ Catch up series to a specific episode:
     (defseries "Sirens (2014)" :kevin)
     (defseries "StarTalk with Neil deGrasse Tyson" :adrian+kevin :catch-up "S01")
     (defseries "The Americans (2013)" :kevin)
-    (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
-    	   :date-based t
-    	   :aliases ("The Daily Show"))
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
+    (defseries "The Leftovers" :kevin :catch-up "S01")
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
-    (defseries "The Mentalist" :adrian+kevin)
     (defseries "The Neighbors (2012)" :adrian+kevin)
     (defseries "The Nightly Show with Larry Wilmore" :kevin
       :aliases ("The Nightly Show")
       :subdir "The.Nightly.Show" :date-based t)
+    (defseries "The Player" :kevin)
+    (defseries "The Strain" :kevin :catch-up "S02E07")
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
-    (defseries "Top Gear" :adrian+kevin :quality :high)
     (defseries "Tosh.0" :kevin)
     (defseries "True Detective" :kevin :private t)
-    (defseries "Vikings" :kevin)
     (defseries "Wallander" :anh+kevin)
-    (defseries "Witness (2012)" :kevin :private t)
     (defseries "World's Craziest Fools" :adrian+kevin)
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
     	   :aliases ("Would I Lie To You"))
@@ -1264,6 +1275,19 @@ Catch up series to a specific episode:
     #+testing (defseries "Drunk History" :kevin)
     #+testing (defseries "White Collar" :anh+kevin)
     #+testing (defseries "Justified" :kevin)
+    #+testing (defseries "Ray Donovan" :kevin :private t)
+    #+testing
+    (defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
+    	   :date-based t
+    	   :aliases ("The Daily Show"))
+    #+testing (defseries "Top Gear" :adrian+kevin :quality :high)
+    #+testing (defseries "Witness (2012)" :kevin :private t)
+    #+testing (defseries "The Mentalist" :adrian+kevin)
+    #+testing (defseries "Vikings" :kevin)
+    #+testing (defseries "Luther" :kevin)
+    #+testing (defseries "Intruders" :kevin :catch-up "S01E02")
+    ;; On Netflix now, watch there
+    #+testing (defseries "Longmire" :kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
