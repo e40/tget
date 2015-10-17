@@ -1,7 +1,4 @@
 ;; plexfix :: fix filenames for Plex Media Server
-;;
-;; TODO:
-;;  - handle rar files
 
 (eval-when (compile eval load)
   ;;(require :anydate)
@@ -57,9 +54,10 @@
      else (plexfix-1 stream filename)))
 
 (defun ignore-file-p (filename)
-  (or (match-re "^ufc" (file-namestring filename) :return nil :case-fold t)
-      (match-re "^bellator" (file-namestring filename) :return nil
-		:case-fold t)))
+  ;; don't fix anything in /tmp/... since they almost never need fixing
+  ;; and plexfix would make more of a mess.  This makes all the previous
+  ;; ignore rules obsolete.
+  (match-re "/tmp/" (namestring filename) :return nil))
 
 (defun plexfix-1 (stream filename &aux new-name type)
   (multiple-value-bind (series-name season episode pms-fail year month day)
