@@ -587,6 +587,8 @@
 (defun initialize-watched ()
   (or (probe-file *plex-db*)
       (error "Couldn't find PMS database."))
+  (or (excl.osi:find-in-path *sqlite3-binary*)
+      (error "Couldn't find command ~s." *sqlite3-binary*))
   
   (setq *watched-hash-table*
     (if* *watched-hash-table*
@@ -609,7 +611,7 @@
     (multiple-value-bind (stdout stderr exit-code)
 	(command-output sqlite-cmd :input sql :whole t)
       (if* (/= 0 exit-code)
-	 then (error "~a." stderr)
+	 then (error "exit code is ~s: stderr is: ~a." exit-code stderr)
        elseif (or (null stdout) (string= "" stdout))
 	 then ;; No watched shows??  I guess it's possible
 	      (return-from initialize-watched nil))

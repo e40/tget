@@ -2,6 +2,10 @@ TODO:
 
 high:
 
+- more naming glitches:
+   the.player.2015.101.hdtv-lol.mp4
+   the.player.S20E15.mp4 -> the.player.2015.101.hdtv-lol.mp4
+
 - matching-episodes: see TODO -- the issue is: should a series delay
   of 0 trump a tracker delay??  The whole point of :delay 0 is to get
   the thing as fast as possible.  A :download-delay on a tracker could

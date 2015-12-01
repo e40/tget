@@ -704,6 +704,9 @@
 
 (defun month-day-to-ordinal (year month day)
   ;; Args are all strings representing the given quantities.
+  (when (string= "00" day)
+    ;; fucking dirty data
+    (setq day "01"))
   (let ((year (if (stringp year) (parse-integer year) year))
 	(month (if (stringp month) (parse-integer month) month))
 	(day (if (stringp day) (parse-integer day) day)))

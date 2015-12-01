@@ -1,4 +1,4 @@
-# tget 4.5.2 - torrent get
+# tget 4.5.3 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1192,17 +1192,19 @@ Catch up series to a specific episode:
     (defseries "8 Out of 10 Cats Does Countdown" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Archer (2009)" :kevin)
+    (defseries "Ash vs Evil Dead" :kevin)
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
     	   :aliases ("@midnight"))
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Black Mirror" :adrian+kevin)
-    (defseries "Blindspot" :kevin)
+    (defseries "Blunt Talk" :kevin)
     (defseries "Brooklyn Nine-Nine" :adrian+kevin)
     (defseries "Childrens Hospital (US)" :adrian+kevin)
+    (defseries "Childhood's End" :kevin)
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :adrian+kevin)
-    (defseries "Doc Martin" :anh+kevin)
+    (defseries "Doc Martin" :anh)
     (defseries "Downton Abbey" :anh)
     (defseries "Dragons Den (UK)" :kevin)
     (defseries "Eagleheart" :adrian+kevin)
@@ -1213,24 +1215,23 @@ Catch up series to a specific episode:
     (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
     (defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high)
     (defseries "Hell on Wheels" :kevin)
-    (defseries "Heroes Reborn" :kevin)
     (defseries "Homeland" :kevin :private t :delay 0)
     (defseries "Inside Amy Schumer" :kevin :catch-up "S03")
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Late Show with Stephen Colbert" :kevin
-      :subdir "Late.Show")
+      :subdir "Late.Show"
+      :aliases ("The Late Show with Stephen Colbert" "Stephen Colbert"))
     (defseries "Last Week Tonight with John Oliver" :kevin :private t
       :subdir "Last.Week.Tonight.With.John.Oliver")
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
-    (defseries "Mad Men" :kevin)
     (defseries "Midsomer Murders" :anh)
-    (defseries "Minority Report" :kevin)
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Mr Robot" :kevin)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
-    (defseries "Nova" :kevin)
+    (defseries "Nature" :kevin :subdir "Nature")
+    (defseries "Nova" :kevin :subdir "Nova")
     (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
     	   :catch-up "S02E01"
     	   :aliases ("Penn and Teller Fool Us"))
@@ -1241,11 +1242,17 @@ Catch up series to a specific episode:
     (defseries "Ridiculousness" :adrian+kevin)
     (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
+    (defseries "Show me a hero" :kevin)
     (defseries "Sirens (2014)" :kevin)
     (defseries "StarTalk with Neil deGrasse Tyson" :adrian+kevin :catch-up "S01")
     (defseries "The Americans (2013)" :kevin)
+    (defseries "The Daily Show with Trevor Noah" :kevin :subdir "The.Daily.Show"
+    	   :date-based t
+    	   :aliases ("The Daily Show"))
+    (defseries "The Expanse" :kevin)
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
+    (defseries "The Knick" :kevin :catch-up "S01")
     (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
     (defseries "The Leftovers" :kevin :catch-up "S01")
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
@@ -1253,8 +1260,7 @@ Catch up series to a specific episode:
     (defseries "The Nightly Show with Larry Wilmore" :kevin
       :aliases ("The Nightly Show")
       :subdir "The.Nightly.Show" :date-based t)
-    (defseries "The Player" :kevin)
-    (defseries "The Strain" :kevin :catch-up "S02E07")
+    (defseries "The Player (2015)" :kevin :catch-up "S01E06")
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "Tosh.0" :kevin)
@@ -1288,6 +1294,13 @@ Catch up series to a specific episode:
     #+testing (defseries "Intruders" :kevin :catch-up "S01E02")
     ;; On Netflix now, watch there
     #+testing (defseries "Longmire" :kevin)
+    #+testing (defseries "Mad Men" :kevin)
+    
+    
+    (defseries "Minority Report" :kevin :remove t)
+    (defseries "Heroes Reborn" :kevin :remove t)
+    (defseries "The Strain" :kevin :remove t)
+    (defseries "Blindspot" :kevin :remove t)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
