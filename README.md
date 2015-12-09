@@ -1,4 +1,4 @@
-# tget 4.6 - torrent get
+# tget 4.6.1 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1036,7 +1036,7 @@ Catch up series to a specific episode:
     (defvar *trackers*
         ;; move :freshon to last.  Their tracker is being very annoying lately
         ;; and not giving me upload credit.  Grrr.
-        (list :btn :shazbat #+testing :eztv :freshon))
+        (list :btn :shazbat #+testing :eztv :freshon :sporthd))
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Quality settings
@@ -1086,7 +1086,7 @@ Catch up series to a specific episode:
     (defvar *download-lq-delay* #-debug 24 #+debug 24)
     
     ;; While I'm tuning the new delays, let's be verbose:
-    ;;(pushnew :tget-config-debug *features*)
+    (pushnew :tget-config-debug *features*)
     
     (defun my-quality (episode &aux (tracker (episode-tracker episode))
     				temp)
@@ -1241,7 +1241,7 @@ Catch up series to a specific episode:
     (defseries "Midsomer Murders" :anh)
     (defseries "Modern Family" :adrian+kevin)
     (defseries "Mr Robot" :kevin)
-    (defseries "NBA Warriors" :temp :date-based t)
+    (defseries "NBA Warriors" :temp :date-based t :quality :high)
     (defseries "Naked and Afraid" :kevin :catch-up "S01")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nature" :kevin :subdir "Nature")

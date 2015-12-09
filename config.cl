@@ -106,7 +106,7 @@
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
-    (list :btn :shazbat #+testing :eztv :freshon))
+    (list :btn :shazbat #+testing :eztv :freshon :sporthd))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Quality settings
@@ -156,7 +156,7 @@
 (defvar *download-lq-delay* #-debug 24 #+debug 24)
 
 ;; While I'm tuning the new delays, let's be verbose:
-;;(pushnew :tget-config-debug *features*)
+(pushnew :tget-config-debug *features*)
 
 (defun my-quality (episode &aux (tracker (episode-tracker episode))
 				temp)
@@ -311,7 +311,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Midsomer Murders" :anh)
 (defseries "Modern Family" :adrian+kevin)
 (defseries "Mr Robot" :kevin)
-(defseries "NBA Warriors" :temp :date-based t)
+(defseries "NBA Warriors" :temp :date-based t :quality :high)
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nature" :kevin :subdir "Nature")

@@ -57,10 +57,11 @@
 (pprint
  `(progn
     (opendb :reset t)
-    (setq rss-objects (feed-to-rss-objects :file "tget-test-data/btn.xml"))
-    (setq rss-objects (feed-to-rss-objects :file "tget-test-data/eztv.xml"))
-    (setq rss-objects (feed-to-rss-objects :file "tget-test-data/dtt.xml"))
-    (setq rss-objects (feed-to-rss-objects :file "tget-test-data/tvt.xml"))
+    (setq rss-objects (feed-to-rss-objects :file "tget-test-data/sporthd.xml"))
+    ;;(setq rss-objects (feed-to-rss-objects :file "tget-test-data/btn.xml"))
+    ;;(setq rss-objects (feed-to-rss-objects :file "tget-test-data/eztv.xml"))
+    ;;(setq rss-objects (feed-to-rss-objects :file "tget-test-data/dtt.xml"))
+    ;;(setq rss-objects (feed-to-rss-objects :file "tget-test-data/tvt.xml"))
     (setq show-objects (mapcar #'rss-to-episode rss-objects))
     (commit)))
 

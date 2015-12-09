@@ -109,7 +109,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.6")
+(defvar *tget-version* "4.6.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3775,8 +3775,10 @@ transmission-remote ~a:~a ~
 			  source codec resolution)
 	(extract-episode-info-from-filename title)
       (declare (ignore ignore1 ignore2))
-      (let* ((series-name "NBA Warriors")
+      (let* ((series-name "nba warriors") ;; must be canonical!!
 	     (series (query-series-name-to-series series-name)))
+	
+	(assert series)
 	
 	(when (match-re "720p" title :case-fold t :return nil)
 	  (assert (member :720p *valid-resolutions*))
@@ -3788,7 +3790,7 @@ transmission-remote ~a:~a ~
 	(make-episode
 	 :transient t
 	 :tracker *tracker*
-	 :full-title (rss-item-title rss)
+	 :full-title series-name
 	 :torrent-url (rss-item-link rss)
 
 	 :series series
@@ -3797,6 +3799,7 @@ transmission-remote ~a:~a ~
 	 :season season
 	 :episode episode
 	 :pretty-epnum (season-and-episode-to-pretty-epnum season episode)
+	 :pub-date (get-universal-time)
        
 	 ;; container is always nil because the file extension is always
 	 ;; .torrent
