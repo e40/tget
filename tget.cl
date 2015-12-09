@@ -1002,7 +1002,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-orphans
     --dump-series series-name
     --dump-stats
-    --skip
+    --skip series-name
 
 Behavior modifying arguments:
 
