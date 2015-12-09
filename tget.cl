@@ -109,7 +109,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.5.3")
+(defvar *tget-version* "4.6")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3243,6 +3243,7 @@ transmission-remote ~a:~a ~
 	(match-re
 	 #.(concatenate 'simple-string
 	     "("
+	     "sporthd\\.org|"
 	     "tvtorrents\\.com|"
 	     "freshon\\.tv|"
 	     "broadcasthe\\.net|"
@@ -3757,6 +3758,54 @@ transmission-remote ~a:~a ~
 	      :resolution resolution)))
 	(with-verbosity 2 (format t "TvT: consider ep: ~a~%" ep))
 	ep))))
+
+(defmethod convert-rss-to-episode ((type (eql :sporthd.org)) rss)
+  ;; NBA feed, filter on "warriors"
+  (let ((title (rss-item-title rss)))
+    
+    (format t "SHD: ~s~%" title)
+    
+    (when (not (match-re "warriors" title :case-fold t :return nil))
+      ;; not for us...
+      (return-from convert-rss-to-episode))    
+    
+    (with-verbosity 4 (format t "SHD: ~s~%" rss))
+    
+    ;; Extract info from the title, hardwire series name
+    
+    (multiple-value-bind (ignore1 season episode ignore2 container
+			  source codec resolution)
+	(extract-episode-info-from-filename title)
+      (declare (ignore ignore1 ignore2))
+      (let* ((series-name "NBA Warriors")
+	     (series (query-series-name-to-series series-name)))
+	
+	(when (match-re "720p" title :case-fold t :return nil)
+	  (assert (member :720p *valid-resolutions*))
+	  (setq resolution :720p))
+	(when (match-re "h264" title :case-fold t :return nil)
+	  (assert (member :h.264 *valid-codecs*))
+	  (setq codec :h.264))
+
+	(make-episode
+	 :transient t
+	 :tracker *tracker*
+	 :full-title (rss-item-title rss)
+	 :torrent-url (rss-item-link rss)
+
+	 :series series
+	 :series-name series-name
+	 :title title
+	 :season season
+	 :episode episode
+	 :pretty-epnum (season-and-episode-to-pretty-epnum season episode)
+       
+	 ;; container is always nil because the file extension is always
+	 ;; .torrent
+	 :container container
+	 :source source
+	 :codec codec
+	 :resolution resolution)))))
 
 (defun check-episode-data (des-series-name series-name
 			   des-season season

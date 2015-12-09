@@ -95,6 +95,14 @@
     :download-delay 0
     :ratio 1.5)
 
+(deftracker :sporthd
+    ;; RSS feed configured by creating a notification filter with these
+    ;; options: category: NBA, direct download of torrent
+    :url "http://sporthd.org/..."
+    :disabled nil
+    :download-delay 0
+    :ratio 1.5)
+
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
@@ -240,6 +248,11 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
     :quality 'my-quality
     :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
+(defgroup :temp
+    :trackers '#.*trackers*
+    :quality 'my-quality
+    :download-path (merge-pathnames "temp/" *download-root*))
+
 ;;;;TODO: seems like this shouldn't be here... figure out a way to get
 ;;;;      around it.  See --add command line argument.
 (defgroup :manual
@@ -298,6 +311,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Midsomer Murders" :anh)
 (defseries "Modern Family" :adrian+kevin)
 (defseries "Mr Robot" :kevin)
+(defseries "NBA Warriors" :temp :date-based t)
 (defseries "Naked and Afraid" :kevin :catch-up "S01")
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nature" :kevin :subdir "Nature")
