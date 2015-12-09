@@ -3763,8 +3763,6 @@ transmission-remote ~a:~a ~
   ;; NBA feed, filter on "warriors"
   (let ((title (rss-item-title rss)))
     
-    (format t "SHD: ~s~%" title)
-    
     (when (not (match-re "warriors" title :case-fold t :return nil))
       ;; not for us...
       (return-from convert-rss-to-episode))    
