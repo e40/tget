@@ -109,7 +109,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.6.1")
+(defvar *tget-version* "4.6.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -1079,6 +1079,8 @@ The following are arguments controlling primary behavior:
   Delete episodes with series name matching `series-name`.  This is permanent!
   Using this option with --auto-backup force is recommended.
 
+  `--force` can be used if there are multiple episodes that match.
+
 * `--delete-episode episode-description`
 
   Delete the episode matching `episode-description`.  This is permanent!
@@ -1527,7 +1529,7 @@ Catch up series to a specific episode:
 		   (tget-commit *main*)
 		   (done)
 	    elseif delete-episode
-	      then (delete-episode delete-episode)
+	      then (delete-episode delete-episode force-mode)
 		   (tget-commit *main*)
 		   (done)
 	    elseif delete-series
@@ -2964,7 +2966,7 @@ transmission-remote ~a:~a ~
       ;; This needs to be reset, too:
       (setf (series-discontinuous-episodes series) nil))))
 
-(defun delete-episode (ep-description)
+(defun delete-episode (ep-description force)
   (multiple-value-bind (series-name season epnum)
       (parse-name-season-and-episode ep-description :junk-allowed nil)
     (when (or (null series-name)
@@ -2978,10 +2980,11 @@ transmission-remote ~a:~a ~
 				 :season season
 				 :ep-number epnum)
 		  (.error "Could not find episode: ~s." ep-description))))
-      (when (cdr ep)
+      (when (and (cdr ep) (not force))
 	(.error "There is more than one episode matching:~%~{  ~a~}" ep))
-      (format t "removing episode ~a~%" (car ep))
-      (delete-instance (car ep)))))
+      (dolist (e ep)
+	(format t "removing episode ~a~%" e)
+	(delete-instance e)))))
 
 (defun skip-next (series)
   ;; NOTE: this is only called through direct user action via the

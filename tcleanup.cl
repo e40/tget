@@ -489,7 +489,8 @@
 		  else (with-verbosity 1
 			 ;; Watched, but not ready to remove for some reason
 			 (announce "NO ~a:~a~%" reason (file-namestring p))))))
-	    ((equalp "srt" (pathname-type p))
+	    ((or (equalp "srt" (pathname-type p))
+		 (equalp "sub" (pathname-type p)))
 	     (when (not (find-video-match-for-srt p))
 	       (if* *remove-watched*
 		  then (cleanup-file p #'announce)
