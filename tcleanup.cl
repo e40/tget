@@ -497,7 +497,8 @@
 		       #+ignore
 		       (setq symlink-pass t)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
-	    ((or (member (file-namestring p) '(".DS_Store") :test #'equalp)
+	    ((or (match-re "\\.ds_store" (file-namestring p)
+			   :case-fold t :return nil)
 		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part")
 			 :test #'equalp)
 		 ;; rar file parts:
