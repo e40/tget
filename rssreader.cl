@@ -124,7 +124,7 @@
 		 :format-arguments (list host c))))
     (declare (ignore headers))
     
-    (if* (eq 502 code)
+    (if* (or (eq 502 code) (eq 522 code))
        then (signal 'feed-error-ignore)
 	    (return-from read-feed)
      elseif (not (eq 200 code))

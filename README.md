@@ -1,4 +1,4 @@
-# tget 4.6.2 - torrent get
+# tget 4.6.3 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1274,6 +1274,7 @@ Catch up series to a specific episode:
     (defseries "The Expanse" :kevin)
     (defseries "The Carmichael Show" :kevin :catch-up "S01"
       :subdir "The.Carmichael.Show")
+    (defseries "The Detour" :adrian+kevin)
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The Knick" :kevin :catch-up "S01")
@@ -1283,10 +1284,11 @@ Catch up series to a specific episode:
     (defseries "The Neighbors (2012)" :adrian+kevin)
     (defseries "The Nightly Show with Larry Wilmore" :kevin
       :aliases ("The Nightly Show")
-      :subdir "The.Nightly.Show" :date-based t)
+      :subdir "The.Nightly.Show.with.Larry.Wilmore" :date-based t)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "The X-Files" :kevin :catch-up "S09")
+    (defseries "Time Traveling Bong" :kevin)
     (defseries "Tosh.0" :kevin)
     (defseries "True Detective" :kevin :private t)
     (defseries "Wallander" :anh+kevin)
