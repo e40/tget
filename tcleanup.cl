@@ -149,7 +149,7 @@
     ;; torrent structure object.
     nil)
 
-(defvar *video-types* '("avi" "mp4" "mkv" "wmv" "ts" "flv"))
+(defvar *video-types* '("avi" "mp4" "mkv" "wmv" "ts" "flv" "m4v"))
 
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
