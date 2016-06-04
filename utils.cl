@@ -342,6 +342,7 @@
 	    (match-re "\\.(repack|proper)\\." filename :case-fold t)
 	    container source codec resolution)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; for debugging episode parsing
 ;;(eval-when (compile eval) (pushnew :debug-episode-parser *features*))
 
@@ -366,6 +367,21 @@
     ")"
     (if episode-required "" "?")
     (junk-re junk-allowed)))
+
+(defun alt6-name+year-season-pack-re (junk-allowed)
+  ;; example: The.Player.2015.S01.HDTV.x264-TvT.torrent
+  ;;
+  ;; This needs to be after alt0-re and before alt2-re.
+  ;; alt0-re will match SxxExx and alt2-re is the one that parses the above
+  ;; example as S20E15.  So, get in between them to do the right thing.
+  ;;
+  ;; \1 is name
+  ;; \3 is season
+  (concatenate 'simple-string
+    "^(.*\\d{4})(\\s|\\.+)"		; name
+    "s([0-9]{2,3})"			; season
+    (junk-re junk-allowed)))
+
 (defun alt1-name-season-ep-re (junk-allowed)
   ;; example: downton.abbey.5x03.hdtv_x264-fov.mp4
   ;; \1 is name
@@ -472,6 +488,11 @@
 (defparameter *alt0-name-season-ep-re-nil-nil*
     (compile-re #.(alt0-name-season-ep-re nil nil) :case-fold t))
 
+(defparameter *alt6-name+year-season-pack-re-t*
+    (compile-re #.(alt6-name+year-season-pack-re t) :case-fold t))
+(defparameter *alt6-name+year-season-pack-re-nil*
+    (compile-re #.(alt6-name+year-season-pack-re nil) :case-fold t))
+
 (defparameter *alt1-name-season-ep-re-t*
     (compile-re #.(alt1-name-season-ep-re t) :case-fold t))
 (defparameter *alt1-name-season-ep-re-nil*
@@ -550,6 +571,9 @@
 	     else (if* junk-allowed
 		     then *alt0-name-season-ep-re-nil-t*
 		     else *alt0-name-season-ep-re-nil-nil*)))
+	 (alt6-re (if* junk-allowed
+		      then *alt6-name+year-season-pack-re-t*
+		      else *alt6-name+year-season-pack-re-nil*))
 	 (alt1-re (if* junk-allowed
 		     then *alt1-name-season-ep-re-t*
 		     else *alt1-name-season-ep-re-nil*))
@@ -591,7 +615,7 @@
 	   ;; the future
 	   (<= year this-year))
       match ;; squash bogus warning
-      #+debug-episode-parser (format t "  MATCH date2-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH date2-re~%")
       (setq season year)
       (setq episode
 	(if* (equalp "all" day)
@@ -603,7 +627,7 @@
      ((multiple-value-setq (match whole series-name season epnum-start
 			    epnum-end)
 	(match-re alt5-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt5-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH alt5-re~%")
       (values series-name (parse-integer season)
 	      (cons (parse-integer epnum-start) (parse-integer epnum-end))
 	      ;; Definitely PMS fail:
@@ -613,7 +637,7 @@
      ;; and an episode is given in format alt4, alt0 will match.
      ((multiple-value-setq (match whole series-name season epnum)
 	(match-re alt4-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt4-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH alt4-re~%")
       (values series-name (parse-integer season) (parse-integer epnum)))
      
      ((multiple-value-setq (match whole #|1:|# series-name ignore1
@@ -621,7 +645,7 @@
 			    #|5:|# epnum-start #|6:|# epnum-end
 			    #|7:|# epnum)
 	(match-re alt0-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt0-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH alt0-re~%")
       (setq season (parse-integer season))
       (if* (and epnum-start epnum-end)
 	 then (setq episode (cons (parse-integer epnum-start)
@@ -632,6 +656,15 @@
 	 thenret
 	 else (error "Should not get here"))
       (values series-name season episode))
+     
+     ;; alt6 needs to come after alt0 because the "name that includes the
+     ;; year" + season pack will cause the shebang to be parsed as as
+     ;; season and episode, rather than a season pack.
+     ((multiple-value-setq (match whole series-name ignore1 season)
+	(match-re alt6-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt6-re: ~s ~s~%"
+				     series-name season)
+      (values series-name (parse-integer season)))
 
      ;; Do date1-re and date2-re before alt1-re and alt2-re because the
      ;; latter will give false positives for date-based episode naming.
@@ -640,7 +673,7 @@
 			    month day)
 	(match-re date1-re thing :case-fold t))
       match ;; squash bogus warning
-      #+debug-episode-parser (format t "  MATCH date1-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH date1-re~%")
       (setq season (parse-integer year))
       (setq episode
 	(if* (equalp "all" day)
@@ -653,7 +686,7 @@
        (multiple-value-setq (match whole series-name month day year)
 	 (match-re date3-re thing :case-fold t))
        (setq temp (compute-month month 0)))
-      #+debug-episode-parser (format t "  MATCH date3-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH date3-re~%")
       (setq season (parse-integer year))
       (setq month temp)
       (setq episode (month-day-to-ordinal year month day))
@@ -667,14 +700,14 @@
      
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt1-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt1-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH alt1-re~%")
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
       (values series-name season episode t))
      
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt2-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt2-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH alt2-re~%")
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
       (values series-name season episode t))
@@ -682,7 +715,7 @@
      ((and alt3-re
 	   (multiple-value-setq (match whole series-name)
 	     (match-re alt3-re thing :case-fold t)))
-      #+debug-episode-parser (format t "  MATCH alt3-re~%" thing)
+      #+debug-episode-parser (format t "  MATCH alt3-re~%")
       ;; technically, PMS could fail on this, but the items that
       ;; use it are not episode based
       (values series-name))

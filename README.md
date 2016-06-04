@@ -1,4 +1,4 @@
-# tget 4.6.4 - torrent get
+# tget 4.7.0 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 

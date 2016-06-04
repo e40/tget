@@ -122,6 +122,7 @@
     (test-values '(nil)             "Foo.720p.mp4"       t   t  )
     (test-values '(nil)             "Foo.720p.mp4"       nil nil)
     (test-values '(nil)             "Foo.720p.mp4"       t   nil)
+    (test-values '("Foo.2015" 1 nil)"Foo.2015.S01.mp4"   nil t  )
 
     (test-values '("The.Bar" 2014 2
 		   nil "2014" "01" "02") "The.Bar.2014.01.02.mp4" nil t)

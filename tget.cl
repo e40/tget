@@ -109,7 +109,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.6.4")
+(defvar *tget-version* "4.7.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3713,9 +3713,6 @@ transmission-remote ~a:~a ~
     (when (null filename)
       ;; nothing to go on...
       (return-from convert-rss-to-episode))
-    
-    ;; Don't have to worry about season packs in the EZTZ RSS feed since
-    ;; there are none.
     
     (with-verbosity 4 (format t "TvT: ~s~%" rss))
     
