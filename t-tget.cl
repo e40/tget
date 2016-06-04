@@ -335,7 +335,7 @@
 	    (make-rss-item
 	     :source :broadcasthe.net
              :title "The Daily Show with Jon Stewart - 2014.12.18 [ 2014 ] [ MKV | x264 | HDTV | 720p | Scene | FastTorrent ] [ Uploader: Mako ]  [ The.Daily.Show.2014.12.18.Chris.Rock.720p.HDTV.x264-BATV ] "
-             :link "https://broadcasthe.net/torrents.php?action=download&authkey=c435c406028ce61eed547c44198ee2f6&torrent_pass=cvkfpxhyfycntgv4jeyohrof4rjtl7km&id=461312"
+             :link "https://broadcasthe.net/torrents.php?action=download&authkey=c435c406028ce61eed547c44198ee2f6&torrent_pass=xxxxxxxxxx&id=461312"
              :guid nil
              :comments ", Comedy, talkshow, news, "
              :pub-date "Fri, 19 Dec 2014 06:05:27 +0000"

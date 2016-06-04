@@ -1,4 +1,4 @@
-# tget 4.6.3 - torrent get
+# tget 4.6.4 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1013,6 +1013,8 @@ Catch up series to a specific episode:
         ;; - resolutions: sd, 720p
         ;; All other checkboxs were unchecked.
         ;;
+        ;; passkey is in DL links.  Very hard to figure this out!
+        ;;
         :url "https://broadcasthe.net/..."
         :debug-feed :btn
         :disabled #-debug nil #+debug t
@@ -1027,19 +1029,10 @@ Catch up series to a specific episode:
         :download-delay 0
         :ratio 1.5)
     
-    #+ignore
-    (deftracker :sporthd
-        ;; RSS feed configured by creating a notification filter with these
-        ;; options: category: NBA, direct download of torrent
-        :url "http://sporthd.org/..."
-        :disabled nil
-        :download-delay 0
-        :ratio 1.5)
-    
     (defvar *trackers*
         ;; move :freshon to last.  Their tracker is being very annoying lately
         ;; and not giving me upload credit.  Grrr.
-        (list :btn :shazbat #+testing :eztv :freshon #+ignore :sporthd))
+        (list :btn :shazbat #+testing :eztv :freshon))
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Quality settings
@@ -1207,7 +1200,7 @@ Catch up series to a specific episode:
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "8 Out of 10 Cats Does Countdown" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
-    (defseries "Archer (2009)" :kevin)
+    (defseries "Archer (2009)" :kevin :subdir "Archer")
     (defseries "Ash vs Evil Dead" :kevin)
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
     	   :aliases ("@midnight"))
@@ -1215,6 +1208,7 @@ Catch up series to a specific episode:
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Black Mirror" :adrian+kevin)
     (defseries "Blunt Talk" :kevin)
+    (defseries "Brain Dead" :kevin)
     (defseries "Broad City" :kevin :catch-up "S02")
     (defseries "Brooklyn Nine-Nine" :adrian+kevin)
     (defseries "Cesar 911" :kevin :catch-up "S02")
@@ -1231,7 +1225,6 @@ Catch up series to a specific episode:
     (defseries "Fear the Walking Dead" :kevin :delay 0)
     (defseries "Frontline (US)" :kevin)
     (defseries "Full Frontal with Samantha Bee" :kevin)
-    (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high)
     (defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high)
     (defseries "Hap and Leonard" :kevin :catch-up "S01E02")
     (defseries "Hell on Wheels" :kevin)
@@ -1241,8 +1234,6 @@ Catch up series to a specific episode:
     (defseries "Late Show with Stephen Colbert" :kevin
       :subdir "The.Late.Show.with.Stephen.Colbert"
       :aliases ("The Late Show with Stephen Colbert" "Stephen Colbert"))
-    (defseries "Last Week Tonight with John Oliver" :kevin :private t
-      :subdir "Last.Week.Tonight.With.John.Oliver")
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
     (defseries "Luther" :kevin)
@@ -1255,6 +1246,7 @@ Catch up series to a specific episode:
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nature" :kevin :subdir "Nature")
     (defseries "Nova" :kevin :subdir "Nova")
+    (defseries "Preacher" :kevin :subdir "Preacher")
     (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
     	   :catch-up "S02E01"
     	   :aliases ("Penn and Teller Fool Us"))
@@ -1267,14 +1259,14 @@ Catch up series to a specific episode:
     (defseries "Show me a hero" :kevin)
     (defseries "Sirens (2014)" :kevin)
     (defseries "StarTalk with Neil deGrasse Tyson" :kevin :catch-up "S01")
-    (defseries "The Americans (2013)" :kevin)
+    (defseries "The Americans (2013)" :kevin :subdir "The.Americans")
     (defseries "The Daily Show with Trevor Noah" :kevin :subdir "The.Daily.Show"
     	   :date-based t
     	   :aliases ("The Daily Show"))
     (defseries "The Expanse" :kevin)
     (defseries "The Carmichael Show" :kevin :catch-up "S01"
       :subdir "The.Carmichael.Show")
-    (defseries "The Detour" :adrian+kevin)
+    (defseries "The Detour" :adrian+kevin :subdir "The.Detour")
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The Knick" :kevin :catch-up "S01")
@@ -1329,6 +1321,12 @@ Catch up series to a specific episode:
     (defseries "The Strain" :kevin :remove t)
     (defseries "Blindspot" :kevin :remove t)
     (defseries "The Player (2015)" :kevin :remove t)
+    
+    ;; Have HBONow now
+    (defseries "Last Week Tonight with John Oliver" :kevin :private t
+    	   :subdir "Last.Week.Tonight.With.John.Oliver" :remove t)
+    (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high
+    	   :remove t)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
