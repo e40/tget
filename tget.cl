@@ -109,7 +109,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.7.0")
+(defvar *tget-version* "4.7.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3719,6 +3719,11 @@ transmission-remote ~a:~a ~
     (multiple-value-bind (series-name season episode repack container
 			  source codec resolution)
 	(extract-episode-info-from-filename filename)
+      
+      (when (null episode)
+	(with-verbosity 5
+	  (format t "TvT: season pack, returning~%"))
+	(return-from convert-rss-to-episode nil))
 
       (or repack
 	  ;; See if it's a repack/proper from the title

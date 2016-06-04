@@ -662,8 +662,8 @@
      ;; season and episode, rather than a season pack.
      ((multiple-value-setq (match whole series-name ignore1 season)
 	(match-re alt6-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt6-re: ~s ~s~%"
-				     series-name season)
+      #+debug-episode-parser
+      (format t "  MATCH alt6-re: ~s ~s~%" series-name season)
       (values series-name (parse-integer season)))
 
      ;; Do date1-re and date2-re before alt1-re and alt2-re because the
