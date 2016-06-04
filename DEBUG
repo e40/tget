@@ -18,3 +18,14 @@ Then, in lisp, do
   :ld load.cl
   (test-tget)
 
+*******************************************************************************
+** plex
+
+query the plex database for viewed items
+
+select p.file,s.last_viewed_at
+from media_parts p, media_items mi, metadata_items md,metadata_item_settings s
+where mi.id = p.media_item_id AND
+   md.id = mi.metadata_item_id AND
+   md.guid = s.guid AND
+   s.view_count > 0;
