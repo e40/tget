@@ -1,4 +1,4 @@
-# tget 4.7.1 - torrent get
+# tget 4.7.2 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1200,6 +1200,7 @@ Catch up series to a specific episode:
     (defseries "8 Out of 10 Cats" :kevin)
     (defseries "8 Out of 10 Cats Does Countdown" :kevin)
     (defseries "An Idiot Abroad" :adrian+kevin)
+    (defseries "Animal Kingdom" :kevin)
     (defseries "Archer (2009)" :kevin :subdir "Archer")
     (defseries "Ash vs Evil Dead" :kevin)
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
@@ -1274,6 +1275,7 @@ Catch up series to a specific episode:
     (defseries "The Leftovers" :kevin :catch-up "S01")
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Neighbors (2012)" :adrian+kevin)
+    (defseries "The Night Of" :kevin)
     (defseries "The Nightly Show with Larry Wilmore" :kevin
       :aliases ("The Nightly Show")
       :subdir "The.Nightly.Show.with.Larry.Wilmore" :date-based t)

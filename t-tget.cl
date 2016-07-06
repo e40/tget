@@ -176,12 +176,16 @@
 		 "at.midnight.150119-yestv.mp4"
 		 nil t)
     
+    (test-values '("The.100000.Dollar.Pyramid.2016" 1 2)
+		 "The.100000.Dollar.Pyramid.2016.S01E02.720p.HDTV.x264-W4F"
+		 t t)
+    
     (test-values
      '("UFC.FN.59.McGregor.vs.Siver.Early.Prelims")
      "UFC.FN.59.McGregor.vs.Siver.Early.Prelims.720p.WEB.DL.x264.mp4"
      nil t)
     
-    ;; this present a challenge! ;-)
+    ;; this presents a challenge! ;-)
     #|
     "UFC.112.McGregor.vs.Siver.Early.Prelims.720p.WEB.DL.x264.mp4"
     |#

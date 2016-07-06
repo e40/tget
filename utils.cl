@@ -606,40 +606,18 @@
 	 epnum-start epnum-end year month day)
     (declare (ignore-if-unused whole ignore1 ignore2))
     (cond
-     ;; Must be before alt5-re
-     ((and (multiple-value-setq (match whole series-name ignore1 year
-				 month day)
-	     (match-re date2-re thing :case-fold t))
-	   (setq year (+ 2000 (parse-integer year)))
-	   ;; Make sure this bogus format doesn't result in episodes from
-	   ;; the future
-	   (<= year this-year))
-      match ;; squash bogus warning
-      #+debug-episode-parser (format t "  MATCH date2-re~%")
-      (setq season year)
-      (setq episode
-	(if* (equalp "all" day)
-	   then :all
-	   else ;; use the ordinal day of the year
-		(month-day-to-ordinal year month day)))
-      (values series-name season episode t (format nil "~d" year) month day))
-     
-     ((multiple-value-setq (match whole series-name season epnum-start
-			    epnum-end)
-	(match-re alt5-re thing :case-fold t))
-      #+debug-episode-parser (format t "  MATCH alt5-re~%")
-      (values series-name (parse-integer season)
-	      (cons (parse-integer epnum-start) (parse-integer epnum-end))
-	      ;; Definitely PMS fail:
-	      t))
-     
+;;;;alt4
      ;; alt4 needs to go before alt0 because when :episode-required is nil
      ;; and an episode is given in format alt4, alt0 will match.
      ((multiple-value-setq (match whole series-name season epnum)
 	(match-re alt4-re thing :case-fold t))
       #+debug-episode-parser (format t "  MATCH alt4-re~%")
       (values series-name (parse-integer season) (parse-integer epnum)))
-     
+
+;;;;alt0
+     ;; alt0 must be before date2 because of 
+     ;;   "The.100000.Dollar.Pyramid.2016.S01E02.720p.HDTV.x264-W4F"
+     ;; the name has a bogus date-based season#/ep# in it.
      ((multiple-value-setq (match whole #|1:|# series-name ignore1
 			    #|3:|# season ignore2
 			    #|5:|# epnum-start #|6:|# epnum-end
@@ -657,6 +635,36 @@
 	 else (error "Should not get here"))
       (values series-name season episode))
      
+;;;;date2
+     ;; Must be before alt5
+     ((and (multiple-value-setq (match whole series-name ignore1 year
+				 month day)
+	     (match-re date2-re thing :case-fold t))
+	   (setq year (+ 2000 (parse-integer year)))
+	   ;; Make sure this bogus format doesn't result in episodes from
+	   ;; the future
+	   (<= year this-year))
+      match ;; squash bogus warning
+      #+debug-episode-parser (format t "  MATCH date2-re~%")
+      (setq season year)
+      (setq episode
+	(if* (equalp "all" day)
+	   then :all
+	   else ;; use the ordinal day of the year
+		(month-day-to-ordinal year month day)))
+      (values series-name season episode t (format nil "~d" year) month day))
+
+;;;;alt5
+     ((multiple-value-setq (match whole series-name season epnum-start
+			    epnum-end)
+	(match-re alt5-re thing :case-fold t))
+      #+debug-episode-parser (format t "  MATCH alt5-re~%")
+      (values series-name (parse-integer season)
+	      (cons (parse-integer epnum-start) (parse-integer epnum-end))
+	      ;; Definitely PMS fail:
+	      t))
+     
+;;;;alt6
      ;; alt6 needs to come after alt0 because the "name that includes the
      ;; year" + season pack will cause the shebang to be parsed as as
      ;; season and episode, rather than a season pack.
@@ -666,9 +674,9 @@
       (format t "  MATCH alt6-re: ~s ~s~%" series-name season)
       (values series-name (parse-integer season)))
 
-     ;; Do date1-re and date2-re before alt1-re and alt2-re because the
+;;;;date1
+     ;; Do date1 and date2 before alt1 and alt2 because the
      ;; latter will give false positives for date-based episode naming.
-
      ((multiple-value-setq (match whole series-name ignore1 year
 			    month day)
 	(match-re date1-re thing :case-fold t))
@@ -681,7 +689,8 @@
 	   else ;; use the ordinal day of the year
 		(month-day-to-ordinal year month day)))
       (values series-name season episode pms-fail year month day))
-     
+
+;;;;date3
      ((and
        (multiple-value-setq (match whole series-name month day year)
 	 (match-re date3-re thing :case-fold t))
@@ -697,21 +706,24 @@
 	      year
 	      (format nil "~2,'0d" month)
 	      day))
-     
+
+;;;;alt1
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt1-re thing :case-fold t))
       #+debug-episode-parser (format t "  MATCH alt1-re~%")
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
       (values series-name season episode t))
-     
+
+;;;;alt2
      ((multiple-value-setq (match whole series-name ignore1 season episode)
 	(match-re alt2-re thing :case-fold t))
       #+debug-episode-parser (format t "  MATCH alt2-re~%")
       (setq season (parse-integer season))
       (setq episode (parse-integer episode))
       (values series-name season episode t))
-     
+
+;;;;alt3
      ((and alt3-re
 	   (multiple-value-setq (match whole series-name)
 	     (match-re alt3-re thing :case-fold t)))
