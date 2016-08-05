@@ -19,6 +19,17 @@ Then, in lisp, do
   (test-tget)
 
 *******************************************************************************
+** tcleanup
+
+:ld bittorrent/bittorrent_full.fasl
+:cl transmission.cl utils.cl tcleanup.cl
+:pa tcleanup
+(load "tget-config/tcleanup-config.cl")
+(tcleanup-transmission)
+(tcleanup-files)
+(maphash (lambda (k v) (print k)) *plex-files-hash-table*)
+
+*******************************************************************************
 ** plex
 
 query the plex database for viewed items
@@ -29,3 +40,8 @@ where mi.id = p.media_item_id AND
    md.id = mi.metadata_item_id AND
    md.guid = s.guid AND
    s.view_count > 0;
+
+Put that in a file called sqlite.cmd and do
+
+ $ sqlite3 -csv "/me/tplex/plex-config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db" < sqlite.cmd
+

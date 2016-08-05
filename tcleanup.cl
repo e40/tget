@@ -456,7 +456,14 @@
     ;;   value :: hours since video was watched
     nil)
 
-(defun tcleanup-files (&aux (initial-newline t) header #+ignore symlink-pass)
+(defvar *plex-files-hash-table*
+    ;; Hash table:
+    ;;   key   :: path to video
+    ;;   value :: path to video
+    nil)
+
+(defun tcleanup-files (&aux (initial-newline t) header
+			    (symlink-pass t))
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
 	     (format t "~%")
@@ -468,6 +475,7 @@
     ;; Initialize a hash table of watched videos.
     ;;
     (initialize-watched)
+    (initialize-plex-files)
   
     (dolist (thing *watch-directories*)
       (destructuring-bind (directory . label) thing
@@ -480,22 +488,22 @@
 	       (if* ready-to-remove
 		  then (if* *remove-watched*
 			  then (cleanup-file p #'announce)
-			       #+ignore
-			       (setq symlink-pass t)
 			  else (announce "YES ~a:~a~%"
 					 reason (file-namestring p)))
 		elseif (null reason)
 		  thenret ;; not watched
 		  else (with-verbosity 1
 			 ;; Watched, but not ready to remove for some reason
-			 (announce "NO ~a:~a~%" reason (file-namestring p))))))
+			 (announce "NO ~a:~a~%" reason (file-namestring p)))))
+	     
+	     (when (and (not (gethash (namestring p) *plex-files-hash-table*))
+			(probe-file p))
+	       (announce "HIDDEN: ~a~%" (file-namestring p))))
 	    ((or (equalp "srt" (pathname-type p))
 		 (equalp "sub" (pathname-type p)))
 	     (when (not (find-video-match-for-srt p))
 	       (if* *remove-watched*
 		  then (cleanup-file p #'announce)
-		       #+ignore
-		       (setq symlink-pass t)
 		  else (announce "YES: ~a~%" (file-namestring p)))))
 	    ((or (match-re "\\.ds_store" (file-namestring p)
 			   :case-fold t :return nil)
@@ -511,7 +519,6 @@
 	 :recurse t
 	 :include-directories nil)
 
-	#+ignore
 	(when symlink-pass
 	  ;; Look for bad symbolic links, now that we've possible removed some
 	  ;; files.
@@ -634,6 +641,49 @@
 	  (with-verbosity 2
 	    (format t "add watched: ~s, ~s~%" file hours))
 	  (setf (gethash file *watched-hash-table*) hours))))))
+
+(defun initialize-plex-files ()
+  (or (probe-file *plex-db*)
+      (error "Couldn't find PMS database."))
+  (or (excl.osi:find-in-path *sqlite3-binary*)
+      (error "Couldn't find command ~s." *sqlite3-binary*))
+  
+  (setq *plex-files-hash-table*
+    (if* *plex-files-hash-table*
+       then (clrhash *plex-files-hash-table*)
+       else (make-hash-table :size 777 :test #'equal)))
+  (let* ((sqlite-cmd
+	  ;; Use a vector so shell escaping isn't an issue, with spaces
+	  ;; in those filenames, etc.
+	  (vector *sqlite3-binary* "-csv" (namestring (truename *plex-db*))))
+	 (nl #\newline)
+	 (sql (util.string:string+ "select p.file from media_parts p;" nl))
+	 files)
+    (multiple-value-bind (stdout stderr exit-code)
+	(command-output sqlite-cmd :input sql :whole t)
+      (if* (/= 0 exit-code)
+	 then (error "exit code is ~s: stderr is: ~a." exit-code stderr)
+       elseif (or (null stdout) (string= "" stdout))
+	 then ;; No files??  I guess it's possible
+	      (return-from initialize-plex-files nil))
+	  
+      (when (not (setq files (split-re "$" stdout :multiple-lines t)))
+	(error "could not split sqlite3 output."))
+
+      (dolist (file files)
+	(when (=~ "^\s*$" file) (return))
+	(setq file (string-trim '(#\space #\newline) file))
+	(when (file-in-watched-directory-p file)
+	  (with-verbosity 2
+	    (format t "add file: ~s~%" file))
+	  (setf (gethash file *plex-files-hash-table*) file))))))
+
+(eval-when (eval load compile) (require :strlib))
+
+(defun file-in-watched-directory-p (file)
+  (dolist (xx *watch-directories*)
+    (when (prefixp (car xx) file)
+      (return t))))
 
 #+ignore ;; unused, keep tho
 (defun escape-for-sqlite (filename)
