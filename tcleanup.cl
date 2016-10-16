@@ -28,6 +28,10 @@
 
 (in-package :tcleanup)
 
+(eval-when (compile eval load)
+(defvar *tcleanup-version* "2.0.1")
+)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PART I: remove torrents from Transmission
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -507,7 +511,8 @@
 		  else (announce "YES: ~a~%" (file-namestring p)))))
 	    ((or (match-re "\\.ds_store" (file-namestring p)
 			   :case-fold t :return nil)
-		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part")
+		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part"
+					     "jpg")
 			 :test #'equalp)
 		 ;; rar file parts:
 		 (match-re "^r\\d\\d$" (pathname-type p) :return nil))
@@ -534,7 +539,15 @@
 (defun find-video-match-for-srt (p &aux temp)
   (flet ((simple-match (p)
 	   (dolist (type *video-types*)
-	     (when (probe-file (merge-pathnames (make-pathname :type type) p))
+	     (when (or
+		    (probe-file
+		     (merge-pathnames (make-pathname :type type) p))
+		    ;; sometimes srt's are in subdirs
+		    (probe-file
+		     (merge-pathnames
+		      (merge-pathnames (make-pathname :type type)
+				       (file-namestring p))
+		      (merge-pathnames "../" (path-namestring p)))))
 	       ;; The easy case, named the same as the srt file
 	       (return t))))
 	 (reduce-filename (p)
@@ -546,7 +559,8 @@
 	     (when (setq temp (position #\. name :from-end t))
 	       (merge-pathnames 
 		(make-pathname :name (subseq name 0 temp))
-		p)))))
+		p))))
+	 )
     ;; When given an srt file, see if there is an existing video to match
     ;; it.
     (if* (or (simple-match p)
@@ -669,14 +683,16 @@
 	  
       (when (not (setq files (split-re "$" stdout :multiple-lines t)))
 	(error "could not split sqlite3 output."))
-
+      
       (dolist (file files)
-	(when (=~ "^\s*$" file) (return))
+	(when (=~ "^\s*$" file) (go skip))
 	(setq file (string-trim '(#\space #\newline) file))
 	(when (file-in-watched-directory-p file)
 	  (with-verbosity 2
 	    (format t "add file: ~s~%" file))
-	  (setf (gethash file *plex-files-hash-table*) file))))))
+	  (setf (gethash file *plex-files-hash-table*) file))
+       skip
+	))))
 
 (eval-when (eval load compile) (require :strlib))
 
@@ -739,7 +755,8 @@
   (flet
       ((doit ()
 	 (system:with-command-line-arguments
-	     (("config" :long config-file :required-companion)
+	     (("version" :long print-version)
+	      ("config" :long config-file :required-companion)
 	      ("d" :short debug)
 	      ("h" :short ignore-watched-within :required-companion)
 	      ("info" :long info)
@@ -750,6 +767,9 @@
 	      ("remove-watched" :long remove-watched)
 	      ("v" :short verbose :allow-multiple-options))
 	     (rest)
+	   (when print-version
+	     (format t "~&tcleanup version ~a.~%" *tcleanup-version*)
+	     (exit 0 :quiet t))
 	   (and rest (.error "extra arguments:~{ ~a~}." rest))
 	   (when info
 	     (dolist (line (tm "-t" "all" "--info"))
