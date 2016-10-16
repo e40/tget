@@ -109,7 +109,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.7.2")
+(defvar *tget-version* "4.7.3")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -1325,7 +1325,8 @@ Catch up series to a specific episode:
       ((done () (exit 0 :quiet t))
        (doit (&aux verbose)
 	 (system:with-command-line-arguments
-	     (("help" :long help)
+	     (("version" :long print-version)
+	      ("help" :long help)
 	      
 ;;;; primary arguments (determine behavior)
 	      ("add" :long add-mode :required-companion)
@@ -1361,6 +1362,9 @@ Catch up series to a specific episode:
 	      ("verbose" :long verbose-long)
 	      ("v" :short verbose-short :allow-multiple-options))
 	     (extra-args :usage *usage*)
+	   (when print-version
+	     (format t "~&tget version ~a." *tget-version*)
+	     (exit 0 :quiet t))
 	   (setq verbose (or verbose-short verbose-long))
 	   (when (and verbose (not (numberp verbose)))
 	     (setq verbose 1))
