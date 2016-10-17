@@ -10,27 +10,7 @@
 ;;     2. use ssh and create a symlink with the correct name
 ;;   (1) is preferred and I'm assuming (2) will work with Plex
 
-(eval-when (compile eval load)
-  (require :anydate)
-  (require :osi)
-  (require :shell)
-  (require :autozoom)
-  (require :tget-utils "utils.fasl"))
-
-(defpackage :tcleanup
-  (:use #:common-lisp
-	#:excl
-	#:excl.osi
-	#:excl.shell)
-  (:import-from #:cl-user
-		#:with-verbosity
-		#:*verbose*))
-
-(in-package :tcleanup)
-
-(eval-when (compile eval load)
-(defvar *tcleanup-version* "2.0.1")
-)
+(in-package :user)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PART I: remove torrents from Transmission
@@ -40,24 +20,8 @@
 
 (defvar *minimum-seed-seconds* nil)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar *config-file* (list "sys:tcleanup-config.cl" "~/.tcleanup.cl"))
-
-(defparameter *trackers* nil)
-
-(defstruct tracker
-  re
-  char
-  setter)
-
-(defmacro deftracker (re char setter)
-  `(push (make-tracker :re ,re :char ,char :setter ,setter)
-	 *trackers*))
-
 (defvar *remove-seeded* nil)
 (defvar *remove-watched* nil)
-(defvar *debug* nil)
 
 (defun tm (&rest args)
   (multiple-value-bind (stdout stderr code)
@@ -143,9 +107,9 @@
   episode				; episode # or nil
   seasonp				; (and season (not episode))
   removed				; non-nil if removed in pass I
+  never-delete
+  archive
   )
-
-(defvar *now* nil)
 
 (defvar *torrents*
     ;; A list of torrents which are seeding.  It's created in pass I and
@@ -154,6 +118,13 @@
     nil)
 
 (defvar *video-types* '("avi" "mp4" "mkv" "wmv" "ts" "flv" "m4v"))
+
+;; Forward references to a few things in tget.cl, prevent compiler warning
+(eval-when (compile)
+  (declaim (ftype (function)
+		  query-series-name-to-series
+		  series-never-delete
+		  series-archive)))
 
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
@@ -168,6 +139,7 @@
 	       (error "Couldn't find the default seed ration limit")))
 	  print-done
 	  print-other)
+  (declare (special user::*all-trackers*))
 
   (with-verbosity 2
     (format t "Default seed ratio limit: ~,2f~%" default-seed-ratio))    
@@ -213,14 +185,17 @@
 	   else (setf (gethash name *torrents*) torrent)))
       
       (multiple-value-bind (series-name season episode)
-	  (user::extract-episode-info-from-filename (torrent-filename torrent)
-						    :episode-required nil)
+	  (extract-episode-info-from-filename (torrent-filename torrent)
+					      :episode-required nil)
+	(let ((s (query-series-name-to-series series-name)))
+	  (when s
+	    (setf (torrent-never-delete torrent) (series-never-delete s))
+	    (setf (torrent-archive torrent) (series-archive s))))
 	(when series-name
 	  (if* season
 	     then (let (pretty)
 		    (setq pretty
-		      (user::season-and-episode-to-pretty-epnum season
-								episode))
+		      (season-and-episode-to-pretty-epnum season episode))
 		    (setf (torrent-name torrent)
 		      (format nil "~a ~a" series-name pretty))
 		    (setf (torrent-season torrent) season)
@@ -272,9 +247,9 @@
 		  (- *now* (torrent-date-finished torrent)))))
       
       (setf (torrent-tracker torrent)
-	(user::transmission-filename-to-tracker (torrent-filename torrent)
-						:hash (torrent-hash torrent)
-						:debug *debug*))
+	(transmission-filename-to-tracker (torrent-filename torrent)
+					  :hash (torrent-hash torrent)
+					  :debug *debug*))
 
 ;;;; Use torrent data to determine status
       
@@ -289,8 +264,9 @@
       ;;
       (if* (null (torrent-tracker torrent))
 	 thenret ;; (warn "null tracker: ~a" torrent)
-       elseif (dolist (tracker *trackers* t)
-		(when (match-re (tracker-re tracker) (torrent-tracker torrent)
+       elseif (dolist (tracker *all-trackers* t)
+		(when (match-re (tracker-re tracker)
+				(torrent-tracker torrent)
 				:return nil)
 		  (setf (torrent-tracker-char torrent) (tracker-char tracker))
 		  (funcall (tracker-setter tracker) torrent)
@@ -467,7 +443,8 @@
     nil)
 
 (defun tcleanup-files (&aux (initial-newline t) header
-			    (symlink-pass t))
+			    (symlink-pass t)
+			    torrent)
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
 	     (format t "~%")
@@ -476,22 +453,47 @@
 	     (format t "~a~%" header)
 	     (setq header nil))
 	   (apply #'format t format-string args)))
-    ;; Initialize a hash table of watched videos.
-    ;;
+
+    ;; Initialize a hash table of watched videos and files in plex
     (initialize-watched)
     (initialize-plex-files)
-  
+    
+;;;;TODO: a bunch of files aren't being archived properly... debug this!!!
+
     (dolist (thing *watch-directories*)
       (destructuring-bind (directory . label) thing
 	(setq header (format nil "~a:" label))
 	(map-over-directory
-	 (lambda (p)
+	 (lambda (p &aux series-name series never-delete archive)
+	   ;; Check for NEVER-DELETE and ARCHIVE options.  If there's not
+	   ;; an active torrent with the information, need to query it from
+	   ;; the raw filename.
+	   (if* (setq torrent (gethash (file-namestring p) *torrents*))
+	      then (setq never-delete (torrent-never-delete torrent))
+		   (setq archive (torrent-archive torrent))
+	    elseif (and (setq series-name
+			  (extract-episode-info-from-filename
+			   (file-namestring p)
+			   :episode-required nil))
+			(setq series
+			  (query-series-name-to-series series-name)))
+	      then (setq never-delete (series-never-delete series))
+		   (setq archive (series-archive series)))
+
+	   (when (and archive (not (probe-file archive)))
+	     (.error "archive directory does not exist: ~a.~%" archive))
+	   
 	   (cond
+	    (never-delete (announce "NEVER DELETE: ~a~%" (file-namestring p)))
+
 	    ((member (pathname-type p) *video-types* :test #'equalp)
 	     (multiple-value-bind (ready-to-remove reason) (watchedp p)
 	       (if* ready-to-remove
 		  then (if* *remove-watched*
-			  then (cleanup-file p #'announce)
+			  then (cleanup-file p #'announce :move-to archive)
+			elseif archive
+			  then (announce "ARCHIVE ~a:~a~%"
+					 reason (file-namestring p))
 			  else (announce "YES ~a:~a~%"
 					 reason (file-namestring p)))
 		elseif (null reason)
@@ -503,12 +505,16 @@
 	     (when (and (not (gethash (namestring p) *plex-files-hash-table*))
 			(probe-file p))
 	       (announce "HIDDEN: ~a~%" (file-namestring p))))
+
 	    ((or (equalp "srt" (pathname-type p))
 		 (equalp "sub" (pathname-type p)))
 	     (when (not (find-video-match-for-srt p))
 	       (if* *remove-watched*
-		  then (cleanup-file p #'announce)
+		  then (cleanup-file p #'announce :move-to archive)
+		elseif archive
+		  then (announce "ARCHIVE: ~a~%" (file-namestring p))
 		  else (announce "YES: ~a~%" (file-namestring p)))))
+
 	    ((or (match-re "\\.ds_store" (file-namestring p)
 			   :case-fold t :return nil)
 		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part"
@@ -518,6 +524,7 @@
 		 (match-re "^r\\d\\d$" (pathname-type p) :return nil))
 	     ;; ignore files
 	     )
+
 	    (t (announce "unknown: ~a~%" (file-namestring p)))))
 
 	 (pathname-as-directory directory)
@@ -572,12 +579,22 @@
        else (format t "didn't find video for p=~s~%" p)
 	    nil)))
 
-(defun cleanup-file (p announce &aux aux-p rar)
+(defun cleanup-file (p announce
+		     &key move-to
+		     &aux aux-p rar)
   (flet ((df (p)
 	   (when (probe-file p)
-	     (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
-	     (when (not *debug*)
-	       (delete-file p)))))
+	     (if* move-to
+		then (funcall announce "~@[Would do:~* ~]mv ~a ~a~%"
+			      *debug* p move-to)
+		     (when (not *debug*)
+		       (rename-file p
+				    (merge-pathnames
+				     (file-namestring p)
+				     (pathname-as-directory move-to))))
+		else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
+		     (when (not *debug*)
+		       (delete-file p))))))
     (if* (setq aux-p (symbolic-link-p p))
        then ;; delete the symlink and what it points to
 	    (setq aux-p (merge-pathnames aux-p p))
@@ -739,103 +756,3 @@
      else (setq name (file-namestring file)))
   (let ((torrent (gethash name *torrents*)))
     (and torrent (null (torrent-removed torrent)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-condition tcleanup (error) ())
-
-(defun .error (format-string &rest format-arguments)
-  ;; This separates known tget errors from unexpected program errors.  All
-  ;; calls to error in this code should be to this function.  Any calls to
-  ;; error or cerror cause a stack trace.
-  (error 'tcleanup :format-control format-string
-	 :format-arguments format-arguments))
-
-(defun user::main ()
-  (flet
-      ((doit ()
-	 (system:with-command-line-arguments
-	     (("version" :long print-version)
-	      ("config" :long config-file :required-companion)
-	      ("d" :short debug)
-	      ("h" :short ignore-watched-within :required-companion)
-	      ("info" :long info)
-	      ("torrents-only" :long torrents-only)
-	      ("q" :short quiet)
-	      ("remove" :long remove-all)
-	      ("remove-seeded" :long remove-seeded)
-	      ("remove-watched" :long remove-watched)
-	      ("v" :short verbose :allow-multiple-options))
-	     (rest)
-	   (when print-version
-	     (format t "~&tcleanup version ~a.~%" *tcleanup-version*)
-	     (exit 0 :quiet t))
-	   (and rest (.error "extra arguments:~{ ~a~}." rest))
-	   (when info
-	     (dolist (line (tm "-t" "all" "--info"))
-	       (format t "~a~%" line))
-	     (exit 0))
-	   (when config-file (setq *config-file* (list config-file)))
-	   (when debug (setq *debug* t))
-	   (setq *verbose* (or verbose
-			       (when quiet 0)
-			       1))
-	   (if* remove-all
-	      then (setq *remove-seeded* t
-			 *remove-watched* t)
-	      else (when remove-seeded (setq *remove-seeded* t))
-		   (when remove-watched (setq *remove-watched* t)))
-    
-	   (let ((*package* (load-time-value (find-package :tcleanup))))
-	     (or (dolist (config-file *config-file*)
-		   (when (probe-file config-file)
-		     (progn (load config-file :verbose nil) 
-			    (return t))))
-		 (.error "Could not find config file.")))
-	   
-	   ;; Do after loading config file, so it can override the value
-	   ;; there
-	   (when ignore-watched-within
-	     (or (=~ "^\\d+$" ignore-watched-within)
-		 (.error "-h value should be a number: ~a."
-			 ignore-watched-within))
-	     (setq *ignore-watched-within*
-	       (parse-integer ignore-watched-within)))
-    
-	   ;; Error checking on config file:
-	   ;;
-	   ;; Part I:
-	   (and (null *minimum-seed-seconds*)
-		(.error
-		 "*minimum-seed-seconds* is not defined in config file."))
-	   (or (numberp *minimum-seed-seconds*)
-	       (.error "*minimum-seed-seconds* is not a number: ~s."
-		      *minimum-seed-seconds*))
-	   ;;
-	   ;; Part II:
-	   (and (null *ignore-watched-within*)
-		(.error
-		 "*ignore-watched-within* is not defined in config file."))
-	   (or (numberp *ignore-watched-within*)
-	       (.error "*ignore-watched-within* isnot a number: ~s."
-		      *ignore-watched-within*))
-	   (and (null *watch-directories*)
-		(.error "*watch-directories* is not defined in config file."))
-
-	   (tcleanup-transmission)
-	   (when torrents-only (exit 0))
-	   (tcleanup-files)
-    
-	   (exit 0))))
-    
-    (if* *debug* ;; -d on command line doesn't effect this test!
-       then (format t ";;;NOTE: debugging mode is on~%")
-	    (doit)
-       else (top-level.debug:with-auto-zoom-and-exit (*standard-output*)
-	      (handler-case (doit)
-		(tcleanup (c)
-		  ;; 'tcleanup errors don't get a backtrace, since those are
-		  ;; expected or, at least, planned for.  The unexpected
-		  ;; ones get the zoom.
-		  (format t "~&~a~&" c)
-		  (exit 1 :quiet t)))))))

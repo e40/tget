@@ -1,13 +1,6 @@
 ;; tget utility functions, macros and variables
 ;; None of these utilities require AllegroCache
 
-(eval-when (compile eval load)
-  (require :osi)
-  (require :datetime)
-  (use-package :util.date-time)
-  (require :shell)
-  (use-package :excl.shell))
-
 (in-package :user)
 
 (defvar *verbose*

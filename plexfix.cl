@@ -1,23 +1,10 @@
 ;; plexfix :: fix filenames for Plex Media Server
 
 (eval-when (compile eval load)
-  ;;(require :anydate)
-  (require :list2)
-  (require :acldns)
-  (require :smtp)
-  (require :osi)
-  (require :shell)
-  (require :autozoom)
+  (require :tget-defs "defs.fasl")
   (require :tget-utils "utils.fasl"))
 
-(defpackage :cl-user
-  (:use #:common-lisp
-	#:excl
-	#:excl.osi
-	#:excl.shell
-	#:net.post-office))
-
-(in-package :cl-user)
+(in-package :user)
 
 (defvar *debug* nil)
 (defvar *no-execute* nil)

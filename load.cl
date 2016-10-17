@@ -1,3 +1,6 @@
+(in-package :user)
+
+(load "sys.cl")
 
 (setq *tget-data-directory* *default-pathname-defaults*)
 (setq *database-main-name* (merge-pathnames "main.db" *load-pathname*))
@@ -11,9 +14,6 @@
 (setq *learn* t)
 (setq *verbose* 1)
 (setq *auto-backup* nil)
-
-(dolist (file '("rssreader.cl" "utils.cl" "tget.cl" "t-tget.cl"))
-  (load (compile-file file)))
 
 (defun opendb (&key reset copy-db compact)
   (setq *transmission-remote* nil)

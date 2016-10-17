@@ -19,9 +19,18 @@ set -x
 rm -fr main.db*
 cp -rp ~/.tget.d/db main.db
 
-tget --cron --dump-all | egrep '^#' > test.compact.before
-tget --compact-database
-tget --cron --dump-all | egrep '^#' > test.compact.after
+if ! tget --cron --dump-all | egrep '^#' > test.compact.before; then
+    echo ERROR: before --dump-all failed
+    exit 1
+fi
+if ! tget --compact-database; then
+    echo ERROR: compact failed
+    exit 1
+fi
+if ! tget --cron --dump-all | egrep '^#' > test.compact.after; then
+    echo ERROR: after --dump-all failed
+    exit 1
+fi
 
 if ! diff <(sort < test.compact.before) <(sort < test.compact.after); then
     echo ERROR: compare of compact before/after failed 

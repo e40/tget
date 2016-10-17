@@ -2,13 +2,15 @@
 (in-package :user)
 
 (setq excl::*break-on-warnings* t)
+(load (compile-file-if-needed "defs.cl"))
 (load (compile-file-if-needed "utils.cl"))
 (load (compile-file "plexfix.cl"))
 
 (generate-application
  "plexfix"
  "plexfix/"
- '("utils.fasl"
+ '("defs.fasl"
+   "utils.fasl"
    "plexfix.fasl")
  :restart-init-function 'main
  :application-administration '(:resource-command-line "-Q")

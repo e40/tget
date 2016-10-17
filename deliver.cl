@@ -1,13 +1,10 @@
 
 (in-package :user)
 
-(defvar *debug* nil)
-
 (let ((*record-source-file-info* nil)
       (*load-source-file-info* nil)
       (excl::*break-on-warnings* t))
-  (dolist (file '("rssreader.cl" "utils.cl" "tget.cl"))
-    (load (compile-file file))))
+  (load "sys.cl"))
 
 (generate-application
  "tget"
@@ -15,7 +12,7 @@
  (append (if* *debug*
 	    then '(:streamc :inspect :trace)
 	    else nil)
-	 '(:list2 :seq2 "rssreader.fasl" "utils.fasl" "tget.fasl"))
+	 (append '(:list2 :seq2) user::*fasls*))
  :restart-init-function 'main
  :application-administration
  '(:resource-command-line "-Q")

@@ -9,7 +9,6 @@
   (require :aserve)
   (require :pxml-sax))
 
-
 (defpackage :net.rss.rdf 
   (:export #:about
 	   #:RDF

@@ -17,13 +17,13 @@ else
 LISP ?= mlisp
 endif
 
-runlisp = $(LISP) -q -batch -L build.tmp -kill
+runlisp = $(LISP) -q -batch -backtrace-on-error -L build.tmp -kill
 
 ifdef INSTALL_CONFIG_FILE
 build_config = config.cl
 endif
 
-default: clean build $(build_config) tcleanup plexfix
+default: clean build $(build_config) plexfix
 
 config.cl: tget-config/config.cl
 	sed -e 's,"\(http.*://[^/]*/\).*","\1...",g' \
@@ -33,7 +33,7 @@ config.cl: tget-config/config.cl
 all:	default test
 
 build: FORCE
-	cd bittorrent; make
+	test -d bittorrent || git clone https://github.com/e40/bittorrent
 	rm -fr tget build.tmp
 	cat deliver.cl >> build.tmp
 	$(runlisp)
@@ -65,10 +65,7 @@ else
 	@echo INSTALL_CONFIG_FILE not defined; exit 1
 endif
 
-# plexfix goes into the docker container 
-install-all: install-tget install-tcleanup
-
-install-tget: FORCE
+install: FORCE
 ifdef DESTDIR
 	rm -fr $(DESTDIR)/lib/tget.old
 	-mv $(DESTDIR)/lib/tget $(DESTDIR)/lib/tget.old
@@ -81,36 +78,11 @@ else
 endif
 
 clean: FORCE
-	rm -fr tget plexfix tcleanup
+	rm -fr tget plexfix
 	rm -fr main.db*
 	rm -fr temp.db*
 	rm -f archive.before archive.after
 	rm -f *.fasl */*.fasl *.out *.log build.in *.debug build.tmp
-
-###############################################################################
-# tcleanup
-
-tcleanup: FORCE
-	test -d bittorrent || git clone https://github.com/e40/bittorrent
-	cd bittorrent; make
-	rm -fr tcleanup build.tmp
-	cat deliver_tcleanup.cl >> build.tmp
-	$(runlisp)
-ifdef TCLEANUP_CONFIG
-	cp -p $(TCLEANUP_CONFIG) tcleanup/tcleanup-config.cl
-endif
-
-install-tcleanup: FORCE
-ifdef DESTDIR
-	rm -fr $(DESTDIR)/lib/tcleanup.old
-	-mv $(DESTDIR)/lib/tcleanup $(DESTDIR)/lib/tcleanup.old
-	cp -rp tcleanup $(DESTDIR)/lib/tcleanup
-	rm -f $(DESTDIR)/bin/tcleanup
-	cd $(DESTDIR)/bin; ln -s $(DESTDIR)/lib/tcleanup/tcleanup .
-else
-	@echo There is no DESTDIR defined in Makefile.
-	@exit 1
-endif
 
 ###############################################################################
 # plexfix

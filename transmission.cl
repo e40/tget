@@ -18,10 +18,10 @@
 			 (merge-pathnames "*.torrent"
 					  *transmission-directory*)))
     (if* (probe-file torrent-file)
-       then (let* ((dict (bdecode-file torrent-file))
-		   (announce (dict-get "announce" dict))
-		   (info (dict-get "info" dict))
-		   (name (dict-get "name" info))
+       then (let* ((dict (bittorrent::bdecode-file torrent-file))
+		   (announce (bittorrent::dict-get "announce" dict))
+		   (info (bittorrent::dict-get "info" dict))
+		   (name (bittorrent::dict-get "name" info))
 		   ;; The hash prefix at the end of the .torrent filename
 		   hash-prefix)
 	      ;; If the filename was renamed in Transmission, the simple

@@ -66,24 +66,7 @@
 ;; #2 is attractive, but I can't see how to make it work in all cases.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(eval-when (compile eval load)
-  (require :ssl)
-  (require :ef-e-crcrlf)
-  (require :rssreader)
-  (require :aserve)
-  ;; Just changing acache from 2.2.2 to 3.0.0,
-  ;; timing for "make test" went from
-  ;;   real	0m38.629s
-  ;; to
-  ;;   real	1m3.279s
-  ;; 2.2.3's time is:
-  ;;   real	0m37.939s
-  ;;(require :acache "acache-2.2.3.fasl")
-  (require :acache "acache-3.0.5.fasl")
-  (require :autozoom))
-
 (defpackage :user
-  (:use #:excl #:util.date-time #:excl.shell)
   (:import-from #:db.allegrocache
 		;; Specify each symbol instead of using the package,
 		;; because we need to review the :db argument usage for
@@ -100,8 +83,7 @@
 		#:open-file-database
 		#:restore-database
 		#:retrieve-from-index
-		#:save-database
-		)
+		#:save-database)
   (:import-from #:db.allegrocache.utils
 		#:defclass*
 		#:delete-persistent-class))
@@ -109,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "4.7.3")
+(defvar *tget-version* "5.0.4")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -130,41 +112,10 @@
     ;; 11 == `group-rss-url' is now a list
     ;; 12 == new series `private' slot; episode `tracker' slot; class
     ;;       `group' is no longer persistent
+    ;; 13 == never-delete and archive added to `series'
     ;;
     ;; see the db-upgrade methods for details.
-    12)
-
-;; Adding this because I've noticed problems with aserve AND
-;; transmission-remote using https.  Grrrrr.
-(defvar *avoid-https* t)
-
-;; Non-nil if we're using --add command line argument
-(defvar *manual-add-mode* nil)
-
-(defvar *tget-data-directory* "~/.tget.d/")
-(defvar *auto-backup* t)
-(defvar *main* nil)			; main acache database
-(defvar *temp* nil)			; temp acache database
-(defvar *database-main-name* nil)
-(defvar *database-temp-name* nil)
-(defvar *version-file* nil)
-(defvar *config-file* nil)
-(defvar *debug* nil)
-(defvar *test* nil)
-(defvar *init-forms* nil)
-
-(defvar *log-rss-stream* nil)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; [some] user-settable variables (in config file)
-
-(defvar *log-rss*
-    ;; if non-nil, a pathanme to log rss feed info
-    nil)
-
-(defvar *log-file*
-    ;; if non-nil, a pathanme to log episode info
-    nil)
+    13)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; acache hackery
@@ -325,7 +276,13 @@
   date-based
   ;; Non-nil if this series should only be downloaded from a private
   ;; tracker.
-  private)
+  private
+  ;; If non-nil, then --cleanup never deletes episodes of this series.
+  never-delete
+  ;; If non-nil, then --cleanup moves to this directory instead of
+  ;; deleting.
+  archive
+  )
 
 (defmethod print-object ((obj series) stream)
   (cond
@@ -462,26 +419,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct tracker
-  name
-  url
-  debug-feed
-  public
-  download-delay
-  disabled
-  ratio
-  upload-limit)
-
-(defvar *tracker-name-to-tracker* (make-hash-table :size 777 :test #'eq))
-(push '(clrhash *tracker-name-to-tracker*)
-      *init-forms*)
-
-(defun tracker-name-to-tracker (tracker-name)
-  (gethash tracker-name *tracker-name-to-tracker*))
-
-(defun (setf tracker-name-to-tracker) (tracker tracker-name)
-  (setf (gethash tracker-name *tracker-name-to-tracker*) tracker))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Used to be a class called `group', can't use name
@@ -536,15 +473,6 @@
 (push '(setq *torrent-handler* nil)
       *init-forms*)
 
-(define-condition tget (error) ())
-
-(defun .error (format-string &rest format-arguments)
-  ;; This separates known tget errors from unexpected program errors.  All
-  ;; calls to error in this code should be to this function.  Any calls to
-  ;; error or cerror cause a stack trace.
-  (error 'tget :format-control format-string
-	 :format-arguments format-arguments))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UI Macros
 
@@ -597,37 +525,6 @@
 		:codec codec
 		:resolution resolution)))))
 
-(defmacro deftracker (name &key url debug-feed public download-delay
-				disabled ratio upload-limit)
-  `(.make-tracker
-    :name ,name
-    :url ,url
-    :debug-feed ,debug-feed
-    :public ,public
-    :download-delay ,download-delay
-    :disabled ,disabled
-    :ratio ,ratio
-    :upload-limit ,upload-limit))
-
-(defmacro .make-tracker (&key name url debug-feed public download-delay
-			      disabled ratio upload-limit)
-  (when (tracker-name-to-tracker name)
-    (.error "Tracker ~s defined more than once in config file." name))
-  (check-url "Tracker :url" url)
-  ;; Don't check debug-feed because it's a function
-  (check-integer "Tracker :download-delay" download-delay)
-  (check-integer "Tracker :upload-limit" upload-limit)
-  (check-ratio ratio)
-  (setf (tracker-name-to-tracker name)
-    (make-tracker
-     :name name
-     :url url
-     :debug-feed debug-feed
-     :public public
-     :download-delay download-delay
-     :disabled disabled
-     :ratio ratio
-     :upload-limit upload-limit)))
 
 (defmacro defgroup (name &key trackers rss-url delay ratio quality
 			      download-path)
@@ -670,7 +567,8 @@
 	       :download-path download-path)))))
 
 (defmacro defseries (name group &key delay quality remove catch-up subdir
-				     date-based aliases private)
+				     date-based aliases private
+				     never-delete archive)
   (if* remove
      then `(forget-series ,name :noisy nil)
      else `(make-series
@@ -682,7 +580,9 @@
 	    ,@(when delay `(:delay ,delay))
 	    ,@(when quality `(:quality ,quality))
 	    ,@(when aliases `(:aliases ',aliases))
-	    ,@(when private `(:private ',private)))))
+	    ,@(when private `(:private ',private))
+	    ,@(when never-delete `(:never-delete ',never-delete))
+	    ,@(when archive `(:archive ',archive)))))
 
 (defun forget-series (name &key (noisy t))
   (let* ((series-name (canonicalize-series-name name))
@@ -709,7 +609,7 @@
       *init-forms*)
 
 (defun make-series (&key name group delay quality catch-up subdir
-			 date-based aliases private
+			 date-based aliases private never-delete archive
 		    &aux series)
   (let* ((pretty-name name)
 	 (name (canonicalize-series-name name))
@@ -718,15 +618,19 @@
     (check-quality quality)
     (check-group group)
     (or (stringp name)
-	(.error "Series name must be a string: ~s." name))
+	(.error "Series :name must be a string: ~s." name))
     (when catch-up
       (or (stringp catch-up)
-	  (.error "Series catch-up must be a string: ~s." catch-up)))
+	  (.error "Series :catch-up must be a string: ~s." catch-up)))
     (when subdir
       (or (stringp subdir)
-	  (.error "Series subdir must be a string: ~s." subdir)))
+	  (.error "Series :subdir must be a string: ~s." subdir)))
     (check-boolean "Series :date-based option" date-based)
     (check-boolean "Series :private option" private)
+    (check-boolean "Series :never-delete option" never-delete)
+    (or (null archive)
+	(stringp archive)
+	(.error "Series :archive must be nil or a string: ~s." archive))
     (when aliases
       (or (null aliases)
 	  (dolist (alias aliases)
@@ -745,6 +649,8 @@
 	      (setf (series-subdir old) subdir)
 	      (setf (series-date-based old) date-based)
 	      (setf (series-private old) private)
+	      (setf (series-never-delete old) never-delete)
+	      (setf (series-archive old) archive)
 	      old
 	 else (let ((*allegrocache* *main*))
 		(make-instance 'series
@@ -757,7 +663,9 @@
 		  :quality quality
 		  :subdir subdir
 		  :date-based date-based
-		  :private private))))
+		  :private private
+		  :never-delete never-delete
+		  :archive archive))))
     (setf (gethash pretty-name *all-series-names*) t)
     (dolist (alias aliases)
       ;; Enter the aliases to be used during RSS to EPISODE conversion.
@@ -902,67 +810,6 @@
   (setq *torrent-handler* thing))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun check-url (what item)
-  (when item
-    (or (and (stringp item) (=~ "^http" item))
-	(.error "~a must be a URL: ~s." what item))))
-
-(defun check-filename (what item)
-  (when item
-    (or (and (or (stringp item)
-		 (pathnamep item))
-	     (probe-file item))
-	(.error "~a must be the name of an existing file: ~s." what item))))
-
-(defun check-integer (what item)
-  (when item
-    (or (integerp item)
-	(.error "~a must be an integer: ~s." what item))))
-
-(defun check-boolean (what item)
-  (when item
-    (or (eq 't item)
-	(.error "~a must be `t' or `nil': ~s." what item))))
-
-(defun check-rss-url (rss-url)
-  (and rss-url
-       (and (dolist (u (if (consp rss-url) rss-url (list rss-url)))
-	      (if* (or (symbolp u)
-		       (and (stringp u)
-			    (match-re "^http" u)))
-		 thenret
-		 else (return t)))
-	    (.error "Bad rss-url: ~s." rss-url))))
-
-(defun check-trackers (tracker-thing &aux tracker (trackers '()))
-  (and tracker-thing
-       (dolist (tracker-name (if* (consp tracker-thing)
-			     then tracker-thing
-			     else (list tracker-thing))
-		 (nreverse trackers))
-	 (when (not (symbolp tracker-name))
-	   (.error "Bad tracker name: ~s." tracker-name))
-	 (when (not (setq tracker (tracker-name-to-tracker tracker-name)))
-	   (.error "Unknown tracker: ~s." tracker-name))
-	 (push tracker trackers))))
-
-(defun check-delay (delay)
-  (and delay
-       (or (numberp delay)
-	   (.error "Bad delay, must be a number: ~s." delay))))
-
-(defun check-ratio (ratio)
-  (and ratio
-       (or (and (stringp ratio)
-		(match-re "^-?[0-9.]+$" ratio))
-	   (floatp ratio)
-	   (.error "Bad ratio: ~s." ratio))))
-
-(defun check-group (group-name)
-  (and group-name
-       (or (keywordp group-name)
-	   (.error "Bad group: ~s." group-name))))
 
 (defun check-quality (quality)
   (and quality
@@ -1327,6 +1174,9 @@ Catch up series to a specific episode:
 	 (system:with-command-line-arguments
 	     (("version" :long print-version)
 	      ("help" :long help)
+	      ("verbose" :long verbose-long)
+	      ("v" :short verbose-short :allow-multiple-options)
+	      ("debug" :long debug)
 	      
 ;;;; primary arguments (determine behavior)
 	      ("add" :long add-mode :required-companion)
@@ -1347,6 +1197,16 @@ Catch up series to a specific episode:
 	      ("dump-series" :long dump-series :required-companion)
 	      ("dump-stats" :long dump-stats)
 	      ("skip" :long skip-next :required-companion)
+	      
+;;;; tcleanup arguments
+	      ("cleanup" :long long-cleanup)
+	      ("c" :short short-cleanup)
+	      ("h" :short ignore-watched-within :required-companion)
+	      ("torrent-info" :long torrent-info)
+	      ("torrents-only" :long torrents-only)
+	      ("remove" :long remove-all)
+	      ("remove-seeded" :long remove-seeded)
+	      ("remove-watched" :long remove-watched)
 
 ;;;; modifiers (change primary behavior)
 	      ("auto-backup" :long auto-backup :required-companion)
@@ -1358,13 +1218,12 @@ Catch up series to a specific episode:
 	      ("force" :long force-mode)
 	      ("learn" :long learn-mode)
 	      ("reset" :long reset-database)
-	      ("root" :long root :required-companion)
-	      ("verbose" :long verbose-long)
-	      ("v" :short verbose-short :allow-multiple-options))
+	      ("root" :long root :required-companion))
 	     (extra-args :usage *usage*)
 	   (when print-version
 	     (format t "~&tget version ~a." *tget-version*)
 	     (exit 0 :quiet t))
+	   (when debug (setq *debug* t))
 	   (setq verbose (or verbose-short verbose-long))
 	   (when (and verbose (not (numberp verbose)))
 	     (setq verbose 1))
@@ -1458,12 +1317,22 @@ Catch up series to a specific episode:
 	       (exit 1 :quiet t)))
 	   ;; Must be done before the loading of the config file!
 	   (reset-program-state)
-	   (load config-file :verbose (> *verbose* 0))
+	   (load config-file :verbose (> *verbose* 1))
 	   (when (not *torrent-handler*)
 	     (usage "*torrent-handler* is not defined in config file."))
 	   (open-log-files)
 
-	   (if* dump-all
+;;;; main argument processing
+	   (if* (or short-cleanup long-cleanup)
+	      then ;; This does need the database, since we look at series
+		   ;; options.
+		   (process-cleanup-arguments ignore-watched-within
+					      torrent-info
+					      torrents-only
+					      remove-all
+					      remove-seeded
+					      remove-watched)
+	    elseif dump-all
 	      then (doclass (ep (find-class 'episode) :db *main*)
 		     (if* verbose
 			then (describe ep)
@@ -1579,9 +1448,60 @@ Catch up series to a specific episode:
 		  (format t "~&~a~&" c)
 		  (exit 1 :quiet t)))))))
 
+(defun process-cleanup-arguments (ignore-watched-within
+				  torrent-info
+				  torrents-only
+				  remove-all
+				  remove-seeded
+				  remove-watched)
+  (when torrent-info
+    (dolist (line (tm "-t" "all" "--info"))
+      (format t "~a~%" line))
+    (exit 0))
+  
+  (if* remove-all
+     then (setq *remove-seeded* t
+		*remove-watched* t)
+     else (when remove-seeded (setq *remove-seeded* t))
+	  (when remove-watched (setq *remove-watched* t)))
+    
+  ;; Do after loading config file, so it can override the value
+  ;; there
+  (when ignore-watched-within
+    (or (=~ "^\\d+$" ignore-watched-within)
+	(.error "-h value should be a number: ~a."
+		ignore-watched-within))
+    (setq *ignore-watched-within*
+      (parse-integer ignore-watched-within)))
+    
+  ;; Error checking on config file:
+  ;;
+  ;; Part I:
+  (and (null *minimum-seed-seconds*)
+       (.error
+	"*minimum-seed-seconds* is not defined in config file."))
+  (or (numberp *minimum-seed-seconds*)
+      (.error "*minimum-seed-seconds* is not a number: ~s."
+	      *minimum-seed-seconds*))
+  ;;
+  ;; Part II:
+  (and (null *ignore-watched-within*)
+       (.error
+	"*ignore-watched-within* is not defined in config file."))
+  (or (numberp *ignore-watched-within*)
+      (.error "*ignore-watched-within* isnot a number: ~s."
+	      *ignore-watched-within*))
+  (and (null *watch-directories*)
+       (.error "*watch-directories* is not defined in config file."))
+
+  (tcleanup-transmission)
+  (when torrents-only (exit 0))
+  (tcleanup-files)
+  )
+
 (defun open-log-files (&key truncate)
   (when (and *log-file* (not *log-stream*))
-    (with-verbosity 1
+    (with-verbosity 2
       (format t ";; Opening ~a log file...~%" *log-file*))
     (setq *log-stream*
       (open *log-file* :direction :output
@@ -1590,7 +1510,7 @@ Catch up series to a specific episode:
     (format *log-stream* "~%;; ~a~%~%" (ut-to-date-time (get-universal-time))))
 	   
   (when (and *log-rss* (not *log-rss-stream*))
-    (with-verbosity 1 (format t ";; Opening ~a rss log file...~%" *log-rss*))
+    (with-verbosity 2 (format t ";; Opening ~a rss log file...~%" *log-rss*))
     (setq *log-rss-stream*
       (open *log-rss* :direction :output
 	    ;; rss feed is too large to append
@@ -1953,6 +1873,19 @@ Catch up series to a specific episode:
 
   (tget-commit *main*))
 
+(defmethod db-upgrade ((version (eql 12)))
+  ;; The change from 12 to 13: add series slots `never-delete' and
+  ;; `archive'.  Just set them to `nil' if unbound.
+  (format t ";; Upgrading database from version ~d to ~d...~%"
+	  version (1+ version))
+  (format t ";;   Init never-delete and archive of series objects.~%")
+  (doclass (s (find-class 'series) :db *main*)
+    (when (not (slot-boundp s 'never-delete))
+      (setf (series-never-delete s) nil))
+    (when (not (slot-boundp s 'archive))
+      (setf (series-archive s) nil)))
+  (tget-commit *main*))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun clean-database (&key check)
@@ -1970,7 +1903,7 @@ Catch up series to a specific episode:
 
 (defun close-tget-database ()
   (when *main*
-    (with-verbosity 1 (format t ";; closing database...~%"))
+    (with-verbosity 2 (format t ";; closing database...~%"))
     (commit :db *main*)
     (close-database :db *main*)
     (setq *main* nil)
@@ -2156,8 +2089,6 @@ Catch up series to a specific episode:
 	   then (quality-priority q)
 	   else (quality-name q))))))
 
-(defvar *now* nil) ;; used by test suite
-
 (defun hours-available (episode)
   ;; Return the number of hours EPISODE has been available in the feed in
   ;; which it was found.
@@ -2184,7 +2115,7 @@ Catch up series to a specific episode:
 ;; If a feed gets this many errors, then we skip it
 (defvar *error-skip-count* 2)
 
-(defvar *tracker* nil)
+(defvar *current-tracker* nil)
 
 (defun process-groups (&aux (*http-timeout* *http-timeout*)
 			    ep-printer
@@ -2193,7 +2124,7 @@ Catch up series to a specific episode:
 			    (skip-count
 			     ;; (feed . count)
 			     '())
-			    *tracker*)
+			    *current-tracker*)
   (tget-commit *main*)
   (tget-commit *temp*)
   (dolist (group (collect-hash-values *group-name-to-group*))
@@ -2215,7 +2146,7 @@ Catch up series to a specific episode:
     ;; errors due to accessing slots of deleted objects.  :(
     ;;
     (setq group-processed nil)
-    (setq *tracker* nil)
+    (setq *current-tracker* nil)
     (cond
      ((group-trackers group)		; THE NEW WAY
       (dolist (tracker (group-trackers group))
@@ -2223,7 +2154,7 @@ Catch up series to a specific episode:
 		  (null (tracker-url tracker)))
 	  ;; Disabled or no URL, so ignore it.
 	  (go :skip))
-	(setq *tracker* tracker)
+	(setq *current-tracker* tracker)
 	
 	(when (null (setq temp (assoc (tracker-url tracker) skip-count
 				      :test #'string=)))
@@ -3428,7 +3359,7 @@ transmission-remote ~a:~a ~
       
       (make-episode
        :transient t
-       :tracker *tracker*
+       :tracker *current-tracker*
        :full-title (rss-item-title rss)
        :torrent-url (rss-item-link rss)
        :pub-date (parse-rss20-date (rss-item-pub-date rss))
@@ -3573,7 +3504,7 @@ transmission-remote ~a:~a ~
 	(setq ep
 	  (make-episode
 	   :transient t
-	   :tracker *tracker*
+	   :tracker *current-tracker*
 	   :full-title rss-title
 	   :torrent-url (rss-item-link rss)
 	   :pub-date (and (rss-item-pub-date rss)
@@ -3681,7 +3612,7 @@ transmission-remote ~a:~a ~
       (let ((ep
 	     (make-episode
 	      :transient t
-	      :tracker *tracker*
+	      :tracker *current-tracker*
 	      :full-title (rss-item-title rss)
 	      :torrent-url (rss-item-link rss)
 	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
@@ -3745,7 +3676,7 @@ transmission-remote ~a:~a ~
       (let ((ep
 	     (make-episode
 	      :transient t
-	      :tracker *tracker*
+	      :tracker *current-tracker*
 	      :full-title (rss-item-title rss)
 	      :torrent-url (rss-item-link rss)
 	      :pub-date (parse-rss20-date (rss-item-pub-date rss))
