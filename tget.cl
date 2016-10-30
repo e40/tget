@@ -835,6 +835,9 @@ Cleanup mode is activated by using the --cleanup or -c arguments.
 Download mode is activated by using the other primary behavior determining
 arguments.  See below.
 
+Cleanup mode has two parts: removing torrents from Transmission after
+they have seeded enough and removing video files watched by Plex.
+
 [download] Primary behavior determining arguments (one of these must be given):
 
     --add file-or-directory

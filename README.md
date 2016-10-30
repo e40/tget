@@ -1,6 +1,6 @@
 # tget 5.1.0 - torrent get
 
-_tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
+_tget_ is a suite of programs: _tget_ and _plexfix_.
 
 _tget_ grew out of my dissatisfaction with [FlexGet][2]'s behavior and
 configuration.  Don't get me wrong, [FlexGet][2] is an amazing program in
@@ -24,9 +24,6 @@ _tget_ isn't nearly as functional as [FlexGet][2], though, and the feed
 parsing only works (currently) with two sites (TvT and BTN).
 I'm always looking to add more.
 
-_tcleanup_ has a dual use: remove torrents from _transmission_ after
-they have seeded enough and to remove programs watched by Plex.
-
 _plexfix_ works around deficiencies in Plex, which doesn't recognize
 certain filename formats.  For example, `Foo-612.mp4` would not be
 recognized by Plex, perhaps because the naming convention is
@@ -40,7 +37,7 @@ links so that Plex can see the correct season and episode.
 **[Getting started](#getting-started)**  
 **[Configuration](#configuration)**  
 **[Maintenance tasks](#maintenance-tasks)**  
-**[tcleanup](#tcleanup)**  
+**[Cleanup](#Cleanup)**  
 **[plexfix](#plexfix)**  
 **[Usage](#usage)**  
 **[Example configuration file](#example-configuration-file)**  
@@ -472,17 +469,18 @@ episodes will be downloaded in the future:
 
     (defseries "Game of Bones :me :private t :delay 0 :quality :720p)
 
-## tcleanup
+## Cleanup
 
-_tcleanup_ is intended to be run manually or from cron.  I recommend
+This is a mode of _tget_, when the `--cleanup` or `-c` arguments are
+given.  It is intended to be run manually or from cron.  I recommend
 that you run it manually for a while, since it will take a while to
 tune the configuration so that you do not receive hit and runs from
 any tracker.
 
-With no arguments, _tcleanup_ does not remove anything.  It just gives
-you the status of your torrents and files:
+With no optional arguments, nothing is removed.  _tget_ prints the
+status of torrents and videos:
 
-    $ tcleanup 
+    $ tget -c 
     These torrents are complete:
 
     T name                                     %done ratio seeded      left        
@@ -522,7 +520,7 @@ you the status of your torrents and files:
 
 To remove the completed torrents, use `--remove`:
 
-    $ tcleanup --remove
+    $ tget -c --remove
     These torrents were removed:
 
     T name                                     %done ratio seeded      left        
@@ -562,7 +560,7 @@ To remove the completed torrents, use `--remove`:
 
 Now we have:
 
-    $ tcleanup
+    $ tget -c
 
     These torrents are incomplete:
 
@@ -597,7 +595,7 @@ Now we have:
 To remove the watched torrents before the configured waiting period of
 72h is up (set the waiting period to 0, for example):
 
-    $ tcleanup --remove -h0
+    $ tget -c --remove -h0
 
     These torrents are incomplete:
 
@@ -673,6 +671,9 @@ There are two primary modes of operation: cleanup and download.
 Cleanup mode is activated by using the --cleanup or -c arguments.
 Download mode is activated by using the other primary behavior determining
 arguments.  See below.
+
+Cleanup mode has two parts: removing torrents from Transmission after
+they have seeded enough and removing video files watched by Plex.
 
 [download] Primary behavior determining arguments (one of these must be given):
 

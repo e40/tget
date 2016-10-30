@@ -12,7 +12,7 @@
 <h1>
 <a id="user-content-tget-510---torrent-get" class="anchor" href="#tget-510---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.1.0 - torrent get</h1>
 
-<p><em>tget</em> is a suite of programs: <em>tget</em>, <em>tcleanup</em> and <em>plexfix</em>.</p>
+<p><em>tget</em> is a suite of programs: <em>tget</em> and <em>plexfix</em>.</p>
 
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -36,9 +36,6 @@ not possible in <a href="http://flexget.com/" title="FlexGet">FlexGet</a>.  <em>
 parsing only works (currently) with two sites (TvT and BTN).
 I'm always looking to add more.</p>
 
-<p><em>tcleanup</em> has a dual use: remove torrents from <em>transmission</em> after
-they have seeded enough and to remove programs watched by Plex.</p>
-
 <p><em>plexfix</em> works around deficiencies in Plex, which doesn't recognize
 certain filename formats.  For example, <code>Foo-612.mp4</code> would not be
 recognized by Plex, perhaps because the naming convention is
@@ -54,7 +51,7 @@ links so that Plex can see the correct season and episode.</p>
 <strong><a href="#getting-started">Getting started</a></strong><br>
 <strong><a href="#configuration">Configuration</a></strong><br>
 <strong><a href="#maintenance-tasks">Maintenance tasks</a></strong><br>
-<strong><a href="#tcleanup">tcleanup</a></strong><br>
+<strong><a href="#Cleanup">Cleanup</a></strong><br>
 <strong><a href="#plexfix">plexfix</a></strong><br>
 <strong><a href="#usage">Usage</a></strong><br>
 <strong><a href="#example-configuration-file">Example configuration file</a></strong>  </p>
@@ -582,17 +579,18 @@ episodes will be downloaded in the future:</p>
 </code></pre>
 
 <h2>
-<a id="user-content-tcleanup" class="anchor" href="#tcleanup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tcleanup</h2>
+<a id="user-content-cleanup" class="anchor" href="#cleanup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Cleanup</h2>
 
-<p><em>tcleanup</em> is intended to be run manually or from cron.  I recommend
+<p>This is a mode of <em>tget</em>, when the <code>--cleanup</code> or <code>-c</code> arguments are
+given.  It is intended to be run manually or from cron.  I recommend
 that you run it manually for a while, since it will take a while to
 tune the configuration so that you do not receive hit and runs from
 any tracker.</p>
 
-<p>With no arguments, <em>tcleanup</em> does not remove anything.  It just gives
-you the status of your torrents and files:</p>
+<p>With no optional arguments, nothing is removed.  <em>tget</em> prints the
+status of torrents and videos:</p>
 
-<pre><code>$ tcleanup 
+<pre><code>$ tget -c 
 These torrents are complete:
 
 T name                                     %done ratio seeded      left        
@@ -633,7 +631,7 @@ NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
 
 <p>To remove the completed torrents, use <code>--remove</code>:</p>
 
-<pre><code>$ tcleanup --remove
+<pre><code>$ tget -c --remove
 These torrents were removed:
 
 T name                                     %done ratio seeded      left        
@@ -674,7 +672,7 @@ NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
 
 <p>Now we have:</p>
 
-<pre><code>$ tcleanup
+<pre><code>$ tget -c
 
 These torrents are incomplete:
 
@@ -710,7 +708,7 @@ NO seeding:The.Ultimate.Fighter.S21E08.HDTV.x264-KOENiG.mp4
 <p>To remove the watched torrents before the configured waiting period of
 72h is up (set the waiting period to 0, for example):</p>
 
-<pre><code>$ tcleanup --remove -h0
+<pre><code>$ tget -c --remove -h0
 
 These torrents are incomplete:
 
@@ -791,6 +789,9 @@ NEW name: /me/tplex/content/videos/adrian+kevin/ridiculousness.S06E29.mp4
 Cleanup mode is activated by using the --cleanup or -c arguments.
 Download mode is activated by using the other primary behavior determining
 arguments.  See below.</p>
+
+<p>Cleanup mode has two parts: removing torrents from Transmission after
+they have seeded enough and removing video files watched by Plex.</p>
 
 <p>[download] Primary behavior determining arguments (one of these must be given):</p>
 
