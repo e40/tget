@@ -483,7 +483,10 @@ NOTE: removing broken episode:
 
 ;; variables from the config file
 
-(defvar *ignore-watched-within* nil)
+(defvar *ignore-watched-within*
+    "Ignore any torrents which have been watched within this number of hours.
+The default is 72 hours, or 3 days."
+  #.(* 24 3))
 
 (defvar *sqlite3-binary* "sqlite3")
 

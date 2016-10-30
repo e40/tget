@@ -787,10 +787,14 @@ NEW name: /me/tplex/content/videos/adrian+kevin/ridiculousness.S06E29.mp4
 <h2>
 <a id="user-content-usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
 
-<p>Primary behavior determining arguments (one of these must be given):</p>
+<p>There are two primary modes of operation: cleanup and download.
+Cleanup mode is activated by using the --cleanup or -c arguments.
+Download mode is activated by using the other primary behavior determining
+arguments.  See below.</p>
 
-<pre><code>--run
---add file-or-directory
+<p>[download] Primary behavior determining arguments (one of these must be given):</p>
+
+<pre><code>--add file-or-directory
 --catch-up   
 --catch-up-series series-episode-name
 --check-database
@@ -809,7 +813,7 @@ NEW name: /me/tplex/content/videos/adrian+kevin/ridiculousness.S06E29.mp4
 --skip series-name
 </code></pre>
 
-<p>Behavior modifying arguments:</p>
+<p>[download] Behavior modifying arguments:</p>
 
 <pre><code>--auto-backup condition
 --config file
@@ -821,6 +825,16 @@ NEW name: /me/tplex/content/videos/adrian+kevin/ridiculousness.S06E29.mp4
 --reset
 --root data-directory
 --verbose or -v
+</code></pre>
+
+<p>[cleanup] Behavior modifying arguments:</p>
+
+<pre><code>-h
+--remove
+--remove-seeded
+--remove-watched
+--torrent-info
+--torrents-only
 </code></pre>
 
 <h3>
@@ -842,6 +856,11 @@ original form.</p>
 <p>The following are arguments controlling primary behavior:</p>
 
 <ul>
+<li>
+<p><code>--cleanup</code> or <code>-c</code></p>
+
+<p>Active cleanup mode.  See the cleanup options below.</p>
+</li>
 <li>
 <p><code>--run</code></p>
 
@@ -1053,6 +1072,46 @@ backup to be performed before the reset.</p>
 
 <p>Verbose mode.  For now, it makes <code>--dump-episodes</code> print detailed
 information on episodes.</p>
+</li>
+</ul>
+
+<p>Cleanup options:</p>
+
+<ul>
+<li>
+<p><code>-h hours</code></p>
+
+<p>Set the threshold for how long after a video is watched that it can be
+considered for removal.  The value of 0 can be used to remove any videos
+which have been watched, for which seeding is complete.</p>
+
+<p>The default is 72 hours, or 3 days.</p>
+</li>
+<li>
+<p><code>--remove</code></p>
+
+<p>Remove videos which meet the criteria for removal.  This means removing
+the torrent from Transmission and removing the file from disk.</p>
+</li>
+<li>
+<p><code>--remove-seeded</code></p>
+
+<p>Only remove torrents from Transmission, if they meet the seeding criteria.</p>
+</li>
+<li>
+<p><code>--remove-watched</code></p>
+
+<p>Only remove watched files from disk, if they meet the criteria.</p>
+</li>
+<li>
+<p><code>--torrent-info</code></p>
+
+<p>List torrents torrents currently in Transmission.</p>
+</li>
+<li>
+<p><code>--torrents-only</code></p>
+
+<p>Clean up torrents only, not files on disk.</p>
 </li>
 </ul>
 

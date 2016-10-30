@@ -669,9 +669,13 @@ An example email:
 
 ## Usage
 
-Primary behavior determining arguments (one of these must be given):
+There are two primary modes of operation: cleanup and download.
+Cleanup mode is activated by using the --cleanup or -c arguments.
+Download mode is activated by using the other primary behavior determining
+arguments.  See below.
 
-    --run
+[download] Primary behavior determining arguments (one of these must be given):
+
     --add file-or-directory
     --catch-up   
     --catch-up-series series-episode-name
@@ -690,7 +694,7 @@ Primary behavior determining arguments (one of these must be given):
     --dump-stats
     --skip series-name
 
-Behavior modifying arguments:
+[download] Behavior modifying arguments:
 
     --auto-backup condition
     --config file
@@ -702,6 +706,15 @@ Behavior modifying arguments:
     --reset
     --root data-directory
     --verbose or -v
+
+[cleanup] Behavior modifying arguments:
+
+    -h
+    --remove
+    --remove-seeded
+    --remove-watched
+    --torrent-info
+    --torrents-only
 
 ### Usage details
 
@@ -715,6 +728,10 @@ original form.
   Print full help text and exit.
 
 The following are arguments controlling primary behavior:
+
+* `--cleanup` or `-c`
+
+  Active cleanup mode.  See the cleanup options below.
 
 * `--run`
 
@@ -884,6 +901,37 @@ effects:
 
   Verbose mode.  For now, it makes `--dump-episodes` print detailed
   information on episodes.
+
+Cleanup options:
+
+* `-h hours`
+
+  Set the threshold for how long after a video is watched that it can be
+  considered for removal.  The value of 0 can be used to remove any videos
+  which have been watched, for which seeding is complete.
+
+  The default is 72 hours, or 3 days.
+
+* `--remove`
+
+  Remove videos which meet the criteria for removal.  This means removing
+  the torrent from Transmission and removing the file from disk.
+
+* `--remove-seeded`
+
+  Only remove torrents from Transmission, if they meet the seeding criteria.
+
+* `--remove-watched`
+
+  Only remove watched files from disk, if they meet the criteria.
+
+* `--torrent-info`
+
+  List torrents torrents currently in Transmission.
+
+* `--torrents-only`
+
+  Clean up torrents only, not files on disk.
 
 Examples:
 
