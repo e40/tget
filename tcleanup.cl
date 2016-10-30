@@ -109,6 +109,7 @@
   removed				; non-nil if removed in pass I
   never-delete
   archive
+  error
   )
 
 (defvar *torrents*
@@ -124,7 +125,11 @@
   (declaim (ftype (function)
 		  query-series-name-to-series
 		  series-never-delete
-		  series-archive)))
+		  series-archive
+		  series-name
+		  canonicalize-series-name
+		  query-episode
+		  delete-episode-1)))
 
 (defun tcleanup-transmission
     (&aux (default-seed-ratio
@@ -165,8 +170,10 @@
 	     :state (get-torrent-info "State" data)
 	     :hash (get-torrent-info "Hash" data)
 	     :tracker-seed-time (get-torrent-info "Seeding Time" data
-						  :missing-ok t))))
-
+						  :missing-ok t)
+	     :error (get-torrent-info "Tracker gave an error" data
+				      :missing-ok t))))
+      
       ;; used by PART II
       (let (path)
 	(if* (and location name
@@ -205,6 +212,22 @@
 	     else (setf (torrent-name torrent) series-name))
 	  (setf (torrent-series-name torrent) series-name)))
       
+      (when (and (torrent-error torrent)
+		 (=~ "not registered with this tracker"
+		     (torrent-error torrent)))
+	;; Since the torrent is "unregistered", delete it and the episode
+	;; in the db.  However, this is problematic because the correct
+	;; episode might not be downloaded anymore because it might have
+	;; fallen off the RSS feed.  So, likely it will need to be
+	;; downloaded manually.
+	;; TODO: have the periodic cron job notice that the torrent is bad
+	;;       and do this operation there.  That will require some
+	;;       reworking of the code, though, since the cleanup phase is
+	;;       currently manual and completely separate.  Hmmmm.
+	(push (cons torrent :error) print-done)
+	(remove-torrent torrent :delete-episode t)
+	(go :next))      
+
       (when (string/= "100%" (torrent-percent-done torrent))
 	;; skip it since it's not done
 	(with-verbosity 1
@@ -275,7 +298,7 @@
 	      (warn "Couldn't match tracker (~a) for ~a."
 		    (torrent-tracker torrent)
 		    (torrent-name torrent)))
-
+      
       (when (symbolp (torrent-ratio torrent))
 	;; Inf or None, either way, call ratio 0.0.
 	(setf (torrent-ratio torrent) 0.0))
@@ -347,17 +370,22 @@
 	    ;; truncate to 40
 	    (if (> (length name) 40) (subseq name 0 40) name)
 	    (torrent-percent-done torrent)
-	    (when (not (eq :incomplete status))
-	      (format nil "~,2f" (torrent-ratio torrent)))
-	    (when (not (eq :incomplete status))
-	      (relative-time-formatter (torrent-seeded-for torrent)
-				       :brief t))
+	    (if* (eq :error status)
+	       then "Error"
+	     elseif (not (eq :incomplete status))
+	       then (format nil "~,2f" (torrent-ratio torrent)))
+	    (if* (eq :error status)
+	       then "Error"
+	     elseif (not (eq :incomplete status))
+	       then (relative-time-formatter (torrent-seeded-for torrent)
+					     :brief t))
 	    (when (eq :seeding status)
 	      (relative-time-formatter (torrent-seed-for torrent)
 				       :brief t))))
    (t
     (format t "~%~a~%" name)
     (ecase status
+      (:error (format t "  ERROR: ~a~%" (torrent-error torrent)))
       (:incomplete
        (format t "  incomplete: ~a done~%" (torrent-percent-done torrent)))
       (:complete-ratio
@@ -401,13 +429,47 @@
 	   :relative *now*
 	   :format (ut-to-string-formatter "%2H:%2M:%2S"))))
 
-(defun remove-torrent (torrent &aux res)
+(defun remove-torrent (torrent &key delete-episode &aux res)
   (when *remove-seeded*
     (if* (and (setq res (tm "-t" (torrent-id torrent) "-r"))
 	      (=~ "success" (car res)))
        then (setf (torrent-removed torrent) t)
 	    t
-       else (error "Failed to remove ~a." (torrent-filename torrent)))))
+       else (error "Failed to remove ~a." (torrent-filename torrent)))
+    
+    ;; If the torrent became `unregistered' then delete it, since there was
+    ;; something wrong with it.
+    (when delete-episode
+      (let* ((series-name (torrent-series-name torrent))
+	     (season (torrent-season torrent))
+	     (epnum (torrent-episode torrent))
+	     series
+	     ep)
+	(if* (and series-name season epnum)
+	   then (setq series-name (canonicalize-series-name series-name))
+		(if* (setq series (query-series-name-to-series series-name))
+		   then (setq ep
+			  (query-episode :series-name (series-name series)
+					 :season season
+					 :ep-number epnum))
+			(if* (and ep (cdr ep))
+			   then (warn "remove-torrent: got more than one ep: ~s"
+				      ep)
+			 elseif ep
+			   then (setq ep (car ep))
+				(format t "~
+NOTE: removing broken episode:
+        ~a
+      Do \"tget --run\" to see if it is downloaded, and, if not,
+      download it manually.~%"
+					ep)
+				(delete-episode-1 ep)
+			   else (warn "remove-torrent: unknown ep: ~s ~s ~s"
+				      series season epnum))
+		   else (warn "remove-torrent: could not find series from ~s"
+			      series-name))
+	   else (warn "remove-torrent: could not find episode from torrent: ~s"
+		      torrent))))))
 
 (defun get-torrent-info (key hash &key missing-ok)
   (or (gethash key hash)

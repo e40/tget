@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.0.4")
+(defvar *tget-version* "5.1.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2919,7 +2919,12 @@ transmission-remote ~a:~a ~
 	(.error "There is more than one episode matching:~%~{  ~a~}" ep))
       (dolist (e ep)
 	(format t "removing episode ~a~%" e)
-	(delete-instance e)))))
+	(delete-episode-1 e)))))
+
+;; Called from cleanup code via a forward reference.  Can't call the AC
+;; function directly, because it hasn't been loaded yet.
+(defun delete-episode-1 (ep)
+  (delete-instance ep))
 
 (defun skip-next (series)
   ;; NOTE: this is only called through direct user action via the

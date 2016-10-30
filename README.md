@@ -1,4 +1,4 @@
-# tget 5.0.4 - torrent get
+# tget 5.1.0 - torrent get
 
 _tget_ is a suite of programs: _tget_, _tcleanup_ and _plexfix_.
 
@@ -1312,6 +1312,7 @@ Catch up series to a specific episode:
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :adrian+kevin)
     (defseries "Dark Matter" :kevin :catch-up "S01")
+    (defseries "Dirk Gently's Holistic Detective Agency" :kevin :catch-up "S01E01")
     (defseries "Doc Martin" :anh)
     (defseries "Downton Abbey" :anh)
     (defseries "Dragons Den (UK)" :kevin)

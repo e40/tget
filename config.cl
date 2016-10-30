@@ -380,6 +380,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Community" :adrian+kevin)
 (defseries "Curb your Enthusiasm" :adrian+kevin)
 (defseries "Dark Matter" :kevin :catch-up "S01")
+(defseries "Dirk Gently's Holistic Detective Agency" :kevin :catch-up "S01E01")
 (defseries "Doc Martin" :anh)
 (defseries "Downton Abbey" :anh)
 (defseries "Dragons Den (UK)" :kevin)
