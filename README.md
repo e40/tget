@@ -37,7 +37,7 @@ links so that Plex can see the correct season and episode.
 **[Getting started](#getting-started)**  
 **[Configuration](#configuration)**  
 **[Maintenance tasks](#maintenance-tasks)**  
-**[Cleanup](#Cleanup)**  
+**[Cleanup](#cleanup)**  
 **[plexfix](#plexfix)**  
 **[Usage](#usage)**  
 **[Example configuration file](#example-configuration-file)**  
