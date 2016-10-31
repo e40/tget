@@ -132,7 +132,8 @@
 		  delete-episode-1)))
 
 (defun tcleanup-transmission
-    (&aux (default-seed-ratio
+    (&optional remove-bad
+     &aux (default-seed-ratio
 	      1.04
 	      ;; BOGUS: transmission-remote returns 1.04 as 1.0!! ARGH!!
 	      #+ignore
@@ -144,6 +145,9 @@
 	       (error "Couldn't find the default seed ration limit")))
 	  print-done
 	  print-other)
+  "When REMOVE-BAD is given, then only remove torrents which are not
+registered with the tracker.  These are torrents which have been removed
+and we should abandon them and delete the episode."
   (declare (special user::*all-trackers*))
 
   (with-verbosity 2
@@ -216,17 +220,14 @@
 		 (=~ "not registered with this tracker"
 		     (torrent-error torrent)))
 	;; Since the torrent is "unregistered", delete it and the episode
-	;; in the db.  However, this is problematic because the correct
-	;; episode might not be downloaded anymore because it might have
-	;; fallen off the RSS feed.  So, likely it will need to be
-	;; downloaded manually.
-	;; TODO: have the periodic cron job notice that the torrent is bad
-	;;       and do this operation there.  That will require some
-	;;       reworking of the code, though, since the cleanup phase is
-	;;       currently manual and completely separate.  Hmmmm.
+	;; in the db.
 	(push (cons torrent :error) print-done)
 	(remove-torrent torrent :delete-episode t)
-	(go :next))      
+	(go :next))
+      (when remove-bad
+	;; we're just removing torrents with errors and nothing more, so
+	;; skip the rest
+	(go :next))
 
       (when (string/= "100%" (torrent-percent-done torrent))
 	;; skip it since it's not done
@@ -338,23 +339,25 @@
 
   (when print-done
     (setq print-done (nreverse print-done))
-    (if* *remove-seeded*
-       then (format t "These torrents were removed:~%~%")
-       else (format t "These torrents are complete:~%~%"))
+    (when (not remove-bad)
+      (if* *remove-seeded*
+	 then (format t "These torrents were removed:~%~%")
+	 else (format t "These torrents are complete:~%~%")))
     (let ((header t))
       (dolist (item print-done)
 	(destructuring-bind (torrent . status) item
 	  (print-torrent torrent status :brief t :header header)
 	  (setq header nil))) ))
   
-  (when print-other
-    (setq print-other (nreverse print-other))
-    (format t "~%These torrents are incomplete:~%~%")
-    (let ((header t))
-      (dolist (item print-other)
-	(destructuring-bind (torrent . status) item
-	  (print-torrent torrent status :brief t :header header)
-	  (setq header nil))))))
+  (when (not remove-bad)
+    (when print-other
+      (setq print-other (nreverse print-other))
+      (format t "~%These torrents are incomplete:~%~%")
+      (let ((header t))
+	(dolist (item print-other)
+	  (destructuring-bind (torrent . status) item
+	    (print-torrent torrent status :brief t :header header)
+	    (setq header nil)))))))
 
 (defun print-torrent (torrent status
 		      &key brief header

@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-510---torrent-get" class="anchor" href="#tget-510---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.1.0 - torrent get</h1>
+<a id="user-content-tget-520---torrent-get" class="anchor" href="#tget-520---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.2.0 - torrent get</h1>
 
 <p><em>tget</em> is a suite of programs: <em>tget</em> and <em>plexfix</em>.</p>
 
@@ -832,6 +832,7 @@ they have seeded enough and removing video files watched by Plex.</p>
 
 <pre><code>-h
 --remove
+--remove-bad
 --remove-seeded
 --remove-watched
 --torrent-info
@@ -1093,6 +1094,16 @@ which have been watched, for which seeding is complete.</p>
 
 <p>Remove videos which meet the criteria for removal.  This means removing
 the torrent from Transmission and removing the file from disk.</p>
+</li>
+<li>
+<p><code>--remove-bad</code></p>
+
+<p>A special cleanup mode, which causes only unregistered torrents to be
+removed from Transmission.  When this argument is given, without the
+other cleanup mode arguments (<code>-c</code> and <code>--cleanup</code>), it is used as a pass
+before torrents are downloaded.  Along with the torrent, the episode is
+deleted from the database.  This allows for bad torrents to be removed
+and redownloaded, if they should become available again.</p>
 </li>
 <li>
 <p><code>--remove-seeded</code></p>

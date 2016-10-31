@@ -1,4 +1,4 @@
-# tget 5.1.0 - torrent get
+# tget 5.2.0 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -712,6 +712,7 @@ they have seeded enough and removing video files watched by Plex.
 
     -h
     --remove
+    --remove-bad
     --remove-seeded
     --remove-watched
     --torrent-info
@@ -917,6 +918,15 @@ Cleanup options:
 
   Remove videos which meet the criteria for removal.  This means removing
   the torrent from Transmission and removing the file from disk.
+
+* `--remove-bad`
+
+  A special cleanup mode, which causes only unregistered torrents to be
+  removed from Transmission.  When this argument is given, without the
+  other cleanup mode arguments (`-c` and `--cleanup`), it is used as a pass
+  before torrents are downloaded.  Along with the torrent, the episode is
+  deleted from the database.  This allows for bad torrents to be removed
+  and redownloaded, if they should become available again.
 
 * `--remove-seeded`
 

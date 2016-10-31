@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.1.0")
+(defvar *tget-version* "5.2.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -875,6 +875,7 @@ they have seeded enough and removing video files watched by Plex.
 
     -h
     --remove
+    --remove-bad
     --remove-seeded
     --remove-watched
     --torrent-info
@@ -1084,6 +1085,15 @@ Cleanup options:
   Remove videos which meet the criteria for removal.  This means removing
   the torrent from Transmission and removing the file from disk.
 
+* `--remove-bad`
+
+  A special cleanup mode, which causes only unregistered torrents to be
+  removed from Transmission.  When this argument is given, without the
+  other cleanup mode arguments (`-c` and `--cleanup`), it is used as a pass
+  before torrents are downloaded.  Along with the torrent, the episode is
+  deleted from the database.  This allows for bad torrents to be removed
+  and redownloaded, if they should become available again.
+
 * `--remove-seeded`
 
   Only remove torrents from Transmission, if they meet the seeding criteria.
@@ -1258,6 +1268,7 @@ Catch up series to a specific episode:
 	      ("remove" :long remove-all)
 	      ("remove-seeded" :long remove-seeded)
 	      ("remove-watched" :long remove-watched)
+	      ("remove-bad" :long remove-bad)
 
 ;;;; modifiers (change primary behavior)
 	      ("auto-backup" :long auto-backup :required-companion)
@@ -1372,17 +1383,21 @@ Catch up series to a specific episode:
 	   (when (not *torrent-handler*)
 	     (usage "*torrent-handler* is not defined in config file."))
 	   (open-log-files)
+	   
+	   (when remove-bad
+	     (process-cleanup-arguments :remove-bad t))
 
 ;;;; main argument processing
 	   (if* (or short-cleanup long-cleanup)
 	      then ;; This does need the database, since we look at series
 		   ;; options.
-		   (process-cleanup-arguments ignore-watched-within
-					      torrent-info
-					      torrents-only
-					      remove-all
-					      remove-seeded
-					      remove-watched)
+		   (process-cleanup-arguments
+		    :ignore-watched-within ignore-watched-within
+		    :torrent-info torrent-info
+		    :torrents-only torrents-only
+		    :remove-all remove-all
+		    :remove-seeded remove-seeded
+		    :remove-watched remove-watched)
 	    elseif dump-all
 	      then (doclass (ep (find-class 'episode) :db *main*)
 		     (if* verbose
@@ -1499,12 +1514,18 @@ Catch up series to a specific episode:
 		  (format t "~&~a~&" c)
 		  (exit 1 :quiet t)))))))
 
-(defun process-cleanup-arguments (ignore-watched-within
-				  torrent-info
-				  torrents-only
-				  remove-all
-				  remove-seeded
-				  remove-watched)
+(defun process-cleanup-arguments (&key ignore-watched-within
+				       torrent-info
+				       torrents-only
+				       remove-all
+				       remove-seeded
+				       remove-watched
+				       remove-bad)
+  (when remove-bad
+    ;; Remove any "bad" torrents and get out of here.
+    (tcleanup-transmission remove-bad)
+    (return-from process-cleanup-arguments))
+  
   (when torrent-info
     (dolist (line (tm "-t" "all" "--info"))
       (format t "~a~%" line))
@@ -1547,8 +1568,7 @@ Catch up series to a specific episode:
 
   (tcleanup-transmission)
   (when torrents-only (exit 0))
-  (tcleanup-files)
-  )
+  (tcleanup-files))
 
 (defun open-log-files (&key truncate)
   (when (and *log-file* (not *log-stream*))
