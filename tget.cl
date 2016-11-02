@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.2.0")
+(defvar *tget-version* "5.2.1")
 )
 (defvar *schema-version*
     ;; 1 == initial version

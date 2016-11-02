@@ -217,7 +217,7 @@ and we should abandon them and delete the episode."
 	  (setf (torrent-series-name torrent) series-name)))
       
       (when (and (torrent-error torrent)
-		 (=~ "not registered with this tracker"
+		 (=~ "(not registered with this tracker|Unregistered torrent)"
 		     (torrent-error torrent)))
 	;; Since the torrent is "unregistered", delete it and the episode
 	;; in the db.
@@ -433,7 +433,7 @@ and we should abandon them and delete the episode."
 	   :format (ut-to-string-formatter "%2H:%2M:%2S"))))
 
 (defun remove-torrent (torrent &key delete-episode &aux res)
-  (when *remove-seeded*
+  (when (or delete-episode *remove-seeded*)
     (if* (and (setq res (tm "-t" (torrent-id torrent) "-r"))
 	      (=~ "success" (car res)))
        then (setf (torrent-removed torrent) t)
