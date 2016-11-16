@@ -8,6 +8,7 @@
 ;; This is now reset once per run, so it's not too much data to save,
 ;; and it's good for debugging feed issues.
 (setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+(setq *log-xml* (merge-pathnames "error.xml" *tget-data-directory*))
 
 ;; A good resource to see why something is or isn't downloading
 (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
@@ -380,7 +381,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Community" :adrian+kevin)
 (defseries "Curb your Enthusiasm" :adrian+kevin)
 (defseries "Dark Matter" :kevin :catch-up "S01")
-(defseries "Dirk Gently's Holistic Detective Agency" :kevin :catch-up "S01E01")
 (defseries "Doc Martin" :anh)
 (defseries "Downton Abbey" :anh)
 (defseries "Dragons Den (UK)" :kevin)
@@ -410,6 +410,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nature" :kevin :subdir "Nature")
 (defseries "Nova" :kevin :subdir "Nova")
+(defseries "People of Earth" :kevin)
 (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
 	   :catch-up "S02E01"
 	   :aliases ("Penn and Teller Fool Us"))
@@ -501,3 +502,4 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
   :aliases ("The Late Show with Stephen Colbert" "Stephen Colbert")
   :remove t)
 (defseries "Sirens (2014)" :kevin :remove t)
+(defseries "Dirk Gently's Holistic Detective Agency" :kevin :remove t)

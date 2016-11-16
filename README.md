@@ -1,4 +1,4 @@
-# tget 5.2.1 - torrent get
+# tget 5.2.2 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -999,6 +999,7 @@ Catch up series to a specific episode:
     ;; This is now reset once per run, so it's not too much data to save,
     ;; and it's good for debugging feed issues.
     (setq *log-rss* (merge-pathnames "rss.log" *tget-data-directory*))
+    (setq *log-xml* (merge-pathnames "error.xml" *tget-data-directory*))
     
     ;; A good resource to see why something is or isn't downloading
     (setq *log-file* (merge-pathnames "ep.log" *tget-data-directory*))
@@ -1371,7 +1372,6 @@ Catch up series to a specific episode:
     (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :adrian+kevin)
     (defseries "Dark Matter" :kevin :catch-up "S01")
-    (defseries "Dirk Gently's Holistic Detective Agency" :kevin :catch-up "S01E01")
     (defseries "Doc Martin" :anh)
     (defseries "Downton Abbey" :anh)
     (defseries "Dragons Den (UK)" :kevin)
@@ -1401,6 +1401,7 @@ Catch up series to a specific episode:
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nature" :kevin :subdir "Nature")
     (defseries "Nova" :kevin :subdir "Nova")
+    (defseries "People of Earth" :kevin)
     (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
     	   :catch-up "S02E01"
     	   :aliases ("Penn and Teller Fool Us"))
@@ -1492,6 +1493,7 @@ Catch up series to a specific episode:
       :aliases ("The Late Show with Stephen Colbert" "Stephen Colbert")
       :remove t)
     (defseries "Sirens (2014)" :kevin :remove t)
+    (defseries "Dirk Gently's Holistic Detective Agency" :kevin :remove t)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

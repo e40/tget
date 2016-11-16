@@ -94,7 +94,7 @@
 
 (define-condition feed-error-ignore (feed-error) ())
 
-(defun read-feed (url &key timeout verbose
+(defun read-feed (url &key timeout verbose error-func
 		  &aux (host (net.uri:uri-host (net.uri:parse-uri url))))
   ;;
   ;;* exported
@@ -139,8 +139,11 @@
 		     :format-control "Accessing feed from ~s gave response ~s"
 		     :format-arguments (list host code))))
     
-    (parse-feed content)))
-
+    (handler-case (parse-feed content)
+      (error ()
+	(when error-func (funcall error-func content))
+	(signal 'feed-error-ignore)
+	(return-from read-feed)))))
 
 (defun parse-feed (content)
   (when (or (and (< (length content) 100)

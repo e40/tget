@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.2.1")
+(defvar *tget-version* "5.2.2")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3236,14 +3236,21 @@ transmission-remote ~a:~a ~
      (net.rss:item ...)
      ...
      (net.rss:item ...))))
-  (let* ((lxml (if* url
+  (let* ((parse-error #'(lambda (string)
+			  (with-verbosity 1
+			    (format t "xml parse error (see ~a).~%"
+				    *log-xml*))
+			  (when *log-xml*
+			    (setf (file-contents *log-xml*) string))))
+	 (lxml (if* url
 		  then (with-verbosity 1
 			 (format t "~&;; reading feed from ~a..."
 				 (net.uri:uri-host (net.uri:parse-uri url))))
 		       (prog1 (net.rss:read-feed
-			       (uri-maybe-force-http url)
-			       :timeout *http-timeout*
-			       :verbose (> *verbose* 0))
+				   (uri-maybe-force-http url)
+				   :timeout *http-timeout*
+				   :verbose (> *verbose* 0)
+				   :error-func parse-error)
 			 (with-verbosity 1
 			   (format t "done.~%")))
 		elseif file

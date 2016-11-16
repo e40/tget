@@ -45,6 +45,7 @@
 	     *debug*
 	     *feed-interval*
 	     *log-rss*
+	     *log-xml*
 	     *log-file*))
   (format t ";; ~a => ~s~%"
 	  v (symbol-value v)))

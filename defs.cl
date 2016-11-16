@@ -49,6 +49,11 @@
     ;; if non-nil, a pathanme to log rss feed info
     nil)
 
+(defvar *log-xml*
+    ;; if non-nil, a pathname to log the XML feed should there be an error
+    ;; parsing it
+    nil)
+
 (defvar *log-file*
     ;; if non-nil, a pathanme to log episode info
     nil)
