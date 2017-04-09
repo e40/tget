@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.2.2")
+(defvar *tget-version* "5.2.3")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2828,21 +2828,21 @@ transmission-remote ~a:~a ~
       (dolist (torrent torrent-files)
 	(with-verbosity 1
 	  (format t ";;   Manually adding ~a~%" (file-namestring torrent)))
-	(setq ep (manual-add-file torrent force))
-	(when ep (push ep episodes)))
-		     
-      (download-episodes (group-name-to-group :manual)
-			 episodes
-			 (lambda (ep) (format t "~&~a~%" ep)))
-    
-      ;; delete the transient episodes:
-      (dolist (ep episodes) (delete-instance ep))))
+	(when (setq ep (manual-add-file torrent force))
+	  (push ep episodes)
+	  (download-episodes (group-name-to-group
+			      (series-group (episode-series ep)))
+			     (list ep)
+			     (lambda (ep) (format t "~&~a~%" ep)))
+	  ;; delete the transient episode:
+	  (delete-instance ep)))))
    (t ;; single file
     (with-verbosity 1
       (format t ";; Manually adding ~a~%" (file-namestring thing)))
     (let ((ep (manual-add-file thing force)))
       (when ep
-	(download-episodes (group-name-to-group :manual)
+	(download-episodes (group-name-to-group
+			    (series-group (episode-series ep)))
 			   (list ep)
 			   (lambda (ep) (format t "~&~a~%" ep)))
 	;; delete the transient episode:
@@ -2995,7 +2995,30 @@ transmission-remote ~a:~a ~
 ;; Called from cleanup code via a forward reference.  Can't call the AC
 ;; function directly, because it hasn't been loaded yet.
 (defun delete-episode-1 (ep)
-  (delete-instance ep))
+  (delete-instance ep)
+  #+ignore ;; new code, not yet ready:
+  (let* ((series (episode-series ep))
+	 (ct (series-complete-to series)))
+    (cond
+     ((and (consp ct)
+	   (numberp (car ct))
+	   (numberp (cdr ct))
+	   (eql (car ct) (episode-season ep))
+	   (eql (cdr ct) (episode-epnum ep)))
+      ;; The ep to delete is the last ep defined by complete-to
+      (if* (eql 1 (cdr ct))
+	 then ;; first of the season, send complete-to back to the previous
+	      ;; season.
+	      (setf (series-complete-to series)
+		`(,(- (episode-season ep) 1)
+		  *max-epnum*))
+	 else (decf (cdr ct))))
+     ((and (consp ct)
+	   )
+      )
+;;;;update season in db???
+     )
+    (delete-instance ep)))
 
 (defun skip-next (series)
   ;; NOTE: this is only called through direct user action via the
@@ -3076,7 +3099,7 @@ transmission-remote ~a:~a ~
 	 ;; and
 	 ;;  IN:  c-t = (28 . 9999)  d-e = ((28 . 14) (28 . 16))
 	 ;;  OUT: c-t = (28 . 9999)  d-e = nil
-	 ;; and and very special case:
+	 ;; and a very special case:
 	 ;;  IN:  c-t = (28 . 9999)  d-e = ((28 . 14) (28 . 16) (29 . 1))
 	 ;;  OUT: c-t = (29 . 1)     d-e = nil
 	 (loop

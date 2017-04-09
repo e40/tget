@@ -1,4 +1,4 @@
-# tget 5.2.2 - torrent get
+# tget 5.2.3 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1034,6 +1034,7 @@ Catch up series to a specific episode:
     (setq *download-root* "/me/tplex/content/videos/")
     
     (defvar *for-mom* "/me/tplex/content/videos/for-mom/")
+    (defvar *for-fam* "/me/tplex/content/videos/for-fam/")
     
     (defvar *codec-x264*
         ;; It goes by two different names:
@@ -1351,49 +1352,54 @@ Catch up series to a specific episode:
     
     (defseries "8 Out of 10 Cats" :kevin :archive #.*for-mom*)
     (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*)
-    (defseries "An Idiot Abroad" :adrian+kevin)
     (defseries "Animal Kingdom (US)" :kevin :subdir "Animal.Kingdom.US")
     (defseries "Archer (2009)" :kevin :subdir "Archer")
-    (defseries "Ash vs Evil Dead" :kevin)
     (defseries "Atlanta" :kevin)
     (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
     	   :aliases ("@midnight"))
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Better Things" :kevin :catch-up "S01E01")
+    ;;;TODO: remove since on Netflix
+    (defseries "Big Little Lies" :kevin :private t)
     (defseries "Black Mirror" :adrian+kevin)
-    (defseries "Blunt Talk" :kevin)
+    (defseries "Blunt Talk" :kevin :subdir "Blunt.Talk")
     (defseries "Brain Dead" :kevin)
-    (defseries "Broad City" :kevin :catch-up "S02")
-    (defseries "Brooklyn Nine-Nine" :adrian+kevin)
+    (defseries "Broad City" :kevin :catch-up "S02" :archive #.*for-fam*)
     (defseries "Cesar 911" :kevin :catch-up "S02")
     (defseries "Childrens Hospital (US)" :adrian+kevin)
-    (defseries "Childhood's End" :kevin)
-    (defseries "Community" :adrian+kevin)
     (defseries "Curb your Enthusiasm" :adrian+kevin)
     (defseries "Dark Matter" :kevin :catch-up "S01")
     (defseries "Doc Martin" :anh)
     (defseries "Downton Abbey" :anh)
-    (defseries "Dragons Den (UK)" :kevin)
+    (defseries "Dragon's Den" :kevin :aliases ("Dragon's Den UK"
+    					   "Dragon's Den (UK)")
+    	   :subdir "Dragons.Den")
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin :subdir "Elementary")
-    (defseries "Fargo" :kevin :never-delete t :quality :high)
+    (defseries "Fargo" :kevin :quality :high :archive #.*for-fam*)
     (defseries "Fear the Walking Dead" :kevin :delay 0)
     (defseries "Frontline (US)" :kevin)
     (defseries "Full Frontal with Samantha Bee" :kevin)
-    (defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high)
+    (defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high
+    	    :archive #.*for-fam*)
     (defseries "Hap and Leonard" :kevin :catch-up "S01E02")
     (defseries "Hell on Wheels" :kevin :subdir "Hell.on.Wheels")
-    (defseries "Homeland" :kevin :private t :delay 0)
+    (defseries "Homeland" :kevin :private t :delay 0 :subdir "Homeland")
     (defseries "Inside Amy Schumer" :kevin :catch-up "S03")
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Jeff Ross Roasts Cops" :kevin)
     (defseries "Jeff Ross Presents Roast Battle" :adrian+kevin)
+    (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high
+    	   :catch-up "S06")
+    (defseries "Last Week Tonight with John Oliver" :kevin :private t
+    	   :subdir "Last.Week.Tonight.With.John.Oliver"
+    	   :catch-up "S04E01")
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
     (defseries "Luther" :kevin)
-    (defseries "Man Seeking Woman" :adrian+kevin :catch-up "S01")
-    (defseries "Million Dollar Extreme Presents World Peace" :kevin)
+    (defseries "Man Seeking Woman" :adrian+kevin :catch-up "S01"
+    	   :archive #.*for-fam*)
     (defseries "Midsomer Murders" :anh)
     (defseries "Mr Robot" :kevin)
     (defseries "Not Safe with Nikki Glaser" :kevin)
@@ -1404,42 +1410,48 @@ Catch up series to a specific episode:
     (defseries "People of Earth" :kevin)
     (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
     	   :catch-up "S02E01"
-    	   :aliases ("Penn and Teller Fool Us"))
+    	   :aliases ("Penn and Teller Fool Us")
+    	   :archive #.*for-fam*)
+    #-testing ;; really need a different testing config file
+    (defseries "Real Time with Bill Maher" :kevin :catch-up "S15E09")
     (defseries "Review" :kevin :catch-up "S01"
     	   :aliases ("Review with Forrest MacNeil"))
-    (defseries "Rick and Morty" :adrian+kevin :never-delete t)
+    (defseries "Rick and Morty" :adrian+kevin :archive #.*for-fam*)
     (defseries "Ridiculousness" :adrian+kevin)
     (defseries "Shark Tank" :kevin)
     (defseries "Sherlock" :kevin)
     (defseries "Show me a hero" :kevin)
-    (defseries "StarTalk with Neil deGrasse Tyson" :kevin :catch-up "S01")
+    (defseries "StarTalk with Neil deGrasse Tyson" :kevin :catch-up "S01"
+    	   :aliases ("Startalk"))
+    (defseries "Taskmaster" :adrian+kevin :catch-up "S03"
+    	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
+    	   :subdir "Taskmaster")
     (defseries "The Americans (2013)" :kevin :subdir "The.Americans")
     (defseries "The Daily Show with Trevor Noah" :kevin :subdir "The.Daily.Show"
     	   :date-based t
     	   :aliases ("The Daily Show"))
     (defseries "The Eric Andre Show" :kevin)
-    (defseries "The Expanse" :kevin)
+    (defseries "The Expanse" :kevin :subdir "The.Expanse")
     (defseries "The Detour" :adrian+kevin :subdir "The.Detour")
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin :archive #.*for-mom*)
     (defseries "The Knick" :kevin :catch-up "S01")
     (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
-    (defseries "The Leftovers" :kevin :catch-up "S01")
+    (defseries "The Leftovers" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
+    (defseries "The Big Fat Quiz of Everything" :kevin :catch-up "S02E01"
+    	   :archive #.*for-mom*)
     (defseries "The Neighbors (2012)" :adrian+kevin)
-    (defseries "The Nightly Show with Larry Wilmore" :kevin
-      :aliases ("The Nightly Show")
-      :subdir "The.Nightly.Show.with.Larry.Wilmore" :date-based t)
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
-    (defseries "Time Traveling Bong" :kevin)
     (defseries "Tosh.0" :kevin)
     (defseries "True Detective" :kevin :private t)
-    (defseries "Wallander" :anh+kevin)
     (defseries "World's Craziest Fools" :adrian+kevin)
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
     	   :aliases ("Would I Lie To You")
     	   :archive #.*for-mom*)
+    (defseries "You're the Worst" :kevin :catch-up "S02")
+    (defseries "Your Face or Mine" :kevin)
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; These items are for the test suite only, and are not used in production
@@ -1475,11 +1487,6 @@ Catch up series to a specific episode:
     (defseries "Blindspot" :kevin :remove t)
     (defseries "The Player (2015)" :kevin :remove t)
     
-    ;; Have HBONow now
-    (defseries "Last Week Tonight with John Oliver" :kevin :private t
-    	   :subdir "Last.Week.Tonight.With.John.Oliver" :remove t)
-    (defseries "Game of Thrones" :kevin :private t :delay 0 :quality :high
-    	   :remove t)
     (defseries "Preacher" :kevin :subdir "Preacher" :remove t)
     (defseries "Animal Kingdom" :kevin :remove t)
     (defseries "Man Down" :adrian+kevin :remove t)
@@ -1494,6 +1501,18 @@ Catch up series to a specific episode:
       :remove t)
     (defseries "Sirens (2014)" :kevin :remove t)
     (defseries "Dirk Gently's Holistic Detective Agency" :kevin :remove t)
+    (defseries "Brooklyn Nine-Nine" :adrian+kevin :remove t)
+    (defseries "The Nightly Show with Larry Wilmore" :kevin
+      :aliases ("The Nightly Show")
+      :subdir "The.Nightly.Show.with.Larry.Wilmore" :date-based t
+      :remove t)
+    (defseries "An Idiot Abroad" :adrian+kevin :remove t)
+    (defseries "Ash vs Evil Dead" :kevin :remove t)
+    (defseries "Childhood's End" :kevin :remove t)
+    (defseries "Community" :adrian+kevin :remove t)
+    (defseries "Million Dollar Extreme Presents World Peace" :kevin :remove t)
+    (defseries "Time Traveling Bong" :kevin :remove t)
+    (defseries "Wallander" :anh+kevin :remove t)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
