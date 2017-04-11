@@ -25,7 +25,7 @@
   (pushnew :debug *features* :test #'eq)
   (let ((*features* *features*))
     (push :testing *features*)
-    (load "tget-config/config.cl" :verbose t)))
+    (load "tget-config/test-config.cl" :verbose t)))
 
 (defvar *debug-feed* nil)
 

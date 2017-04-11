@@ -84,18 +84,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Trackers
 
-#+testing
-(deftracker :eztv
-    ;; The usual place for EZTV is down (https://ezrss.it/feed/),
-    ;; try this, which I got from this page:
-    ;;   http://www.bt-chat.com/rsstag.php?
-    :url "http://rss.bt-chat.com/..."
-    :debug-feed :eztv
-    :public t
-    :download-delay 0
-    :disabled nil
-    :ratio 1.0)
-
 (deftracker :freshon
     ;; The feed URL is
     ;;  https://freshon.tv/rss.php?feed=dl&passkey=<passkey>"
@@ -168,7 +156,7 @@
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
-    (list :btn :shazbat #+testing :eztv :freshon))
+    (list :btn :shazbat :freshon))
 
 ;; for --cleanup, only manually downloaded
 (deftracker :720pier
@@ -341,15 +329,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
     :quality 'my-quality
     :download-path (merge-pathnames "tmp/" *download-root*))
 
-;;;;TODO: seems like this shouldn't be here... figure out a way to get
-;;;;      around it.  See --add command line argument.
-(defgroup :manual
-    :rss-url nil
-    :delay 0
-    :quality 'my-quality
-    ;; a dummy value, overridden by whatever group matches
-    :download-path (merge-pathnames "kevin/" *download-root*))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TV shows
 
@@ -390,8 +369,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Fear the Walking Dead" :kevin :delay 0)
 (defseries "Frontline (US)" :kevin)
 (defseries "Full Frontal with Samantha Bee" :kevin)
-(defseries "Hannibal" :kevin :delay 0 #-testing :quality #-testing :high
-	    :archive #.*for-fam*)
+(defseries "Hannibal" :kevin :delay 0 :quality :high :archive #.*for-fam*)
 (defseries "Hap and Leonard" :kevin :catch-up "S01E02")
 (defseries "Hell on Wheels" :kevin :subdir "Hell.on.Wheels")
 (defseries "Homeland" :kevin :private t :delay 0 :subdir "Homeland")
@@ -421,7 +399,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :catch-up "S02E01"
 	   :aliases ("Penn and Teller Fool Us")
 	   :archive #.*for-fam*)
-#-testing ;; really need a different testing config file
 (defseries "Real Time with Bill Maher" :kevin :catch-up "S15E09")
 (defseries "Review" :kevin :catch-up "S01"
 	   :aliases ("Review with Forrest MacNeil"))
@@ -461,64 +438,3 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :archive #.*for-mom*)
 (defseries "You're the Worst" :kevin :catch-up "S02")
 (defseries "Your Face or Mine" :kevin)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; These items are for the test suite only, and are not used in production
-;; mode:
-
-#+testing (defseries "The Newsroom (2012)" :kevin)
-#+testing (defseries "Top of the Lake" :kevin)
-#+testing (defseries "Parks and Recreation" :adrian+kevin)
-#+testing (defseries "The Simpsons" :adrian+kevin)
-#+testing (defseries "Drunk History" :kevin)
-#+testing (defseries "White Collar" :anh+kevin)
-#+testing (defseries "Justified" :kevin)
-#+testing (defseries "Ray Donovan" :kevin :private t)
-#+testing
-(defseries "The Daily Show with Jon Stewart" :kevin :subdir "The.Daily.Show"
-	   :date-based t
-	   :aliases ("The Daily Show"))
-#+testing (defseries "Top Gear" :adrian+kevin :quality :high)
-#+testing (defseries "Witness (2012)" :kevin :private t)
-#+testing (defseries "The Mentalist" :adrian+kevin)
-#+testing (defseries "Vikings" :kevin)
-#+testing (defseries "Intruders" :kevin :catch-up "S01E02")
-;; On Netflix now, watch there
-#+testing (defseries "Longmire" :kevin)
-#+testing (defseries "Mad Men" :kevin)
-#+testing (defseries "Regular Show" :adrian+kevin)
-#+testing (defseries "Modern Family" :adrian+kevin)
-
-
-(defseries "Minority Report" :kevin :remove t)
-(defseries "Heroes Reborn" :kevin :remove t)
-(defseries "The Strain" :kevin :remove t)
-(defseries "Blindspot" :kevin :remove t)
-(defseries "The Player (2015)" :kevin :remove t)
-
-(defseries "Preacher" :kevin :subdir "Preacher" :remove t)
-(defseries "Animal Kingdom" :kevin :remove t)
-(defseries "Man Down" :adrian+kevin :remove t)
-(defseries "NBA Warriors" :temp :date-based t :quality :high :remove t)
-(defseries "The Carmichael Show" :kevin :catch-up "S01"
-	   :subdir "The.Carmichael.Show" :remove t)
-(defseries "The X-Files" :kevin :catch-up "S09" :remove t)
-(defseries "The Night Of" :kevin :remove t)
-(defseries "Late Show with Stephen Colbert" :kevin
-  :subdir "The.Late.Show.with.Stephen.Colbert"
-  :aliases ("The Late Show with Stephen Colbert" "Stephen Colbert")
-  :remove t)
-(defseries "Sirens (2014)" :kevin :remove t)
-(defseries "Dirk Gently's Holistic Detective Agency" :kevin :remove t)
-(defseries "Brooklyn Nine-Nine" :adrian+kevin :remove t)
-(defseries "The Nightly Show with Larry Wilmore" :kevin
-  :aliases ("The Nightly Show")
-  :subdir "The.Nightly.Show.with.Larry.Wilmore" :date-based t
-  :remove t)
-(defseries "An Idiot Abroad" :adrian+kevin :remove t)
-(defseries "Ash vs Evil Dead" :kevin :remove t)
-(defseries "Childhood's End" :kevin :remove t)
-(defseries "Community" :adrian+kevin :remove t)
-(defseries "Million Dollar Extreme Presents World Peace" :kevin :remove t)
-(defseries "Time Traveling Bong" :kevin :remove t)
-(defseries "Wallander" :anh+kevin :remove t)
