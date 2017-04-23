@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.2.3")
+(defvar *tget-version* "5.2.4")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3778,7 +3778,14 @@ transmission-remote ~a:~a ~
 	(with-verbosity 3 (format t "TvT: ignore2: ~a~%" series-name))
 	(return-from convert-rss-to-episode))
       ;; a series we care about...
-      
+
+      ;; Countermeasures to dirty data
+      (let ((series-date-based (series-date-based series))
+	    (episode-date-based (episode-is-date-based-p season episode)))
+	(when (or (and (not series-date-based) episode-date-based)
+		  (and series-date-based       (not episode-date-based)))
+	  (return-from convert-rss-to-episode)))
+
       (let ((ep
 	     (make-episode
 	      :transient t

@@ -297,6 +297,30 @@
       (test 2013 (episode-season e))
       (test 353 (episode-episode e)))
     
+    ;; tests for date-based episodes:
+    (let ((e (rss-to-episode
+	      (make-rss-item
+	       :source :freshon.tv
+	       :title "Vikings.2017.04.21.Blah.HDTV.x264-2HD.mp4"
+	       :link "http://foo.bar.com/blahblah"
+	       :guid nil
+	       :comments "foo bar"
+	       :pub-date "Tue, 31 Dec 2013 00:25:15 +0000"
+	       :type "application/x-bittorrent"
+	       :length "417684110"))))
+      (test t (null e)))
+    (let ((e (rss-to-episode
+	      (make-rss-item
+	       :source :freshon.tv
+	       :title "The.Daily.Show.S10E22.Blah.HDTV.x264-2HD.mp4"
+	       :link "http://foo.bar.com/blahblah"
+	       :guid nil
+	       :comments "foo bar"
+	       :pub-date "Tue, 31 Dec 2013 00:25:15 +0000"
+	       :type "application/x-bittorrent"
+	       :length "417684110"))))
+      (test t (null e)))
+    
     (let ((e (rss-to-episode
 	      (make-rss-item
 	       :source :tvtorrents.com

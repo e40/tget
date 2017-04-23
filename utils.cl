@@ -740,6 +740,17 @@
   ;; ...so "James May's Man Lab" becomes "James Mays Man Lab"
   (replace-re name "[']" ""))
 
+(defun episode-is-date-based-p (season episode)
+  ;; Return T if SEASON and EPISODE are date based.  This is so we can
+  ;; reject episodes from BS trackers that allow mixed mode filenames, like
+  ;; "...S15E04..." and "...2017.04.21...".  I'm looking at you Freshon!
+  (declare (ignore episode))
+  (let ((this-year (nth-value 5 (decode-universal-time (get-universal-time)))))
+    ;; If the season is in the range of current-year -20 to current-year,
+    ;; it is.
+    (when (<= (- this-year 20) season this-year)
+      t)))
+
 (defun month-day-to-ordinal (year month day)
   ;; Args are all strings representing the given quantities.
   (when (string= "00" day)
