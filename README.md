@@ -1,4 +1,4 @@
-# tget 5.3.0 - torrent get
+# tget 5.4.0 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1130,6 +1130,17 @@ Catch up series to a specific episode:
     		      ;;       time here to make sure we don't get a H&R
     		      (setf (torrent-seed-min-time torrent) (* 3600 24 3)))))
     
+    (deftracker :mtv
+        :url "https://www.morethan.tv/..."
+        :disabled t
+        :download-delay 0
+        :ratio 1.5
+        :re "morethantv"
+        :char "T"
+        :setter (lambda (torrent)
+    	      (setf (torrent-ratio-limit torrent) 1.5)
+    	      (setf (torrent-seed-min-time torrent) (* 3600 24 5))))
+    
     (deftracker :shazbat
         :url "https://www.shazbat.tv/..."
         :debug-feed :shazbat
@@ -1137,7 +1148,7 @@ Catch up series to a specific episode:
         :download-delay 0
         :ratio 1.5
         :re "shazbat|bttracker\\.tv"
-        :char "T"
+        :char "S"
         :setter (lambda (torrent)
     	      ;; 1.2 ratio and 3 days should do it?
     	      (setf (torrent-ratio-limit torrent) 1.2)
@@ -1147,7 +1158,7 @@ Catch up series to a specific episode:
     (defvar *trackers*
         ;; move :freshon to last.  Their tracker is being very annoying lately
         ;; and not giving me upload credit.  Grrr.
-        (list :btn :shazbat :freshon))
+        (list :btn :mtv :shazbat #+ignore :freshon))
     
     ;; for --cleanup, only manually downloaded
     (deftracker :720pier

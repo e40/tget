@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-530---torrent-get" class="anchor" href="#tget-530---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.3.0 - torrent get</h1>
+<a id="user-content-tget-540---torrent-get" class="anchor" href="#tget-540---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.4.0 - torrent get</h1>
 <p><em>tget</em> is a suite of programs: <em>tget</em> and <em>plexfix</em>.</p>
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -1117,6 +1117,17 @@ $ tget --catch-up-series "breaking bad s04"
 		      ;;       time here to make sure we don't get a H&amp;R
 		      (setf (torrent-seed-min-time torrent) (* 3600 24 3)))))
 
+(deftracker :mtv
+    :url "https://www.morethan.tv/..."
+    :disabled t
+    :download-delay 0
+    :ratio 1.5
+    :re "morethantv"
+    :char "T"
+    :setter (lambda (torrent)
+	      (setf (torrent-ratio-limit torrent) 1.5)
+	      (setf (torrent-seed-min-time torrent) (* 3600 24 5))))
+
 (deftracker :shazbat
     :url "https://www.shazbat.tv/..."
     :debug-feed :shazbat
@@ -1124,7 +1135,7 @@ $ tget --catch-up-series "breaking bad s04"
     :download-delay 0
     :ratio 1.5
     :re "shazbat|bttracker\\.tv"
-    :char "T"
+    :char "S"
     :setter (lambda (torrent)
 	      ;; 1.2 ratio and 3 days should do it?
 	      (setf (torrent-ratio-limit torrent) 1.2)
@@ -1134,7 +1145,7 @@ $ tget --catch-up-series "breaking bad s04"
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
-    (list :btn :shazbat :freshon))
+    (list :btn :mtv :shazbat #+ignore :freshon))
 
 ;; for --cleanup, only manually downloaded
 (deftracker :720pier

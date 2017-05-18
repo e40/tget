@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.3.0")
+(defvar *tget-version* "5.4.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -3302,6 +3302,7 @@ transmission-remote ~a:~a ~
 	(match-re
 	 #.(concatenate 'simple-string
 	     "("
+	     "www\\.morethan.tv|"
 	     "tvtorrents\\.com|"
 	     "freshon\\.tv|"
 	     "broadcasthe\\.net|"
@@ -3818,6 +3819,15 @@ transmission-remote ~a:~a ~
 	      :resolution resolution)))
 	(with-verbosity 2 (format t "TvT: consider ep: ~a~%" ep))
 	ep))))
+
+(defmethod convert-rss-to-episode ((type (eql :mtv)) rss)
+  ;; MTV has a very brief RSS entry for each show.  The
+  ;; `title' is all we have, which has a filename-like format.
+  ;; The comment is the URL for the DL, but not with the passkey, so ignore
+  ;; it.  Other than pub-date, that's all there is.
+
+  ;; this works nicely:
+  (convert-rss-to-episode :freshon.tv rss))
 
 (defun check-episode-data (des-series-name series-name
 			   des-season season

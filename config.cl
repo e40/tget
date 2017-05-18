@@ -139,6 +139,17 @@
 		      ;;       time here to make sure we don't get a H&R
 		      (setf (torrent-seed-min-time torrent) (* 3600 24 3)))))
 
+(deftracker :mtv
+    :url "https://www.morethan.tv/..."
+    :disabled t
+    :download-delay 0
+    :ratio 1.5
+    :re "morethantv"
+    :char "T"
+    :setter (lambda (torrent)
+	      (setf (torrent-ratio-limit torrent) 1.5)
+	      (setf (torrent-seed-min-time torrent) (* 3600 24 5))))
+
 (deftracker :shazbat
     :url "https://www.shazbat.tv/..."
     :debug-feed :shazbat
@@ -146,7 +157,7 @@
     :download-delay 0
     :ratio 1.5
     :re "shazbat|bttracker\\.tv"
-    :char "T"
+    :char "S"
     :setter (lambda (torrent)
 	      ;; 1.2 ratio and 3 days should do it?
 	      (setf (torrent-ratio-limit torrent) 1.2)
@@ -156,7 +167,7 @@
 (defvar *trackers*
     ;; move :freshon to last.  Their tracker is being very annoying lately
     ;; and not giving me upload credit.  Grrr.
-    (list :btn :shazbat :freshon))
+    (list :btn :mtv :shazbat #+ignore :freshon))
 
 ;; for --cleanup, only manually downloaded
 (deftracker :720pier
