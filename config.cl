@@ -141,7 +141,7 @@
 
 (deftracker :mtv
     :url "https://www.morethan.tv/..."
-    :disabled t
+    :disabled nil
     :download-delay 0
     :ratio 1.5
     :re "morethantv"
@@ -165,9 +165,8 @@
 
 ;;;;TODO: rename this to *auto-trackers* or something
 (defvar *trackers*
-    ;; move :freshon to last.  Their tracker is being very annoying lately
-    ;; and not giving me upload credit.  Grrr.
-    (list :btn :mtv :shazbat #+ignore :freshon))
+    ;; Give the new guy first crack:
+    (list :mtv :btn :shazbat))
 
 ;; for --cleanup, only manually downloaded
 (deftracker :720pier
