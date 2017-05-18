@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-524---torrent-get" class="anchor" href="#tget-524---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.2.4 - torrent get</h1>
+<a id="user-content-tget-530---torrent-get" class="anchor" href="#tget-530---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.3.0 - torrent get</h1>
 <p><em>tget</em> is a suite of programs: <em>tget</em> and <em>plexfix</em>.</p>
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -1083,7 +1083,7 @@ $ tget --catch-up-series "breaking bad s04"
 (deftracker :btn
     ;; RSS feed configured by creating a notification filter with these
     ;; options: 
-    ;; - categories: episode
+    ;; - categories: episode, season
     ;; - containers: avi, mkv, mp4
     ;; - codecs: x264, h.264
     ;; - resolutions: sd, 720p
@@ -1153,6 +1153,14 @@ $ tget --catch-up-series "breaking bad s04"
 	      ;; Hard to seed stuff here, so seed longer.
 	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
 	      (setf (torrent-ratio-limit torrent) 1.5)))
+
+(deftracker :ptn
+    :re "piratethenet"
+    :char "x"
+    :setter (lambda (torrent)
+	      ;; Hard to seed stuff here, so seed longer.
+	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
+	      (setf (torrent-ratio-limit torrent) 1.1)))
 
 ;; Public trackers, just in case
 (deftracker :public-misc
@@ -1318,6 +1326,7 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 
 (defseries "8 Out of 10 Cats" :kevin :archive #.*for-mom*)
 (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*)
+(defseries "American Gods" :kevin :subdir "American.Gods" :private t)
 (defseries "Animal Kingdom (US)" :kevin :subdir "Animal.Kingdom.US")
 (defseries "Archer (2009)" :kevin :subdir "Archer")
 (defseries "Atlanta" :kevin)
@@ -1326,7 +1335,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Bates Motel" :anh+kevin)
 (defseries "Better Call Saul" :adrian+kevin)
 (defseries "Better Things" :kevin :catch-up "S01E01")
-;;;TODO: remove since on Netflix
 (defseries "Big Little Lies" :kevin :private t)
 (defseries "Black Mirror" :adrian+kevin)
 (defseries "Blunt Talk" :kevin :subdir "Blunt.Talk")
@@ -1338,9 +1346,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Dark Matter" :kevin :catch-up "S01")
 (defseries "Doc Martin" :anh)
 (defseries "Downton Abbey" :anh)
-(defseries "Dragon's Den" :kevin :aliases ("Dragon's Den UK"
-					   "Dragon's Den (UK)")
-	   :subdir "Dragons.Den")
 (defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin :subdir "Elementary")
 (defseries "Fargo" :kevin :quality :high :archive #.*for-fam*)
@@ -1368,7 +1373,10 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Midsomer Murders" :anh)
 (defseries "Mr Robot" :kevin)
 (defseries "Not Safe with Nikki Glaser" :kevin)
-(defseries "Naked and Afraid" :kevin :catch-up "S01")
+(defseries "Naked and Afraid" :kevin :catch-up "S01"
+	   :subdir "Naked.and.Afraid")
+(defseries "Naked and Afraid XL" :kevin :catch-up "S02"
+	   :subdir "Naked.and.Afraid.XL")
 (defseries "Nathan for You" :adrian+kevin)
 (defseries "Nature" :kevin :subdir "Nature")
 (defseries "Nova" :kevin :subdir "Nova")
@@ -1377,7 +1385,10 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :catch-up "S02E01"
 	   :aliases ("Penn and Teller Fool Us")
 	   :archive #.*for-fam*)
-(defseries "Real Time with Bill Maher" :kevin :catch-up "S15E09")
+(defseries "Real Time with Bill Maher" :kevin
+  ;; Do NOT do ``:date-based t'' because I prefer the site that doesn't use
+  ;; date-based naming.
+  )
 (defseries "Review" :kevin :catch-up "S01"
 	   :aliases ("Review with Forrest MacNeil"))
 (defseries "Rick and Morty" :adrian+kevin :archive #.*for-fam*)
@@ -1391,6 +1402,8 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
 	   :subdir "Taskmaster")
 (defseries "The Americans (2013)" :kevin :subdir "The.Americans")
+(defseries "The Big Fat Quiz of Everything" :kevin :catch-up "S02E01"
+	   :archive #.*for-mom*)
 (defseries "The Daily Show with Trevor Noah" :kevin :subdir "The.Daily.Show"
 	   :date-based t
 	   :aliases ("The Daily Show"))
@@ -1399,13 +1412,14 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "The Detour" :adrian+kevin :subdir "The.Detour")
 (defseries "The Good Wife" :anh+kevin)
 (defseries "The Graham Norton Show" :kevin :archive #.*for-mom*)
+(defseries "The Handmaid's Tale" :kevin)
 (defseries "The Knick" :kevin :catch-up "S01")
 (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
 (defseries "The Leftovers" :kevin :catch-up "S01" :archive #.*for-fam*)
 (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
-(defseries "The Big Fat Quiz of Everything" :kevin :catch-up "S02E01"
-	   :archive #.*for-mom*)
 (defseries "The Neighbors (2012)" :adrian+kevin)
+(defseries "The President Show" :kevin :date-based t
+	   :subdir "The.President.Show")
 (defseries "The Ultimate Fighter" :kevin)
 (defseries "The Walking Dead" :kevin :delay 0)
 (defseries "Tosh.0" :kevin)
@@ -1414,7 +1428,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
 	   :aliases ("Would I Lie To You")
 	   :archive #.*for-mom*)
-(defseries "You're the Worst" :kevin :catch-up "S02")
 (defseries "Your Face or Mine" :kevin)
 </code></pre>
 

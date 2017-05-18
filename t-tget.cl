@@ -53,6 +53,7 @@
   (test-tget-feed-reading)
   (test-tget-feed-bugs)
   (test-tget-complete-to)
+  (test-tget-matching)
 ;;;; This is the meat of the engine and most of it used to be tested by
 ;;;; test.sh.  Now in Lisp and it does a lot more.
   (test-tget-processing)
@@ -297,30 +298,6 @@
       (test 2013 (episode-season e))
       (test 353 (episode-episode e)))
     
-    ;; tests for date-based episodes:
-    (let ((e (rss-to-episode
-	      (make-rss-item
-	       :source :freshon.tv
-	       :title "Vikings.2017.04.21.Blah.HDTV.x264-2HD.mp4"
-	       :link "http://foo.bar.com/blahblah"
-	       :guid nil
-	       :comments "foo bar"
-	       :pub-date "Tue, 31 Dec 2013 00:25:15 +0000"
-	       :type "application/x-bittorrent"
-	       :length "417684110"))))
-      (test t (null e)))
-    (let ((e (rss-to-episode
-	      (make-rss-item
-	       :source :freshon.tv
-	       :title "The.Daily.Show.S10E22.Blah.HDTV.x264-2HD.mp4"
-	       :link "http://foo.bar.com/blahblah"
-	       :guid nil
-	       :comments "foo bar"
-	       :pub-date "Tue, 31 Dec 2013 00:25:15 +0000"
-	       :type "application/x-bittorrent"
-	       :length "417684110"))))
-      (test t (null e)))
-    
     (let ((e (rss-to-episode
 	      (make-rss-item
 	       :source :tvtorrents.com
@@ -338,7 +315,6 @@
       (test t (episode-p e))
       (test 4 (episode-season e))
       (test 11 (episode-episode e)))
-    
     
     (let ((e
 	   (rss-to-episode
@@ -538,6 +514,81 @@
 	(test nil (series-discontinuous-episodes series)
 	      :test #'equal :fail-info "test 12b"))
       )))
+
+
+(defun test-tget-matching ()
+  (with-tget-tests ()
+    (let ((group (group-name-to-group :kevin))
+	  series)
+      ;; date-based ep with a non-date-based series
+      (setq series
+	(or (query-series-name-to-series "vikings")
+	    (error "could not find series vikings")))
+      (test
+       nil
+       (matching-episodes
+	group
+	series
+	(list (rss-to-episode
+	       (make-rss-item
+		:source :freshon.tv
+		:title "Vikings.2017.05.17.Blah.HDTV.x264-2HD.mp4"
+		:link "http://foo.bar.com/blahblah"
+		:guid nil
+		:comments "foo bar"
+		:pub-date "Wed, 17 May 2017 00:25:15 +0000"
+		:type "application/x-bittorrent"
+		:length "417684110")))
+	t))
+      ;; Make sure we can get a positive match, too:
+      (let* ((eps (list (rss-to-episode
+			 (make-rss-item
+			  :source :freshon.tv
+			  :title "Vikings.S55E10.Blah.HDTV.x264-2HD.mp4"
+			  :link "http://foo.bar.com/blahblah"
+			  :guid nil
+			  :comments "foo bar"
+			  :pub-date "Wed, 17 May 2017 00:25:15 +0000"
+			  :type "application/x-bittorrent"
+			  :length "417684110"))))
+	     (res (matching-episodes group series eps t)))
+	(test t (= 1 (length res)))
+	(test t (episode-p (car res))))
+
+      ;; date-based series with a non-date-based ep
+      (setq series
+	(or (query-series-name-to-series "the daily show")
+	    (error "could not find series the daily show")))
+      (test
+       nil
+       (matching-episodes
+	group
+	series
+	(list (rss-to-episode
+	       (make-rss-item
+		:source :freshon.tv
+		:title "The.Daily.Show.S55E22.Blah.HDTV.x264-2HD.mp4"
+		:link "http://foo.bar.com/blahblah"
+		:guid nil
+		:comments "foo bar"
+		:pub-date "Wed, 17 May 2017 00:25:15 +0000"
+		:type "application/x-bittorrent"
+		:length "417684110")))
+	t))
+      ;; positive match:
+      (let* ((eps (list (rss-to-episode
+	       (make-rss-item
+		:source :freshon.tv
+		:title "The.Daily.Show.2017.05.17.Blah.HDTV.x264-2HD.mp4"
+		:link "http://foo.bar.com/blahblah"
+		:guid nil
+		:comments "foo bar"
+		:pub-date "Wed, 17 May 2017 00:25:15 +0000"
+		:type "application/x-bittorrent"
+		:length "417684110"))))
+	     (res (matching-episodes group series eps t)))
+	(test t (= 1 (length res)))
+	(test t (episode-p (car res)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

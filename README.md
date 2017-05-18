@@ -1,4 +1,4 @@
-# tget 5.2.4 - torrent get
+# tget 5.3.0 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1096,7 +1096,7 @@ Catch up series to a specific episode:
     (deftracker :btn
         ;; RSS feed configured by creating a notification filter with these
         ;; options: 
-        ;; - categories: episode
+        ;; - categories: episode, season
         ;; - containers: avi, mkv, mp4
         ;; - codecs: x264, h.264
         ;; - resolutions: sd, 720p
@@ -1166,6 +1166,14 @@ Catch up series to a specific episode:
     	      ;; Hard to seed stuff here, so seed longer.
     	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
     	      (setf (torrent-ratio-limit torrent) 1.5)))
+    
+    (deftracker :ptn
+        :re "piratethenet"
+        :char "x"
+        :setter (lambda (torrent)
+    	      ;; Hard to seed stuff here, so seed longer.
+    	      (setf (torrent-seed-min-time torrent) (* 3600 24 4))
+    	      (setf (torrent-ratio-limit torrent) 1.1)))
     
     ;; Public trackers, just in case
     (deftracker :public-misc
@@ -1331,6 +1339,7 @@ Catch up series to a specific episode:
     
     (defseries "8 Out of 10 Cats" :kevin :archive #.*for-mom*)
     (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*)
+    (defseries "American Gods" :kevin :subdir "American.Gods" :private t)
     (defseries "Animal Kingdom (US)" :kevin :subdir "Animal.Kingdom.US")
     (defseries "Archer (2009)" :kevin :subdir "Archer")
     (defseries "Atlanta" :kevin)
@@ -1339,7 +1348,6 @@ Catch up series to a specific episode:
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Better Things" :kevin :catch-up "S01E01")
-    ;;;TODO: remove since on Netflix
     (defseries "Big Little Lies" :kevin :private t)
     (defseries "Black Mirror" :adrian+kevin)
     (defseries "Blunt Talk" :kevin :subdir "Blunt.Talk")
@@ -1351,9 +1359,6 @@ Catch up series to a specific episode:
     (defseries "Dark Matter" :kevin :catch-up "S01")
     (defseries "Doc Martin" :anh)
     (defseries "Downton Abbey" :anh)
-    (defseries "Dragon's Den" :kevin :aliases ("Dragon's Den UK"
-    					   "Dragon's Den (UK)")
-    	   :subdir "Dragons.Den")
     (defseries "Eagleheart" :adrian+kevin)
     (defseries "Elementary" :kevin :subdir "Elementary")
     (defseries "Fargo" :kevin :quality :high :archive #.*for-fam*)
@@ -1381,7 +1386,10 @@ Catch up series to a specific episode:
     (defseries "Midsomer Murders" :anh)
     (defseries "Mr Robot" :kevin)
     (defseries "Not Safe with Nikki Glaser" :kevin)
-    (defseries "Naked and Afraid" :kevin :catch-up "S01")
+    (defseries "Naked and Afraid" :kevin :catch-up "S01"
+    	   :subdir "Naked.and.Afraid")
+    (defseries "Naked and Afraid XL" :kevin :catch-up "S02"
+    	   :subdir "Naked.and.Afraid.XL")
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nature" :kevin :subdir "Nature")
     (defseries "Nova" :kevin :subdir "Nova")
@@ -1390,7 +1398,10 @@ Catch up series to a specific episode:
     	   :catch-up "S02E01"
     	   :aliases ("Penn and Teller Fool Us")
     	   :archive #.*for-fam*)
-    (defseries "Real Time with Bill Maher" :kevin :catch-up "S15E09")
+    (defseries "Real Time with Bill Maher" :kevin
+      ;; Do NOT do ``:date-based t'' because I prefer the site that doesn't use
+      ;; date-based naming.
+      )
     (defseries "Review" :kevin :catch-up "S01"
     	   :aliases ("Review with Forrest MacNeil"))
     (defseries "Rick and Morty" :adrian+kevin :archive #.*for-fam*)
@@ -1404,6 +1415,8 @@ Catch up series to a specific episode:
     	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
     	   :subdir "Taskmaster")
     (defseries "The Americans (2013)" :kevin :subdir "The.Americans")
+    (defseries "The Big Fat Quiz of Everything" :kevin :catch-up "S02E01"
+    	   :archive #.*for-mom*)
     (defseries "The Daily Show with Trevor Noah" :kevin :subdir "The.Daily.Show"
     	   :date-based t
     	   :aliases ("The Daily Show"))
@@ -1412,13 +1425,14 @@ Catch up series to a specific episode:
     (defseries "The Detour" :adrian+kevin :subdir "The.Detour")
     (defseries "The Good Wife" :anh+kevin)
     (defseries "The Graham Norton Show" :kevin :archive #.*for-mom*)
+    (defseries "The Handmaid's Tale" :kevin)
     (defseries "The Knick" :kevin :catch-up "S01")
     (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
     (defseries "The Leftovers" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
-    (defseries "The Big Fat Quiz of Everything" :kevin :catch-up "S02E01"
-    	   :archive #.*for-mom*)
     (defseries "The Neighbors (2012)" :adrian+kevin)
+    (defseries "The President Show" :kevin :date-based t
+    	   :subdir "The.President.Show")
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "Tosh.0" :kevin)
@@ -1427,7 +1441,6 @@ Catch up series to a specific episode:
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
     	   :aliases ("Would I Lie To You")
     	   :archive #.*for-mom*)
-    (defseries "You're the Worst" :kevin :catch-up "S02")
     (defseries "Your Face or Mine" :kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"

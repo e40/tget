@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.2.4")
+(defvar *tget-version* "5.3.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2389,6 +2389,19 @@ Catch up series to a specific episode:
 		   nil
 	      else t)
 	   
+	   ;; Don't mix and match date-based and non-date-based episodes
+	   (let* ((series-date-based (series-date-based series))
+		  (season (episode-season ep))
+		  (epnum (episode-episode ep))
+		  (episode-date-based (episode-is-date-based-p season epnum)))
+	     (if* (and episode-date-based   (not series-date-based))
+		then (@log "  ignore: ep is date-based, series is not")
+		     nil
+	      elseif (and series-date-based    (not episode-date-based))
+		then (@log "  ignore: series is date-based, ep is not")
+		     nil
+		else t))
+	   
 	   ;; Make sure it's not before our cutoff in the series
 	   ;; complete-to
 	   (if* (or (setq after-complete-to
@@ -2451,7 +2464,9 @@ Catch up series to a specific episode:
 	     (setq hours (hours-available ep))
 	     t)
 	   
-	   (setq tracker (episode-tracker ep))
+	   (progn
+	     (setq tracker (episode-tracker ep))
+	     t)
 	   ;; If there is a tracker download delay, then check that before
 	   ;; checking the quality.
 	   ;;
@@ -3778,13 +3793,6 @@ transmission-remote ~a:~a ~
 	(with-verbosity 3 (format t "TvT: ignore2: ~a~%" series-name))
 	(return-from convert-rss-to-episode))
       ;; a series we care about...
-
-      ;; Countermeasures to dirty data
-      (let ((series-date-based (series-date-based series))
-	    (episode-date-based (episode-is-date-based-p season episode)))
-	(when (or (and (not series-date-based) episode-date-based)
-		  (and series-date-based       (not episode-date-based)))
-	  (return-from convert-rss-to-episode)))
 
       (let ((ep
 	     (make-episode
