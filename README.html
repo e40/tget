@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-540---torrent-get" class="anchor" href="#tget-540---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.4.0 - torrent get</h1>
+<a id="user-content-tget-541---torrent-get" class="anchor" href="#tget-541---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.4.1 - torrent get</h1>
 <p><em>tget</em> is a suite of programs: <em>tget</em> and <em>plexfix</em>.</p>
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet">FlexGet</a> is an amazing program in
@@ -1119,7 +1119,7 @@ $ tget --catch-up-series "breaking bad s04"
 
 (deftracker :mtv
     :url "https://www.morethan.tv/..."
-    :disabled t
+    :disabled nil
     :download-delay 0
     :ratio 1.5
     :re "morethantv"
@@ -1143,9 +1143,8 @@ $ tget --catch-up-series "breaking bad s04"
 
 ;;;;TODO: rename this to *auto-trackers* or something
 (defvar *trackers*
-    ;; move :freshon to last.  Their tracker is being very annoying lately
-    ;; and not giving me upload credit.  Grrr.
-    (list :btn :mtv :shazbat #+ignore :freshon))
+    ;; Give the new guy first crack:
+    (list :mtv :btn :shazbat))
 
 ;; for --cleanup, only manually downloaded
 (deftracker :720pier

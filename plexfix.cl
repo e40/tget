@@ -44,7 +44,8 @@
   ;; don't fix anything in /tmp/... since they almost never need fixing
   ;; and plexfix would make more of a mess.  This makes all the previous
   ;; ignore rules obsolete.
-  (match-re "/tmp/" (namestring filename) :return nil))
+;;;;TODO: need a better way to specific which directories get the treatment
+  (match-re "(/movies/|/tmp/)" (namestring filename) :return nil))
 
 (defun plexfix-1 (stream filename &aux new-name type)
   (multiple-value-bind (series-name season episode pms-fail year month day)

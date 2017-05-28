@@ -1,4 +1,4 @@
-# tget 5.4.0 - torrent get
+# tget 5.4.1 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1139,7 +1139,7 @@ Catch up series to a specific episode:
         :char "T"
         :setter (lambda (torrent)
     	      (setf (torrent-ratio-limit torrent) 1.5)
-    	      (setf (torrent-seed-min-time torrent) (* 3600 24 5))))
+    	      (setf (torrent-seed-min-time torrent) (* 3600 24 100))))
     
     (deftracker :shazbat
         :url "https://www.shazbat.tv/..."
@@ -1359,6 +1359,7 @@ Catch up series to a specific episode:
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Better Things" :kevin :catch-up "S01E01")
     (defseries "Big Little Lies" :kevin :private t)
+    (defseries "Billions" :kevin :private t :catch-up "S02")
     (defseries "Black Mirror" :adrian+kevin)
     (defseries "Blunt Talk" :kevin :subdir "Blunt.Talk")
     (defseries "Brain Dead" :kevin)
@@ -1441,8 +1442,11 @@ Catch up series to a specific episode:
     (defseries "The Leftovers" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Neighbors (2012)" :adrian+kevin)
-    (defseries "The President Show" :kevin :date-based t
-    	   :subdir "The.President.Show")
+    (defseries "The President Show" :kevin
+      ;; :date-based t ;; not on BTN... ugh
+      :subdir "The.President.Show"
+      :catch-up "S01E03"
+      )
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "Tosh.0" :kevin)
