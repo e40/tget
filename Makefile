@@ -107,19 +107,11 @@ else
 endif
 endif
 
-PLEXFIX_DEST := /var/lib/docker/devicemapper/mnt/$(shell docker inspect -f '{{.Id}}' transmission)/rootfs/usr/local/lib/plexfix/
-
-# run as root:
 install_plexfix_docker: FORCE
-	@if [ "$(shell id -u)" != 0 ]; then \
-	    echo Error: run $@ as root; \
-	    exit 1; \
-	fi
-	if [ ! -d $(PLEXFIX_DEST) ]; then \
-	    echo Error: $(PLEXFIX_DEST) does not exist; \
-	    exit 1; \
-	fi
-	cp -p plexfix/plexfix* $(PLEXFIX_DEST)
+	for f in plexfix/plexfix*; do \
+	    echo $$f...; \
+	    docker cp $$f transmission:$(DESTDIR)/lib/plexfix/; \
+	done
 
 ###############################################################################
 
