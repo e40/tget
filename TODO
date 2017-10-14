@@ -2,6 +2,19 @@ TODO:
 
 high:
 
+- removing a broken torrent when the replacement has already been
+  downloaded:
+
+Warning: remove-torrent: got more than one ep:
+         (#<episode
+            "dark matter, REPACK S03E03; quality=normal; transient=nil" oid: 6241011, ver 8, trans: 446410,  not modified
+            @ #x10002316a12>
+          #<episode
+            "dark matter S03E03; quality=normal; transient=nil" oid: 6240010, ver 8, trans: 446410,  not modified
+            @ #x10002316a42>)
+T name                                     %done ratio seeded      left
+  dark matter S03E03                       100%  Error Error
+
 - more naming glitches:
    the.player.2015.101.hdtv-lol.mp4
    the.player.S20E15.mp4 -> the.player.2015.101.hdtv-lol.mp4
