@@ -1347,14 +1347,14 @@ Catch up series to a specific episode:
     ;;          the group download path -- this is a hack to make Plex Media
     ;;          Server see episodes of The Daily Show and The Colbert Report.
     
-    (defseries "8 Out of 10 Cats" :kevin :archive #.*for-mom*)
-    (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*)
+    (defseries "8 Out of 10 Cats" :kevin :archive #.*for-mom*
+    	   :subdir "8.out.of.10.cats")
+    (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*
+    	   :subdir "8.out.of.10.cats.does.countdown")
     (defseries "American Gods" :kevin :subdir "American.Gods" :private t)
     (defseries "Animal Kingdom (US)" :kevin :subdir "Animal.Kingdom.US")
     (defseries "Archer (2009)" :kevin :subdir "Archer")
     (defseries "Atlanta" :kevin)
-    (defseries "At Midnight" :kevin :date-based t :subdir "At.Midnight"
-    	   :aliases ("@midnight"))
     (defseries "Bates Motel" :anh+kevin)
     (defseries "Better Call Saul" :adrian+kevin)
     (defseries "Better Things" :kevin :catch-up "S01E01")
@@ -1363,11 +1363,12 @@ Catch up series to a specific episode:
     (defseries "Black Mirror" :adrian+kevin)
     (defseries "Blunt Talk" :kevin :subdir "Blunt.Talk")
     (defseries "Brain Dead" :kevin)
-    (defseries "Broad City" :kevin :catch-up "S02" :archive #.*for-fam*)
+    (defseries "Broad City" :kevin :catch-up "S02")
+    (defseries "Carpool Karaoke The Series" :kevin
+      :subdir "Carpool.Karaoke.The.Series")
     (defseries "Cesar 911" :kevin :catch-up "S02")
     (defseries "Childrens Hospital (US)" :adrian+kevin)
-    (defseries "Curb your Enthusiasm" :adrian+kevin)
-    (defseries "Dark Matter" :kevin :catch-up "S01")
+    (defseries "Curb your Enthusiasm" :adrian+kevin :archive #.*for-fam*)
     (defseries "Doc Martin" :anh)
     (defseries "Downton Abbey" :anh)
     (defseries "Eagleheart" :adrian+kevin)
@@ -1376,11 +1377,12 @@ Catch up series to a specific episode:
     (defseries "Fear the Walking Dead" :kevin :delay 0)
     (defseries "Frontline (US)" :kevin)
     (defseries "Full Frontal with Samantha Bee" :kevin)
-    (defseries "Hannibal" :kevin :delay 0 :quality :high :archive #.*for-fam*)
+    (defseries "Hannibal" :kevin :delay 0 :quality :high)
     (defseries "Hap and Leonard" :kevin :catch-up "S01E02")
     (defseries "Hell on Wheels" :kevin :subdir "Hell.on.Wheels")
     (defseries "Homeland" :kevin :private t :delay 0 :subdir "Homeland")
     (defseries "Inside Amy Schumer" :kevin :catch-up "S03")
+    (defseries "I'm Dying Up Here" :kevin)
     (defseries "James May's Man Lab" :adrian+kevin)
     (defseries "Jeff Ross Roasts Cops" :kevin)
     (defseries "Jeff Ross Presents Roast Battle" :adrian+kevin)
@@ -1392,8 +1394,7 @@ Catch up series to a specific episode:
     (defseries "Louis Theroux Documentaries" :kevin)
     (defseries "Louie" :kevin)
     (defseries "Luther" :kevin)
-    (defseries "Man Seeking Woman" :adrian+kevin :catch-up "S01"
-    	   :archive #.*for-fam*)
+    (defseries "Man Seeking Woman" :adrian+kevin :catch-up "S01")
     (defseries "Midsomer Murders" :anh)
     (defseries "Mr Robot" :kevin)
     (defseries "Not Safe with Nikki Glaser" :kevin)
@@ -1404,24 +1405,22 @@ Catch up series to a specific episode:
     (defseries "Nathan for You" :adrian+kevin)
     (defseries "Nature" :kevin :subdir "Nature")
     (defseries "Nova" :kevin :subdir "Nova")
-    (defseries "People of Earth" :kevin)
     (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
     	   :catch-up "S02E01"
-    	   :aliases ("Penn and Teller Fool Us")
-    	   :archive #.*for-fam*)
-    (defseries "Real Time with Bill Maher" :kevin
-      ;; Do NOT do ``:date-based t'' because I prefer the site that doesn't use
-      ;; date-based naming.
-      )
+    	   :aliases ("Penn and Teller Fool Us"))
+    (defseries "Real Time with Bill Maher" :kevin :date-based t
+    	   :subdir "Real.Time")
     (defseries "Review" :kevin :catch-up "S01"
     	   :aliases ("Review with Forrest MacNeil"))
     (defseries "Rick and Morty" :adrian+kevin :archive #.*for-fam*)
     (defseries "Ridiculousness" :adrian+kevin)
     (defseries "Shark Tank" :kevin)
+    (defseries "South Park" :adrian+kevin :catch-up "S20" :remove t)
     (defseries "Sherlock" :kevin)
     (defseries "Show me a hero" :kevin)
     (defseries "StarTalk with Neil deGrasse Tyson" :kevin :catch-up "S01"
     	   :aliases ("Startalk"))
+    (defseries "Star Trek: Discovery" :kevin :archive #.*for-fam*)
     (defseries "Taskmaster" :adrian+kevin :catch-up "S03"
     	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
     	   :subdir "Taskmaster")
@@ -1434,7 +1433,8 @@ Catch up series to a specific episode:
     (defseries "The Eric Andre Show" :kevin)
     (defseries "The Expanse" :kevin :subdir "The.Expanse")
     (defseries "The Detour" :adrian+kevin :subdir "The.Detour")
-    (defseries "The Good Wife" :anh+kevin)
+    (defseries "The Deuce" :kevin :subdir "The.Deuce" :private t)
+    (defseries "The Good Place" :kevin :catch-up "S01")
     (defseries "The Graham Norton Show" :kevin :archive #.*for-mom*)
     (defseries "The Handmaid's Tale" :kevin)
     (defseries "The Knick" :kevin :catch-up "S01")
@@ -1442,20 +1442,23 @@ Catch up series to a specific episode:
     (defseries "The Leftovers" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
     (defseries "The Neighbors (2012)" :adrian+kevin)
+    (defseries "The Opposition with Jordan Klepper" :kevin
+      :date-based t
+      :subdir "The.Opposition.with.Jordan.Klepper")
     (defseries "The President Show" :kevin
       ;; :date-based t ;; not on BTN... ugh
       :subdir "The.President.Show"
-      :catch-up "S01E03"
-      )
+      :catch-up "S01E03")
     (defseries "The Ultimate Fighter" :kevin)
     (defseries "The Walking Dead" :kevin :delay 0)
     (defseries "Tosh.0" :kevin)
     (defseries "True Detective" :kevin :private t)
+    (defseries "VICE News Tonight" :kevin
+      :subdir "VICE.News.Tonight")
     (defseries "World's Craziest Fools" :adrian+kevin)
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
     	   :aliases ("Would I Lie To You")
     	   :archive #.*for-mom*)
-    (defseries "Your Face or Mine" :kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

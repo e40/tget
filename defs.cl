@@ -10,7 +10,8 @@
   (require :anydate)
   (require :ssl)
   (require :aserve)
-  (require :acache "acache-3.0.5.fasl")
+  #+(version= 10 0) (require :acache "acache-3.0.5.fasl")
+  #+(version= 10 1) (require :acache "acache-3.1.1.fasl")
   (require :autozoom))
 
 (defpackage :user
