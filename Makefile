@@ -92,23 +92,8 @@ plexfix: FORCE
 	cat deliver_plexfix.cl >> build.tmp
 	$(runlisp)
 
-#### rule is not used, since it's in the transmission container
-ifdef NOTDEFINED
-install_plexfix: FORCE
-ifdef DESTDIR
-	rm -fr $(DESTDIR)/lib/plexfix.old
-	-mv $(DESTDIR)/lib/plexfix $(DESTDIR)/lib/plexfix.old
-	cp -rp plexfix $(DESTDIR)/lib/plexfix
-	rm -f $(DESTDIR)/bin/plexfix
-	cd $(DESTDIR)/bin; ln -s $(DESTDIR)/lib/plexfix/plexfix .
-else
-	@echo There is no DESTDIR defined in Makefile.
-	@exit 1
-endif
-endif
-
 install_plexfix_docker: FORCE
-	for f in plexfix/plexfix*; do \
+	for f in plexfix/lib*.so plexfix/files.bu plexfix/plexfix*; do \
 	    echo $$f...; \
 	    docker cp $$f transmission:$(DESTDIR)/lib/plexfix/; \
 	done
