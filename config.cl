@@ -163,6 +163,17 @@
 	      (setf (torrent-ratio-limit torrent) 1.2)
 	      (setf (torrent-seed-min-time torrent) (* 3600 24 3))))
 
+(deftracker :emp
+    :disabled t
+    :download-delay 0
+    :ratio 1.0
+    :re "empornium"
+    :char "X"
+    :setter (lambda (torrent)
+	      ;; 1.2 ratio and 3 days should do it?
+	      (setf (torrent-ratio-limit torrent) 1.2)
+	      (setf (torrent-seed-min-time torrent) (* 3600 24 3))))
+
 ;;;;TODO: rename this to *auto-trackers* or something
 (defvar *trackers*
     ;; Give the new guy first crack:
@@ -360,38 +371,36 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :subdir "8.out.of.10.cats")
 (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*
 	   :subdir "8.out.of.10.cats.does.countdown")
+(defseries "American Experience" :kevin :subdir "American.Experience")
 (defseries "American Gods" :kevin :subdir "American.Gods" :private t)
 (defseries "Animal Kingdom (US)" :kevin :subdir "Animal.Kingdom.US")
-(defseries "Archer (2009)" :kevin :subdir "Archer")
-(defseries "Atlanta" :kevin)
-(defseries "Bates Motel" :anh+kevin)
+(defseries "Atlanta" :kevin :subdir "Atlanta")
 (defseries "Better Call Saul" :adrian+kevin)
 (defseries "Better Things" :kevin :catch-up "S01E01")
 (defseries "Big Little Lies" :kevin :private t)
-(defseries "Billions" :kevin :private t :catch-up "S02")
-(defseries "Black Mirror" :adrian+kevin)
-(defseries "Blunt Talk" :kevin :subdir "Blunt.Talk")
-(defseries "Brain Dead" :kevin)
+(defseries "Billions" :kevin :private t :catch-up "S02" :subdir "Billions")
 (defseries "Broad City" :kevin :catch-up "S02")
 (defseries "Carpool Karaoke The Series" :kevin
   :subdir "Carpool.Karaoke.The.Series")
 (defseries "Cesar 911" :kevin :catch-up "S02")
-(defseries "Childrens Hospital (US)" :adrian+kevin)
+(defseries "Corporate" :kevin)
+(defseries "Counterpart" :kevin :archive #.*for-fam*
+	   :delay 12 ;; TOO MANY BOGUS torrents
+	   :quality :high)
 (defseries "Curb your Enthusiasm" :adrian+kevin :archive #.*for-fam*)
 (defseries "Doc Martin" :anh)
 (defseries "Downton Abbey" :anh)
-(defseries "Eagleheart" :adrian+kevin)
 (defseries "Elementary" :kevin :subdir "Elementary")
 (defseries "Fargo" :kevin :quality :high :archive #.*for-fam*)
-(defseries "Fear the Walking Dead" :kevin :delay 0)
 (defseries "Frontline (US)" :kevin)
 (defseries "Full Frontal with Samantha Bee" :kevin)
+(defseries "Future Man" :kevin :catch-up "S01")
 (defseries "Hannibal" :kevin :delay 0 :quality :high)
-(defseries "Hap and Leonard" :kevin :catch-up "S01E02")
-(defseries "Hell on Wheels" :kevin :subdir "Hell.on.Wheels")
-(defseries "Homeland" :kevin :private t :delay 0 :subdir "Homeland")
+(defseries "I Love You America with Sarah Silverman" :kevin
+  :archive #.*for-mom* :subdir "I.Love.You.America"
+  :aliases ("I Love You America")
+  :catch-up "S02E01")
 (defseries "Inside Amy Schumer" :kevin :catch-up "S03")
-(defseries "I'm Dying Up Here" :kevin)
 (defseries "James May's Man Lab" :adrian+kevin)
 (defseries "Jeff Ross Roasts Cops" :kevin)
 (defseries "Jeff Ross Presents Roast Battle" :adrian+kevin)
@@ -400,12 +409,13 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Last Week Tonight with John Oliver" :kevin :private t
 	   :subdir "Last.Week.Tonight.With.John.Oliver"
 	   :catch-up "S04E01")
+(defseries "Legion" :kevin :catch-up "S01"
+	   :archive #.*for-fam* :subdir "Legion")
+(defseries "The Looming Tower" :kevin :subdir "The.Looming.Tower")
 (defseries "Louis Theroux Documentaries" :kevin)
-(defseries "Louie" :kevin)
 (defseries "Luther" :kevin)
 (defseries "Man Seeking Woman" :adrian+kevin :catch-up "S01")
 (defseries "Midsomer Murders" :anh)
-(defseries "Mr Robot" :kevin)
 (defseries "Not Safe with Nikki Glaser" :kevin)
 (defseries "Naked and Afraid" :kevin :catch-up "S01"
 	   :subdir "Naked.and.Afraid")
@@ -417,18 +427,11 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Penn & Teller: Fool Us" :adrian+kevin :quality :high
 	   :catch-up "S02E01"
 	   :aliases ("Penn and Teller Fool Us"))
-(defseries "Real Time with Bill Maher" :kevin :date-based t
-	   :subdir "Real.Time")
 (defseries "Review" :kevin :catch-up "S01"
 	   :aliases ("Review with Forrest MacNeil"))
 (defseries "Rick and Morty" :adrian+kevin :archive #.*for-fam*)
 (defseries "Ridiculousness" :adrian+kevin)
-(defseries "Shark Tank" :kevin)
-(defseries "South Park" :adrian+kevin :catch-up "S20" :remove t)
 (defseries "Sherlock" :kevin)
-(defseries "Show me a hero" :kevin)
-(defseries "StarTalk with Neil deGrasse Tyson" :kevin :catch-up "S01"
-	   :aliases ("Startalk"))
 (defseries "Star Trek: Discovery" :kevin :archive #.*for-fam*)
 (defseries "Taskmaster" :adrian+kevin :catch-up "S03"
 	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
@@ -440,31 +443,28 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :date-based t
 	   :aliases ("The Daily Show"))
 (defseries "The Eric Andre Show" :kevin)
-(defseries "The Expanse" :kevin :subdir "The.Expanse")
+(defseries "The Expanse" :kevin :catch-up "S02" :quality :high)
 (defseries "The Detour" :adrian+kevin :subdir "The.Detour")
-(defseries "The Deuce" :kevin :subdir "The.Deuce" :private t)
-(defseries "The Good Place" :kevin :catch-up "S01")
 (defseries "The Graham Norton Show" :kevin :archive #.*for-mom*)
-(defseries "The Handmaid's Tale" :kevin)
-(defseries "The Knick" :kevin :catch-up "S01")
 (defseries "The Last Man on Earth" :adrian+kevin :catch-up "S01E02")
-(defseries "The Leftovers" :kevin :catch-up "S01" :archive #.*for-fam*)
 (defseries "The Meltdown with Jonah and Kumail" :kevin :catch-up "S01E04")
 (defseries "The Neighbors (2012)" :adrian+kevin)
-(defseries "The Opposition with Jordan Klepper" :kevin
-  :date-based t
-  :subdir "The.Opposition.with.Jordan.Klepper")
-(defseries "The President Show" :kevin
-  ;; :date-based t ;; not on BTN... ugh
-  :subdir "The.President.Show"
-  :catch-up "S01E03")
-(defseries "The Ultimate Fighter" :kevin)
-(defseries "The Walking Dead" :kevin :delay 0)
 (defseries "Tosh.0" :kevin)
 (defseries "True Detective" :kevin :private t)
 (defseries "VICE News Tonight" :kevin
   :subdir "VICE.News.Tonight")
-(defseries "World's Craziest Fools" :adrian+kevin)
 (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
 	   :aliases ("Would I Lie To You")
 	   :archive #.*for-mom*)
+(defseries "Westworld" :kevin :catch-up "S01" :quality :high
+	   :private t :subdir "Westworld")
+
+
+(defseries "Cash Cab" :kevin)
+(defseries "The Terror" :kevin :catch-up "S01" :archive #.*for-fam*)
+(defseries "Shooter" :kevin :catch-up "S02" :subdir "Shooter")
+
+(defseries "Castle Rock" :kevin :subdir "CastleRock")
+
+(defseries "Who is America?" :kevin :subdir "WhoIsAmerica" :private t
+	   :aliases ("Who is America"))
