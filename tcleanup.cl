@@ -575,6 +575,7 @@ The default is 72 hours, or 3 days."
 	       (announce "HIDDEN: ~a~%" (file-namestring p))))
 
 	    ((or (equalp "srt" (pathname-type p))
+		 (equalp "idx" (pathname-type p))
 		 (equalp "sub" (pathname-type p)))
 	     (when (not (find-video-match-for-srt p))
 	       (if* *remove-watched*
