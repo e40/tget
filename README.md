@@ -1034,7 +1034,7 @@ Catch up series to a specific episode:
     (setq *download-root* "/me/tplex/content/videos/")
     
     (defvar *for-mom* "/me/tplex/content/videos/for-mom/")
-    (defvar *for-fam* "/me/tplex/content/videos/for-fam/")
+    (defvar *for-fam* "/me/tplex/content/videos/archive/")
     
     (defvar *codec-x264*
         ;; It goes by two different names:
@@ -1059,6 +1059,7 @@ Catch up series to a specific episode:
     ;; The directories to clean
     (setq *watch-directories*
       '(("/me/tplex/content/videos/kevin" . "TV:Kevin")
+        ("/me/tplex/content/videos/anh" . "TV:Anh")
         ("/me/tplex/content/videos/movies/kevin" . "Movies:Kevin")
         ("/me/tplex/content/videos/tmp" . "temp")))
     
@@ -1140,17 +1141,6 @@ Catch up series to a specific episode:
         :ratio 1.5
         :re "shazbat|bttracker\\.tv"
         :char "S"
-        :setter (lambda (torrent)
-    	      ;; 1.2 ratio and 3 days should do it?
-    	      (setf (torrent-ratio-limit torrent) 1.2)
-    	      (setf (torrent-seed-min-time torrent) (* 3600 24 3))))
-    
-    (deftracker :emp
-        :disabled t
-        :download-delay 0
-        :ratio 1.0
-        :re "empornium"
-        :char "X"
         :setter (lambda (torrent)
     	      ;; 1.2 ratio and 3 days should do it?
     	      (setf (torrent-ratio-limit torrent) 1.2)
@@ -1391,20 +1381,32 @@ Catch up series to a specific episode:
     (defseries "Ridiculousness" :kevin)
     (defseries "Sherlock" :kevin)
     (defseries "Star Trek: Discovery" :kevin :archive #.*for-fam*)
+    (defseries "Star Trek: Picard" :kevin :archive #.*for-fam*)
     (defseries "Taskmaster" :kevin :catch-up "S03"
     	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
     	   :subdir "Taskmaster")
-    (defseries "The Graham Norton Show" :kevin :archive #.*for-mom*)
+    (defseries "The Graham Norton Show" :kevin)
     (defseries "The Righteous Gemstones" :kevin :subdir "The.Righteous.Gemstones"
     	   :private t)
     (defseries "The Terror" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "Tosh.0" :kevin)
+    (defseries "Watchmen" :kevin :subdir "Watchmen" :private t
+    	   :archive #.*for-fam* :quality :high :delay 2)
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
     	   :aliases ("Would I Lie To You")
     	   :archive #.*for-mom*)
-    
-    
     (defseries "Hannibal" :kevin :delay 0 :quality :high)
+    (defseries "Killing Eve" :kevin :quality :high :catch-up "S02")
+    (defseries "Doc Martin" :kevin :catch-up "S09")
+    (defseries "Better off Ted" :kevin :catch-up "S02" :archive #.*for-fam*)
+    (defseries "The Mandalorian" :kevin :quality :high :archive #.*for-fam*)
+    (defseries "Patriot Act with Hasan Minhaj" :kevin :catch-up "S04")
+    (defseries "His Dark Materials" :kevin :quality :high)
+    (defseries "Avenue 5" :kevin)
+    
+    
+    (defseries "Dispatches from Elsewhere" :kevin :catch-up "S01E02")
+    
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
