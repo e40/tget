@@ -12,7 +12,7 @@
  (append (if* *debug*
 	    then '(:streamc :inspect :trace)
 	    else nil)
-	 (append '(:list2 :seq2) user::*fasls*))
+	 (append '(:list2 :seq2 :disasm) user::*fasls*))
  :restart-init-function 'main
  :application-administration
  '(:resource-command-line "-Q")
