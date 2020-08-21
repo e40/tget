@@ -1105,12 +1105,9 @@ Catch up series to a specific episode:
         :re "broadcasthe\\.net|landof\\.tv"
         :char "B"
         :setter (lambda (torrent)
+    	      (format t "torrent ~s~%" torrent)
     	      (setf (torrent-ratio-limit torrent) 1.50)
-    
-    	      (if* (or (torrent-seasonp torrent)
-    		       ;; Badly named torrent, so hack it:
-    		       (equalp "How TV Ruined Your Life"
-    			       (torrent-name torrent)))
+    	      (if* (torrent-seasonp torrent)
     		 then ;; Seed for a week + slop 
     		      (setf (torrent-seed-min-time torrent)
     			(* 3600 24 12))
@@ -1189,12 +1186,12 @@ Catch up series to a specific episode:
     ;; Quality settings
     
     (defquality :high-1080p
-        :priority -1			; never download
+        :priority 10
         :codec *codec-x264* 
         :resolution :1080p)
     
     (defquality :high-1080i
-        :priority -1			; never download
+        :priority 1
         :codec *codec-x264* 
         :resolution :1080i)
     
@@ -1219,14 +1216,13 @@ Catch up series to a specific episode:
         :resolution :sd)
     
     (defquality :btn
-        :priority 60
-        :container '(:mkv :mp4)
-        ;;:source :hdtv
-        :codec *codec-x264*)
+        :priority 90
+        :codec *codec-x264* 
+        :resolution :720p)
     
     ;; The additional delay waiting to download a high quality ep while
     ;; waiting for a normal quality one to become available
-    (defvar *download-hq-delay* #-debug 1 #+debug 5)
+    (defvar *download-hq-delay* 0)
     
     ;; The additional delay waiting to download a low quality ep while
     ;; waiting for a normal or high quality one to become available
@@ -1344,25 +1340,19 @@ Catch up series to a specific episode:
     (defseries "8 Out of 10 Cats Does Countdown" :kevin :archive #.*for-mom*
     	   :subdir "8.out.of.10.cats.does.countdown")
     (defseries "American Experience" :kevin :subdir "American.Experience")
-    (defseries "American Gods" :kevin :subdir "American.Gods" :private t)
     (defseries "Atlanta" :kevin :subdir "Atlanta")
     (defseries "Barry" :kevin :subdir "Barry" :private t)
     (defseries "Better Call Saul" :kevin)
-    (defseries "Broad City" :kevin :catch-up "S02" :archive #.*for-fam*)
-    (defseries "Carpool Karaoke The Series" :kevin
-      :subdir "Carpool.Karaoke.The.Series")
-    (defseries "Cesar 911" :kevin :catch-up "S02")
+    
     (defseries "Corporate" :kevin)
-    (defseries "Counterpart" :kevin :archive #.*for-fam*
-    	   :delay 12 ;; TOO MANY BOGUS torrents
-    	   :quality :high)
+    
     (defseries "Curb your Enthusiasm" :kevin :archive #.*for-fam*)
     (defseries "Elementary" :kevin :subdir "Elementary")
     (defseries "Fargo" :kevin :quality :high :archive #.*for-fam*)
     (defseries "Frontline (US)" :kevin)
     (defseries "Future Man" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "Good Talk With Anthony Jeselnik" :kevin :subdir "Good.Talk")
-    (defseries "Jeff Ross Roasts Cops" :kevin)
+    
     (defseries "Jeff Ross Presents Roast Battle" :kevin)
     (defseries "Luther" :kevin)
     (defseries "Man Seeking Woman" :kevin :catch-up "S01")
@@ -1390,23 +1380,27 @@ Catch up series to a specific episode:
     	   :private t)
     (defseries "The Terror" :kevin :catch-up "S01" :archive #.*for-fam*)
     (defseries "Tosh.0" :kevin)
-    (defseries "Watchmen" :kevin :subdir "Watchmen" :private t
-    	   :archive #.*for-fam* :quality :high :delay 2)
+    
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
     	   :aliases ("Would I Lie To You")
     	   :archive #.*for-mom*)
     (defseries "Hannibal" :kevin :delay 0 :quality :high)
-    (defseries "Killing Eve" :kevin :quality :high :catch-up "S02")
-    (defseries "Doc Martin" :kevin :catch-up "S09")
-    (defseries "Better off Ted" :kevin :catch-up "S02" :archive #.*for-fam*)
-    (defseries "The Mandalorian" :kevin :quality :high :archive #.*for-fam*)
-    (defseries "Patriot Act with Hasan Minhaj" :kevin :catch-up "S04")
-    (defseries "His Dark Materials" :kevin :quality :high)
-    (defseries "Avenue 5" :kevin)
+    (defseries "Killing Eve" :kevin :quality :high
+    	   :subdir "Killing.Eve")
+    (defseries "The Mandalorian" :kevin :quality :high :archive #.*for-fam*
+    	   :subdir "The.Mandalorian")
+    (defseries "Avenue 5" :kevin :subdir "Avenue.5")
     
     
     (defseries "Dispatches from Elsewhere" :kevin :catch-up "S01E02")
     
+    (defseries "The Last Dance" :kevin :catch-up "S01E02")
+    (defseries "Solar Opposites" :kevin)
+    (defseries "Snowpiercer" :kevin)
+    (defseries "Betty" :kevin :subdir "Betty")
+    (defseries "Penny Dreadful City of Angels" :kevin
+      :subdir "Penny.Dreadful.City.of.Angels")
+    (defseries "I Know This Much is True" :kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

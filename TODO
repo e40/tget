@@ -2,6 +2,16 @@ TODO:
 
 high:
 
+- tget: removed torrents don't get re-added
+- autoremove feature of broken torrents: needs to remove the broken
+  file, too
+- tget -c --remove --remove -h0 => weird error
+- merge tcleanup and tget config files (done?????)
+- have an option in the config file for a series to keep (not cleanup) eps
+  -- have no idea what this is
+- Really need season packs for tget
+
+
 - removing a broken torrent when the replacement has already been
   downloaded:
 
