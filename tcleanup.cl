@@ -95,7 +95,8 @@
   date-finished
   state
   hash
-  tracker
+  tracker-name				; the name of the tracker
+  tracker-instance			; the actual tracker object
   tracker-char
   tracker-seed-time
   ;; calculated info
@@ -270,10 +271,13 @@ and we should abandon them and delete the episode."
 		(setf (torrent-seeded-for torrent)
 		  (- *now* (torrent-date-finished torrent)))))
       
-      (setf (torrent-tracker torrent)
-	(transmission-filename-to-tracker (torrent-filename torrent)
+      (let ((name (transmission-filename-to-tracker (torrent-filename torrent)
 					  :hash (torrent-hash torrent)
-					  :debug *debug*))
+					  :debug *debug*)))
+	(setf (torrent-tracker-name torrent) name)
+	(when name
+	  (setf (torrent-tracker-instance torrent)
+	    (tracker-name-to-instance name))))
 
 ;;;; Use torrent data to determine status
       
@@ -286,18 +290,18 @@ and we should abandon them and delete the episode."
       ;; the handler the `torrent' object and let it possibly set
       ;; various times.
       ;;
-      (if* (null (torrent-tracker torrent))
+      (if* (null (torrent-tracker-name torrent))
 	 thenret ;; (warn "null tracker: ~a" torrent)
        elseif (dolist (tracker *all-trackers* t)
 		(when (match-re (tracker-re tracker)
-				(torrent-tracker torrent)
+				(torrent-tracker-name torrent)
 				:return nil)
 		  (setf (torrent-tracker-char torrent) (tracker-char tracker))
 		  (funcall (tracker-setter tracker) torrent)
 		  (return nil)))
 	 then ;; Didn't match a tracker
 	      (warn "Couldn't match tracker (~a) for ~a."
-		    (torrent-tracker torrent)
+		    (torrent-tracker-name torrent)
 		    (torrent-name torrent)))
       
       (when (symbolp (torrent-ratio torrent))

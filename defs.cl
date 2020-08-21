@@ -88,6 +88,14 @@
 (defun (setf tracker-name-to-tracker) (tracker tracker-name)
   (setf (gethash tracker-name *tracker-name-to-tracker*) tracker))
 
+(defun tracker-name-to-instance (string-name)
+  (maphash
+   (lambda (tname tinstance)
+     (declare (ignore tname))
+     (when (match-re (tracker-re tinstance) string-name :return nil)
+       (return-from tracker-name-to-instance tinstance)))
+   *tracker-name-to-tracker*))
+
 (defvar *all-trackers* nil)
 (setq *all-trackers* nil)
 (push '(setq *all-trackers* nil)

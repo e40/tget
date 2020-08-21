@@ -1,4 +1,4 @@
-# tget 5.4.1 - torrent get
+# tget 5.5.0 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1105,7 +1105,6 @@ Catch up series to a specific episode:
         :re "broadcasthe\\.net|landof\\.tv"
         :char "B"
         :setter (lambda (torrent)
-    	      (format t "torrent ~s~%" torrent)
     	      (setf (torrent-ratio-limit torrent) 1.50)
     	      (if* (torrent-seasonp torrent)
     		 then ;; Seed for a week + slop 

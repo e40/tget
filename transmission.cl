@@ -27,7 +27,7 @@
 	      ;; If the filename was renamed in Transmission, the simple
 	      ;; `name' to `given-filename' test will fail.  We can salvage
 	      ;; this by looking at the hash included in the filename.
-	      (when (=~ "\\.([0-9a-fA-F]+)\\.torrent$"
+	      (when (=~ "([0-9a-fA-F]+)\\.torrent$"
 			(file-namestring torrent-file))
 		(setq hash-prefix $1))
 	      (when (or (string= name given-filename)

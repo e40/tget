@@ -91,7 +91,7 @@
 (in-package :user)
 
 (eval-when (compile eval load)
-(defvar *tget-version* "5.4.1")
+(defvar *tget-version* "5.5.0")
 )
 (defvar *schema-version*
     ;; 1 == initial version
@@ -2239,7 +2239,9 @@ Catch up series to a specific episode:
 			       (if* (and (symbolp (tracker-debug-feed tracker))
 					 (fboundp 'debug-feed))
 				  then (funcall 'debug-feed
-						(tracker-debug-feed tracker))
+						(tracker-debug-feed tracker)
+;;;; shouldn't something else be passed to debug-feed?  What use is it??
+						)
 				elseif (stringp (tracker-debug-feed tracker))
 				  then (tracker-debug-feed tracker))))
 		(setq group-processed t)))
