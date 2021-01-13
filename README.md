@@ -1,4 +1,4 @@
-# tget 5.5.0 - torrent get
+# tget 5.5.1 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1145,7 +1145,10 @@ Catch up series to a specific episode:
     ;;;;TODO: rename this to *auto-trackers* or something
     (defvar *trackers*
         ;; Give the new guy first crack:
-        (list :mtv :btn :shazbat))
+        (list #+ignore :mtv ;; for now
+    	  :btn
+    	  #+ignore :shazbat ;; hasn't worked in forever???
+    	  ))
     
     ;; for --cleanup, only manually downloaded
     (deftracker :720pier
@@ -1341,7 +1344,7 @@ Catch up series to a specific episode:
     (defseries "American Experience" :kevin :subdir "American.Experience")
     (defseries "Atlanta" :kevin :subdir "Atlanta")
     (defseries "Barry" :kevin :subdir "Barry" :private t)
-    (defseries "Better Call Saul" :kevin)
+    (defseries "Better Call Saul" :kevin :archive #.*for-fam*)
     
     (defseries "Corporate" :kevin)
     
@@ -1395,7 +1398,7 @@ Catch up series to a specific episode:
     
     (defseries "The Last Dance" :kevin :catch-up "S01E02")
     (defseries "Solar Opposites" :kevin)
-    (defseries "Snowpiercer" :kevin)
+    (defseries "Snowpiercer" :kevin :remove t)
     (defseries "Betty" :kevin :subdir "Betty")
     (defseries "Penny Dreadful City of Angels" :kevin
       :subdir "Penny.Dreadful.City.of.Angels")

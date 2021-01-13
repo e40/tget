@@ -724,7 +724,8 @@ The default is 72 hours, or 3 days."
     (multiple-value-bind (stdout stderr exit-code)
 	(command-output sqlite-cmd :input sql :whole t)
       (if* (/= 0 exit-code)
-	 then (error "exit code is ~s: stderr is: ~a." exit-code stderr)
+	 then (error "exit code is ~s: stdout is ~a, stderr is: ~a."
+		     exit-code stdout stderr)
        elseif (or (null stdout) (string= "" stdout))
 	 then ;; No watched shows??  I guess it's possible
 	      (return-from initialize-watched nil))

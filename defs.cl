@@ -20,9 +20,8 @@
 
 (in-package :user)
 
-;; Adding this because I've noticed problems with aserve AND
-;; transmission-remote using https.  Grrrrr.
-(defvar *avoid-https* t)
+;; Started getting 308 codes from TBN, and turning this off fixed it.
+(defvar *avoid-https* nil)
 
 ;; Non-nil if we're using --add command line argument
 (defvar *manual-add-mode* nil)
