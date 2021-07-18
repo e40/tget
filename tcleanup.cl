@@ -591,7 +591,9 @@ The default is 72 hours, or 3 days."
 	    ((or (match-re "\\.ds_store" (file-namestring p)
 			   :case-fold t :return nil)
 		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part"
-					     "jpg")
+					     "jpg"
+					     ;; for RARBG
+					     "exe" "txt")
 			 :test #'equalp)
 		 ;; rar file parts:
 		 (match-re "^r\\d\\d$" (pathname-type p) :return nil))
