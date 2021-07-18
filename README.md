@@ -1,4 +1,4 @@
-# tget 5.5.1 - torrent get
+# tget 5.5.2 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1370,7 +1370,6 @@ Catch up series to a specific episode:
     	   :catch-up "S02E01"
     	   :aliases ("Penn and Teller Fool Us"))
     (defseries "Rick and Morty" :kevin :archive #.*for-fam*)
-    (defseries "Ridiculousness" :kevin)
     (defseries "Sherlock" :kevin)
     (defseries "Star Trek: Discovery" :kevin :archive #.*for-fam*)
     (defseries "Star Trek: Picard" :kevin :archive #.*for-fam*)
@@ -1397,12 +1396,18 @@ Catch up series to a specific episode:
     (defseries "Dispatches from Elsewhere" :kevin :catch-up "S01E02")
     
     (defseries "The Last Dance" :kevin :catch-up "S01E02")
-    (defseries "Solar Opposites" :kevin)
     (defseries "Snowpiercer" :kevin :remove t)
-    (defseries "Betty" :kevin :subdir "Betty")
+    (defseries "Betty" :kevin :subdir "Betty" :remove t)
     (defseries "Penny Dreadful City of Angels" :kevin
       :subdir "Penny.Dreadful.City.of.Angels")
     (defseries "I Know This Much is True" :kevin)
+    
+    (defseries "Resident Alien" :kevin)
+    (defseries "Mr Mayor" :kevin :remove t)
+    (defseries "WandaVision" :kevin :remove t)
+    (defseries "Criminal UK" :kevin)
+    
+    (defseries "Loki" :kevin :catch-up "S01E01")
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

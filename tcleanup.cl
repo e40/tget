@@ -649,8 +649,28 @@ The default is 72 hours, or 3 days."
 	     (and (setq temp (reduce-filename p))
 		  (simple-match temp)))
        thenret 
+     elseif (and (parent-is-named-p p "Subs")
+		 ;; RARBG torrents are structured this way
+		 (find-sole-file-of-type (parent-directory p) *video-types*))
+       thenret
        else (format t "didn't find video for p=~s~%" p)
 	    nil)))
+
+(defun parent-is-named-p (path name)
+  (equalp (car (last (pathname-directory path)))
+	  name))
+
+(defun parent-directory (path)
+  (merge-pathnames "../" (path-pathname path)))
+
+(defun find-sole-file-of-type (path types)
+  (let ((count 0) match)
+    (dolist (p (directory path))
+      (when (member (pathname-type p) types :test #'equalp)
+	(incf count)
+	(setq match p)))
+    (and (= count 1)
+	 match)))
 
 (defun cleanup-file (p announce
 		     &key move-to
