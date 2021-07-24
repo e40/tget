@@ -109,7 +109,7 @@
   seasonp				; (and season (not episode))
   removed				; non-nil if removed in pass I
   never-delete
-  archive
+  archive				; archive don't delete
   error
   )
 
@@ -503,13 +503,16 @@ The default is 72 hours, or 3 days."
     "/me/tplex/plex-config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db")
 
 (defvar *watched-hash-table*
-    ;; Hash table:
-    ;;   key=  :: path to video
+    ;; A hash table of the videos which have been watched.  This is done by
+    ;; looking at the Plex db.
+    ;;
+    ;;   key   :: path to video
     ;;   value :: hours since video was watched
     nil)
 
 (defvar *plex-files-hash-table*
-    ;; Hash table:
+    ;; A hash table of all the files known by the Plex db.
+    ;;
     ;;   key   :: path to video
     ;;   value :: path to video
     nil)
@@ -517,6 +520,28 @@ The default is 72 hours, or 3 days."
 (defun tcleanup-files (&aux (initial-newline t) header
 			    (symlink-pass t)
 			    torrent)
+  ;; Here's how this function works:
+  ;;
+  ;; First initialize from the Plex db two hash tables:
+  ;;   *watched-hash-table*    = watched videos from Plex PoV
+  ;;   *plex-files-hash-table* = Plex known video files
+  ;;
+  ;; Iterate over the known video media directories and for each file P
+  ;; do:
+  ;; - If P corresponds to a seeding torrent, and the series for it has
+  ;;   a non-nil "never-delete" or "archive" slot, then:
+  ;;    - archive: later when the file would be deleted, archive it instead
+  ;;    - never-deleve: ignore the file for cleanup purposes
+  ;;
+  ;; - If P's file type is a video file type and has been "watched", then
+  ;;   remove the file.  "Watched" is more complex than if Plex marked it
+  ;;   as watched, it includes how long have elapsed since it was watched.
+  ;;
+  ;; - If P's an aux file (.srt/.idx/.sub) and there is no companion video
+  ;;   file, then remove it.
+  ;;
+  ;; - All other values for P are ignored.
+  ;; 
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
 	     (format t "~%")
@@ -530,8 +555,6 @@ The default is 72 hours, or 3 days."
     (initialize-watched)
     (initialize-plex-files)
     
-;;;;TODO: a bunch of files aren't being archived properly... debug this!!!
-
     (dolist (thing *watch-directories*)
       (destructuring-bind (directory . label) thing
 	(setq header (format nil "~a:" label))
@@ -581,7 +604,7 @@ The default is 72 hours, or 3 days."
 	    ((or (equalp "srt" (pathname-type p))
 		 (equalp "idx" (pathname-type p))
 		 (equalp "sub" (pathname-type p)))
-	     (when (not (find-video-match-for-srt p))
+	     (when (not (find-video-match-for-aux-file p))
 	       (if* *remove-watched*
 		  then (cleanup-file p #'announce :move-to archive)
 		elseif archive
@@ -618,7 +641,7 @@ The default is 72 hours, or 3 days."
 	   :recurse t
 	   :include-directories nil))))))
 
-(defun find-video-match-for-srt (p &aux temp)
+(defun find-video-match-for-aux-file (p &aux temp)
   (flet ((simple-match (p)
 	   (dolist (type *video-types*)
 	     (when (or
