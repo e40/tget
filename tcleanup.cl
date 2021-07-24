@@ -518,30 +518,7 @@ The default is 72 hours, or 3 days."
     nil)
 
 (defun tcleanup-files (&aux (initial-newline t) header
-			    (symlink-pass t)
-			    torrent)
-  ;; Here's how this function works:
-  ;;
-  ;; First initialize from the Plex db two hash tables:
-  ;;   *watched-hash-table*    = watched videos from Plex PoV
-  ;;   *plex-files-hash-table* = Plex known video files
-  ;;
-  ;; Iterate over the known video media directories and for each file P
-  ;; do:
-  ;; - If P corresponds to a seeding torrent, and the series for it has
-  ;;   a non-nil "never-delete" or "archive" slot, then:
-  ;;    - archive: later when the file would be deleted, archive it instead
-  ;;    - never-deleve: ignore the file for cleanup purposes
-  ;;
-  ;; - If P's file type is a video file type and has been "watched", then
-  ;;   remove the file.  "Watched" is more complex than if Plex marked it
-  ;;   as watched, it includes how long have elapsed since it was watched.
-  ;;
-  ;; - If P's an aux file (.srt/.idx/.sub) and there is no companion video
-  ;;   file, then remove it.
-  ;;
-  ;; - All other values for P are ignored.
-  ;; 
+			    (symlink-pass t))
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
 	     (format t "~%")
@@ -559,71 +536,63 @@ The default is 72 hours, or 3 days."
       (destructuring-bind (directory . label) thing
 	(setq header (format nil "~a:" label))
 	(map-over-directory
-	 (lambda (p &aux series-name series never-delete archive)
-	   ;; Check for NEVER-DELETE and ARCHIVE options.  If there's not
-	   ;; an active torrent with the information, need to query it from
-	   ;; the raw filename.
-	   (if* (setq torrent (gethash (file-namestring p) *torrents*))
-	      then (setq never-delete (torrent-never-delete torrent))
-		   (setq archive (torrent-archive torrent))
-	    elseif (and (setq series-name
-			  (extract-episode-info-from-filename
-			   (file-namestring p)
-			   :episode-required nil))
-			(setq series
-			  (query-series-name-to-series series-name)))
-	      then (setq never-delete (series-never-delete series))
-		   (setq archive (series-archive series)))
-
-	   (when (and archive (not (probe-file archive)))
-	     (.error "archive directory does not exist: ~a.~%" archive))
+	 (lambda (p &aux series-name series archive p-aux-files)
+	   (when (member (pathname-type p) *video-types* :test #'equalp)
+	     (cond
+	      ((gethash (file-namestring p) *torrents*)
+	       ;; seeding torrent, ignore
+	       )
+	      ((and (setq series-name
+		      (extract-episode-info-from-filename
+		       (file-namestring p)
+		       :episode-required nil))
+		    (setq series
+		      (query-series-name-to-series series-name))
+		    (series-never-delete series))
+	       ;; never delete, ignore
+	       )
+	      (t
+	       (setq archive (and series (series-archive series)))
+	       (when (and archive (not (probe-file archive)))
+		 (.error "archive directory does not exist: ~a.~%" archive))
 	   
-	   (cond
-	    (never-delete (announce "NEVER DELETE: ~a~%" (file-namestring p)))
+	       ;; Find aux files so we can deal with them and P as a unit
+	       (setq p-aux-files (find-aux-files p))
+	       #+debugging
+	       (when p-aux-files
+		 (format t "p=~a~%" p)
+		 (format t "aux=~s~%" p-aux-files))
+	       (multiple-value-bind (ready-to-remove reason) (watchedp p)
+		 (if* ready-to-remove
+		    then (if* *remove-watched*
+			    then (cleanup-file p #'announce :move-to archive)
+				 (dolist (aux-file p-aux-files)
+				   (cleanup-file aux-file #'announce
+						 :move-to archive))
+			  elseif archive
+			    then (announce "ARCHIVE ~a:~a~%"
+					   reason (file-namestring p))
+				 (dolist (aux-file p-aux-files)
+				   (announce "   aux: ~a~%"
+					     (file-namestring aux-file)))
+			    else (announce "YES ~a:~a~%"
+					   reason (file-namestring p))
+				 (dolist (aux-file p-aux-files)
+				   (announce "   aux: ~a~%"
+					     (file-namestring aux-file))))
+		  elseif (null reason)
+		    thenret ;; not watched
+		    else (with-verbosity 1
+			   ;; Watched, but not ready to remove for some reason
+			   (announce "NO ~a:~a~%" reason (file-namestring p))
+			   (dolist (aux-file p-aux-files)
+			     (announce "   aux: ~a~%"
+				       (file-namestring aux-file))))))
 
-	    ((member (pathname-type p) *video-types* :test #'equalp)
-	     (multiple-value-bind (ready-to-remove reason) (watchedp p)
-	       (if* ready-to-remove
-		  then (if* *remove-watched*
-			  then (cleanup-file p #'announce :move-to archive)
-			elseif archive
-			  then (announce "ARCHIVE ~a:~a~%"
-					 reason (file-namestring p))
-			  else (announce "YES ~a:~a~%"
-					 reason (file-namestring p)))
-		elseif (null reason)
-		  thenret ;; not watched
-		  else (with-verbosity 1
-			 ;; Watched, but not ready to remove for some reason
-			 (announce "NO ~a:~a~%" reason (file-namestring p)))))
-	     
-	     (when (and (not (gethash (namestring p) *plex-files-hash-table*))
-			(probe-file p))
-	       (announce "HIDDEN: ~a~%" (file-namestring p))))
-
-	    ((or (equalp "srt" (pathname-type p))
-		 (equalp "idx" (pathname-type p))
-		 (equalp "sub" (pathname-type p)))
-	     (when (not (find-video-match-for-aux-file p))
-	       (if* *remove-watched*
-		  then (cleanup-file p #'announce :move-to archive)
-		elseif archive
-		  then (announce "ARCHIVE: ~a~%" (file-namestring p))
-		  else (announce "YES: ~a~%" (file-namestring p)))))
-
-	    ((or (match-re "\\.ds_store" (file-namestring p)
-			   :case-fold t :return nil)
-		 (member (pathname-type p) '("iso" "nfo" "rar" "sfv" "part"
-					     "jpg"
-					     ;; for RARBG
-					     "exe" "txt")
-			 :test #'equalp)
-		 ;; rar file parts:
-		 (match-re "^r\\d\\d$" (pathname-type p) :return nil))
-	     ;; ignore files
-	     )
-
-	    (t (announce "unknown: ~a~%" (file-namestring p)))))
+	       ;; do we need this anymore????
+	       (when (and (not (gethash (namestring p) *plex-files-hash-table*))
+			  (probe-file p))
+		 (announce "HIDDEN: ~a~%" (file-namestring p)))))))
 
 	 (pathname-as-directory directory)
 	 :recurse t
@@ -636,66 +605,10 @@ The default is 72 hours, or 3 days."
 	   (lambda (p)
 	     (when (and (symbolic-link-p p) (not (probe-file p)))
 	       (announce "SYMLINK: ~a~%" (file-namestring p))
-	       (delete-file p)))
+	       (when (not *debug*) (delete-file p))))
 	   (pathname-as-directory directory)
 	   :recurse t
 	   :include-directories nil))))))
-
-(defun find-video-match-for-aux-file (p &aux temp)
-  (flet ((simple-match (p)
-	   (dolist (type *video-types*)
-	     (when (or
-		    (probe-file
-		     (merge-pathnames (make-pathname :type type) p))
-		    ;; sometimes srt's are in subdirs
-		    (probe-file
-		     (merge-pathnames
-		      (merge-pathnames (make-pathname :type type)
-				       (file-namestring p))
-		      (merge-pathnames "../" (path-namestring p)))))
-	       ;; The easy case, named the same as the srt file
-	       (return t))))
-	 (reduce-filename (p)
-	   ;; Given a filename like
-	   ;;   "Foo 720p H264 AC3 - CODY.Portuguese-Bra.srt"
-	   ;; return
-	   ;;   "Foo 720p H264 AC3 - CODY.srt"
-	   (let ((name (pathname-name p)))
-	     (when (setq temp (position #\. name :from-end t))
-	       (merge-pathnames 
-		(make-pathname :name (subseq name 0 temp))
-		p))))
-	 )
-    ;; When given an srt file, see if there is an existing video to match
-    ;; it.
-    (if* (or (simple-match p)
-	     ;; See if a reduced version of the filename has a
-	     ;; corresponding video file
-	     (and (setq temp (reduce-filename p))
-		  (simple-match temp)))
-       thenret 
-     elseif (and (parent-is-named-p p "Subs")
-		 ;; RARBG torrents are structured this way
-		 (find-sole-file-of-type (parent-directory p) *video-types*))
-       thenret
-       else (format t "didn't find video for p=~s~%" p)
-	    nil)))
-
-(defun parent-is-named-p (path name)
-  (equalp (car (last (pathname-directory path)))
-	  name))
-
-(defun parent-directory (path)
-  (merge-pathnames "../" (path-pathname path)))
-
-(defun find-sole-file-of-type (path types)
-  (let ((count 0) match)
-    (dolist (p (directory path))
-      (when (member (pathname-type p) types :test #'equalp)
-	(incf count)
-	(setq match p)))
-    (and (= count 1)
-	 match)))
 
 (defun cleanup-file (p announce
 		     &key move-to
@@ -711,8 +624,7 @@ The default is 72 hours, or 3 days."
 				     (file-namestring p)
 				     (pathname-as-directory move-to))))
 		else (funcall announce "~@[Would do:~* ~]rm ~a~%" *debug* p)
-		     (when (not *debug*)
-		       (delete-file p))))))
+		     (when (not *debug*) (delete-file p))))))
     (if* (setq aux-p (symbolic-link-p p))
        then ;; delete the symlink and what it points to
 	    (setq aux-p (merge-pathnames aux-p p))
@@ -865,6 +777,55 @@ The default is 72 hours, or 3 days."
        (if* (> hours 24)
 	  then (format nil ">~dd" (truncate (/ hours 24)))
 	  else (format nil ">~dh" hours))))))
+
+(defun find-aux-files (p)
+  ;; P is a video.  Our job is to find and return a list of all the aux
+  ;; files related to this video.
+  ;;
+  ;; There are two cases:
+  ;;   1. video in main directory with .srt that has same basename
+  ;;   2. video in subdirectory with several aux files.
+
+  (flet ((simple-probe-match (p &aux tmp (res '()))
+	   ;; See if there's a .srt file with the same name as P.
+	   ;; Returns nil or a list of the matched file.
+	   (dolist (type '("nfo" "sub" "srt"))
+	     (when (probe-file
+		    (setq tmp (merge-pathnames (make-pathname :type type) p)))
+	       (push tmp res)))
+	   res)
+	 
+	 (search-match (p &aux wildcard)
+	   ;; Look for .srt files with a similar name to P
+	   ;; Returns nil or a list of the matched files.
+	   (setq wildcard (format nil "~a*.srt" (pathname-name p)))
+	   (directory wildcard :directories-are-files nil)))
+    (let ((aux-files '())
+	  temp)
+
+      ;; case (1)
+      (when (setq temp (simple-probe-match p))
+	(dolist (file temp) (pushnew file aux-files :test #'equalp)))
+      (when (setq temp (search-match p))
+	(dolist (file temp) (pushnew file aux-files :test #'equalp)))
+      
+      ;; case (2)
+      (dolist (type '("srt" "idx" "sub"))
+	(when (probe-file (setq temp
+			    (merge-pathnames (make-pathname :type type)
+					     p)))
+	  (pushnew temp aux-files :test #'equalp)))
+      (dolist (file '("RARBG.txt" "RARBG_DO_NOT_MIRROR.exe"))
+	(when (probe-file (setq temp (merge-pathnames file p)))
+	  (pushnew temp aux-files :test #'equalp)))
+      (when (probe-file (setq temp
+			  (merge-pathnames "Subs/"
+					   (path-pathname p))))
+	(dolist (file (directory temp))
+	  (when (probe-file file)
+	    (pushnew file aux-files :test #'equalp))))
+      
+      aux-files)))
 
 (defun seedingp (file &aux name)
   ;; Return non-nil if we are seeding FILE.  Need to be careful, though,
