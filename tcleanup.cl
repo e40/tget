@@ -518,6 +518,7 @@ The default is 72 hours, or 3 days."
     nil)
 
 (defun tcleanup-files (&aux (initial-newline t) header
+			    (check-for-empty-dirs '())
 			    (symlink-pass t))
   (flet ((announce (format-string &rest args)
 	   (when initial-newline
@@ -532,6 +533,8 @@ The default is 72 hours, or 3 days."
     (initialize-watched)
     (initialize-plex-files)
     
+    ;; Now delete watched videos and they associated aux files (subtitles,
+    ;; etc).
     (dolist (thing *watch-directories*)
       (destructuring-bind (directory . label) thing
 	(setq header (format nil "~a:" label))
@@ -555,7 +558,9 @@ The default is 72 hours, or 3 days."
 	       (setq archive (and series (series-archive series)))
 	       (when (and archive (not (probe-file archive)))
 		 (.error "archive directory does not exist: ~a.~%" archive))
-	   
+	       
+;;;;;;;;;; P is a candidate for cleanup
+	       
 	       ;; Find aux files so we can deal with them and P as a unit
 	       (setq p-aux-files (find-aux-files p))
 	       #+debugging
@@ -564,13 +569,22 @@ The default is 72 hours, or 3 days."
 		 (format t "aux=~s~%" p-aux-files))
 	       (multiple-value-bind (ready-to-remove reason) (watchedp p)
 		 (if* ready-to-remove
-		    then (if* *remove-watched*
+		    then 
+
+;;;;;;;;;; P is ready to cleanup
+			 
+			 (if* *remove-watched*
 			    then (cleanup-file p #'announce :move-to archive)
-				 (dolist (aux-file p-aux-files)
-				   (cleanup-file aux-file #'announce
-						 :move-to archive))
+				 (when p-aux-files
+				   (push p check-for-empty-dirs)
+				   (dolist (aux-file p-aux-files)
+				     (cleanup-file aux-file #'announce
+						   :move-to archive)))
+
+;;;;;;;;;; not in cleanup mode
+
 			  elseif archive
-			    then (announce "ARCHIVE ~a:~a~%"
+			    then (announce "YES/ARCHIVE ~a:~a~%"
 					   reason (file-namestring p))
 				 (dolist (aux-file p-aux-files)
 				   (announce "   aux: ~a~%"
@@ -608,7 +622,30 @@ The default is 72 hours, or 3 days."
 	       (when (not *debug*) (delete-file p))))
 	   (pathname-as-directory directory)
 	   :recurse t
-	   :include-directories nil))))))
+	   :include-directories nil)))
+      
+      (when check-for-empty-dirs
+	;; In the process of removing videos and their aux files, some of
+	;; the directories will now be empty.  When downloading from some
+	;; sites (e.g., RARBG), movies are often in a directory with
+	;; certain files (subs, others).  The goal is to remove the entire
+	;; download directory.
+	;;
+	;; CHECK-FOR-EMPTY-DIRS is a list of videos removed.  We check for
+	;; an empty "Subs/" directory and for the directory of the video
+	;; being empty.
+	
+	(dolist (p check-for-empty-dirs)
+	  (let ((pdir (path-pathname p)))
+	    (let ((subs (merge-pathnames "Subs/" pdir)))
+	      (and (probe-file subs)
+		   (ignore-errors (excl.osi:rmdir subs))
+		   (announce "rmdir: ~a~%" subs))
+	      (and (ignore-errors (excl.osi:rmdir pdir))
+		   (announce "rmdir: ~a~%" pdir))))))
+      
+      ) ;; dolist on *watch-directories*
+    ))
 
 (defun cleanup-file (p announce
 		     &key move-to
