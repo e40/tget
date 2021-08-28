@@ -1,4 +1,4 @@
-# tget 5.5.5 - torrent get
+# tget 5.5.6 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 

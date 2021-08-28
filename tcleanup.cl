@@ -826,7 +826,7 @@ The default is 72 hours, or 3 days."
   (flet ((simple-probe-match (p &aux tmp (res '()))
 	   ;; See if there's a .srt file with the same name as P.
 	   ;; Returns nil or a list of the matched file.
-	   (dolist (type '("nfo" "sub" "srt"))
+	   (dolist (type '("nfo" "sub" "srt" "nfo"))
 	     (when (probe-file
 		    (setq tmp (merge-pathnames (make-pathname :type type) p)))
 	       (push tmp res)))
