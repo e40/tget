@@ -1,4 +1,4 @@
-# tget 5.5.6 - torrent get
+# tget 5.6.0 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1058,10 +1058,10 @@ Catch up series to a specific episode:
     
     ;; The directories to clean
     (setq *watch-directories*
-      '(("/me/tplex/content/videos/kevin" . "TV:Kevin")
-        ("/me/tplex/content/videos/anh" . "TV:Anh")
-        ("/me/tplex/content/videos/movies/kevin" . "Movies:Kevin")
-        ("/me/tplex/content/videos/tmp" . "temp")))
+      '(("/me/tplex/content/videos/kevin" "/data/videos/kevin" . "TV Shows")
+        ("/me/tplex/content/videos/movies/kevin" "/data/videos/movies/kevin"
+         . "Movies")
+        ("/me/tplex/content/videos/tmp" "/data/videos/tmp" . "temp")))
     
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1298,30 +1298,10 @@ Catch up series to a specific episode:
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Groups
     
-    (defgroup :adrian
-        :trackers '#.*trackers*
-        :quality 'my-quality
-        :download-path (merge-pathnames "adrian/" *download-root*))
-    
-    (defgroup :anh
-        :trackers '#.*trackers*
-        :quality 'my-quality
-        :download-path (merge-pathnames "anh/" *download-root*))
-    
     (defgroup :kevin
         :trackers '#.*trackers*
         :quality 'my-quality
         :download-path (merge-pathnames "kevin/" *download-root*))
-    
-    (defgroup :adrian+kevin
-        :trackers '#.*trackers*
-        :quality 'my-quality
-        :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-    
-    (defgroup :anh+kevin
-        :trackers '#.*trackers*
-        :quality 'my-quality
-        :download-path (merge-pathnames "anh+kevin/" *download-root*))
     
     (defgroup :temp
         :trackers '#.*trackers*
@@ -1408,6 +1388,8 @@ Catch up series to a specific episode:
     (defseries "Criminal UK" :kevin)
     
     (defseries "Loki" :kevin :catch-up "S01E01")
+    
+    (defseries "Kin" :kevin)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"

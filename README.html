@@ -10,7 +10,7 @@
 <body>
 <div id="wrapper">
 <h1>
-<a id="user-content-tget-556---torrent-get" class="anchor" href="#tget-556---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.5.6 - torrent get</h1>
+<a id="user-content-tget-560---torrent-get" class="anchor" href="#tget-560---torrent-get" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>tget 5.6.0 - torrent get</h1>
 <p><em>tget</em> is a suite of programs: <em>tget</em> and <em>plexfix</em>.</p>
 <p><em>tget</em> grew out of my dissatisfaction with <a href="http://flexget.com/" title="FlexGet" rel="nofollow">FlexGet</a>'s behavior and
 configuration.  Don't get me wrong, <a href="http://flexget.com/" title="FlexGet" rel="nofollow">FlexGet</a> is an amazing program in
@@ -1045,10 +1045,10 @@ $ tget --catch-up-series "breaking bad s04"
 
 ;; The directories to clean
 (setq *watch-directories*
-  '(("/me/tplex/content/videos/kevin" . "TV:Kevin")
-    ("/me/tplex/content/videos/anh" . "TV:Anh")
-    ("/me/tplex/content/videos/movies/kevin" . "Movies:Kevin")
-    ("/me/tplex/content/videos/tmp" . "temp")))
+  '(("/me/tplex/content/videos/kevin" "/data/videos/kevin" . "TV Shows")
+    ("/me/tplex/content/videos/movies/kevin" "/data/videos/movies/kevin"
+     . "Movies")
+    ("/me/tplex/content/videos/tmp" "/data/videos/tmp" . "temp")))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1285,30 +1285,10 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Groups
 
-(defgroup :adrian
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "adrian/" *download-root*))
-
-(defgroup :anh
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "anh/" *download-root*))
-
 (defgroup :kevin
     :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
-
-(defgroup :adrian+kevin
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defgroup :anh+kevin
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
 (defgroup :temp
     :trackers '#.*trackers*
@@ -1395,6 +1375,8 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Criminal UK" :kevin)
 
 (defseries "Loki" :kevin :catch-up "S01E01")
+
+(defseries "Kin" :kevin)
 </code></pre>
 
 </div>

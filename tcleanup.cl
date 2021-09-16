@@ -536,7 +536,8 @@ The default is 72 hours, or 3 days."
     ;; Now delete watched videos and they associated aux files (subtitles,
     ;; etc).
     (dolist (thing *watch-directories*)
-      (destructuring-bind (directory . label) thing
+      (destructuring-bind (directory container-directory . label) thing
+	(declare (ignore container-directory))
 	(setq header (format nil "~a:" label))
 	(map-over-directory
 	 (lambda (p &aux series-name series archive p-aux-files)
@@ -604,7 +605,8 @@ The default is 72 hours, or 3 days."
 				       (file-namestring aux-file))))))
 
 	       ;; do we need this anymore????
-	       (when (and (not (gethash (namestring p) *plex-files-hash-table*))
+	       (when (and (not (gethash (file-namestring p)
+					*plex-files-hash-table*))
 			  (probe-file p))
 		 (announce "HIDDEN: ~a~%" (file-namestring p)))))))
 
@@ -739,7 +741,8 @@ The default is 72 hours, or 3 days."
 	       (hours (truncate (/ (- *now* date) 3600))))
 	  (with-verbosity 2
 	    (format t "add watched: ~s, ~s~%" file hours))
-	  (setf (gethash file *watched-hash-table*) hours))))))
+	  (setf (gethash (file-namestring file) *watched-hash-table*)
+	    hours))))))
 
 (defun initialize-plex-files ()
   (or (probe-file *plex-db*)
@@ -773,6 +776,7 @@ The default is 72 hours, or 3 days."
 	(when (=~ "^\s*$" file) (go skip))
 	(setq file (string-trim '(#\space #\newline) file))
 	(when (file-in-watched-directory-p file)
+	  (setq file (file-namestring file))
 	  (with-verbosity 2
 	    (format t "add file: ~s~%" file))
 	  (setf (gethash file *plex-files-hash-table*) file))
@@ -782,9 +786,11 @@ The default is 72 hours, or 3 days."
 (eval-when (eval load compile) (require :strlib))
 
 (defun file-in-watched-directory-p (file)
-  (dolist (xx *watch-directories*)
-    (when (prefixp (car xx) file)
-      (return t))))
+  (dolist (thing *watch-directories*)
+    (destructuring-bind (directory container-directory . label) thing
+      (declare (ignore directory label))
+      (when (prefixp container-directory file)
+	(return t)))))
 
 #+ignore ;; unused, keep tho
 (defun escape-for-sqlite (filename)
@@ -795,7 +801,7 @@ The default is 72 hours, or 3 days."
   ;; Return non-nil if the video given by P (a pathname) has been watched.
   ;; Return values are: ready-to-remove description
   ;;
-  (let ((hours (gethash file *watched-hash-table*)))
+  (let ((hours (gethash (file-namestring file) *watched-hash-table*)))
     ;; Return if not watched
     (when (not hours) (return-from watchedp nil))
     ;; Return if seeding

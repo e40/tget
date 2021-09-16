@@ -67,10 +67,10 @@
 
 ;; The directories to clean
 (setq *watch-directories*
-  '(("/me/tplex/content/videos/kevin" . "TV:Kevin")
-    ("/me/tplex/content/videos/anh" . "TV:Anh")
-    ("/me/tplex/content/videos/movies/kevin" . "Movies:Kevin")
-    ("/me/tplex/content/videos/tmp" . "temp")))
+  '(("/me/tplex/content/videos/kevin" "/data/videos/kevin" . "TV Shows")
+    ("/me/tplex/content/videos/movies/kevin" "/data/videos/movies/kevin"
+     . "Movies")
+    ("/me/tplex/content/videos/tmp" "/data/videos/tmp" . "temp")))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -307,30 +307,10 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Groups
 
-(defgroup :adrian
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "adrian/" *download-root*))
-
-(defgroup :anh
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "anh/" *download-root*))
-
 (defgroup :kevin
     :trackers '#.*trackers*
     :quality 'my-quality
     :download-path (merge-pathnames "kevin/" *download-root*))
-
-(defgroup :adrian+kevin
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "adrian+kevin/" *download-root*))
-
-(defgroup :anh+kevin
-    :trackers '#.*trackers*
-    :quality 'my-quality
-    :download-path (merge-pathnames "anh+kevin/" *download-root*))
 
 (defgroup :temp
     :trackers '#.*trackers*
@@ -417,3 +397,5 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Criminal UK" :kevin)
 
 (defseries "Loki" :kevin :catch-up "S01E01")
+
+(defseries "Kin" :kevin)
