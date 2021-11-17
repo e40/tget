@@ -821,6 +821,7 @@ The default is 72 hours, or 3 days."
 	  then (format nil ">~dd" (truncate (/ hours 24)))
 	  else (format nil ">~dh" hours))))))
 
+;;(trace directory)
 (defun find-aux-files (p)
   ;; P is a video.  Our job is to find and return a list of all the aux
   ;; files related to this video.
@@ -829,28 +830,55 @@ The default is 72 hours, or 3 days."
   ;;   1. video in main directory with .srt that has same basename
   ;;   2. video in subdirectory with several aux files.
 
-  (flet ((simple-probe-match (p &aux tmp (res '()))
-	   ;; See if there's a .srt file with the same name as P.
-	   ;; Returns nil or a list of the matched file.
-	   (dolist (type '("nfo" "sub" "srt" "nfo"))
-	     (when (probe-file
-		    (setq tmp (merge-pathnames (make-pathname :type type) p)))
-	       (push tmp res)))
-	   res)
-	 
-	 (search-match (p &aux wildcard)
-	   ;; Look for .srt files with a similar name to P
-	   ;; Returns nil or a list of the matched files.
-	   (setq wildcard (format nil "~a*.srt" (pathname-name p)))
-	   (directory wildcard :directories-are-files nil)))
+  (labels
+      ((simple-probe-match (p &aux tmp (res '()))
+	 ;; See if there's a .srt file with the same name as P.
+	 ;; Returns nil or a list of the matched file.
+	 (dolist (type '("nfo" "sub" "srt" "nfo"))
+	   (when (probe-file
+		  (setq tmp (merge-pathnames (make-pathname :type type) p)))
+	     (push tmp res)))
+	 res)
+       
+       (search-match (p &aux wildcard)
+	 ;; Look for .srt files with a similar name to P
+	 ;; Returns nil or a list of the matched files.
+	 (setq wildcard (format nil "~a*.srt" (pathname-name p)))
+	 (directory wildcard :directories-are-files nil))
+       
+       (complex-match (p files &aux (aux-files-res '()))
+	 (when files
+	   (let* ((re (load-time-value
+		       (compile-re "(.*)([Ss]\\d\\d[. ]?[Ee]\\d\\d).*")))
+		  (p-before)
+		  (p-ep)
+		  (p-is-series-p
+		   (multiple-value-bind (found whole before ep)
+		       (match-re re (file-namestring p))
+		     (declare (ignore whole))
+		     (when found
+		       (setq p-before before)
+		       (setq p-ep ep)))))
+	     (dolist (file files)
+	       (when (or (not p-is-series-p)
+			 (multiple-value-bind (matched whole before ep)
+			     (match-re re (file-namestring file))
+			   (declare (ignore whole))
+			   (when (and matched
+				      (string-equal before p-before)
+				      (string-equal ep p-ep))
+			     t)))
+		 (pushnew file aux-files-res :test #'equalp)))))
+	 aux-files-res)
+       )
     (let ((aux-files '())
 	  temp)
 
       ;; case (1)
-      (when (setq temp (simple-probe-match p))
-	(dolist (file temp) (pushnew file aux-files :test #'equalp)))
-      (when (setq temp (search-match p))
-	(dolist (file temp) (pushnew file aux-files :test #'equalp)))
+      (dolist (file (simple-probe-match p))
+	(pushnew file aux-files :test #'equalp))
+      (dolist (file (complex-match p (search-match p)))
+	(pushnew file aux-files :test #'equalp))
       
       ;; case (2)
       (dolist (type '("srt" "idx" "sub"))
@@ -864,9 +892,8 @@ The default is 72 hours, or 3 days."
       (when (probe-file (setq temp
 			  (merge-pathnames "Subs/"
 					   (path-pathname p))))
-	(dolist (file (directory temp))
-	  (when (probe-file file)
-	    (pushnew file aux-files :test #'equalp))))
+	(dolist (file (complex-match p (directory temp)))
+	  (pushnew file aux-files :test #'equalp)))
       
       aux-files)))
 

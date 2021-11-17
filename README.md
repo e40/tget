@@ -1,4 +1,4 @@
-# tget 5.6.0 - torrent get
+# tget 5.7.0 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1034,11 +1034,9 @@ Catch up series to a specific episode:
     (setq *download-root* "/me/tplex/content/videos/")
     
     (defvar *for-mom* "/me/tplex/content/videos/for-mom/")
-    (defvar *for-fam* "/me/tplex/content/videos/archive/")
+    (defvar *tv-archive* "/me/tplex/content/videos/archive/")
     
-    (defvar *codec-x264*
-        ;; It goes by two different names:
-        '(:x264 :h.264))
+    (defvar *allowed-codecs* '(:x264 :h.264))
     
     ;;;;;;;;;;;;;;;;;;;
     ;; For --cleanup ;;
@@ -1189,12 +1187,12 @@ Catch up series to a specific episode:
     
     (defquality :high-1080p
         :priority 10
-        :codec *codec-x264* 
+        :codec *allowed-codecs* 
         :resolution :1080p)
     
     (defquality :high-1080i
         :priority 1
-        :codec *codec-x264* 
+        :codec *allowed-codecs* 
         :resolution :1080i)
     
     (defquality :normal
@@ -1203,12 +1201,12 @@ Catch up series to a specific episode:
         ;; case.  Higher numerical priority is given precedence.
         :priority 50
         :source :hdtv
-        :codec *codec-x264* 
+        :codec *allowed-codecs* 
         :resolution :sd)
     
     (defquality :high
         :priority 40
-        :codec *codec-x264* 
+        :codec *allowed-codecs* 
         :resolution :720p)
     
     (defquality :low
@@ -1219,7 +1217,7 @@ Catch up series to a specific episode:
     
     (defquality :btn
         :priority 90
-        :codec *codec-x264* 
+        :codec *allowed-codecs* 
         :resolution :720p)
     
     ;; The additional delay waiting to download a high quality ep while
@@ -1324,15 +1322,14 @@ Catch up series to a specific episode:
     (defseries "American Experience" :kevin :subdir "American.Experience")
     (defseries "Atlanta" :kevin :subdir "Atlanta")
     (defseries "Barry" :kevin :subdir "Barry" :private t)
-    (defseries "Better Call Saul" :kevin :archive #.*for-fam*)
+    (defseries "Better Call Saul" :kevin :archive #.*tv-archive*)
     
     (defseries "Corporate" :kevin)
     
-    (defseries "Curb your Enthusiasm" :kevin :archive #.*for-fam*)
     (defseries "Elementary" :kevin :subdir "Elementary")
-    (defseries "Fargo" :kevin :quality :high :archive #.*for-fam*)
+    (defseries "Fargo" :kevin :quality :high :archive #.*tv-archive*)
     (defseries "Frontline (US)" :kevin)
-    (defseries "Future Man" :kevin :catch-up "S01" :archive #.*for-fam*)
+    (defseries "Future Man" :kevin :catch-up "S01" :archive #.*tv-archive*)
     (defseries "Good Talk With Anthony Jeselnik" :kevin :subdir "Good.Talk")
     
     (defseries "Jeff Ross Presents Roast Battle" :kevin)
@@ -1349,17 +1346,17 @@ Catch up series to a specific episode:
     (defseries "Penn & Teller: Fool Us" :kevin :quality :high
     	   :catch-up "S02E01"
     	   :aliases ("Penn and Teller Fool Us"))
-    (defseries "Rick and Morty" :kevin :archive #.*for-fam*)
+    (defseries "Rick and Morty" :kevin :archive #.*tv-archive*)
     (defseries "Sherlock" :kevin)
-    (defseries "Star Trek: Discovery" :kevin :archive #.*for-fam*)
-    (defseries "Star Trek: Picard" :kevin :archive #.*for-fam*)
+    (defseries "Star Trek: Discovery" :kevin :archive #.*tv-archive*)
+    (defseries "Star Trek: Picard" :kevin :archive #.*tv-archive*)
     (defseries "Taskmaster" :kevin :catch-up "S03"
     	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
     	   :subdir "Taskmaster")
     (defseries "The Graham Norton Show" :kevin)
     (defseries "The Righteous Gemstones" :kevin :subdir "The.Righteous.Gemstones"
     	   :private t)
-    (defseries "The Terror" :kevin :catch-up "S01" :archive #.*for-fam*)
+    (defseries "The Terror" :kevin :catch-up "S01" :archive #.*tv-archive*)
     (defseries "Tosh.0" :kevin)
     
     (defseries "Would I Lie To You?" :kevin :catch-up "S08E01"
@@ -1368,7 +1365,7 @@ Catch up series to a specific episode:
     (defseries "Hannibal" :kevin :delay 0 :quality :high)
     (defseries "Killing Eve" :kevin :quality :high
     	   :subdir "Killing.Eve")
-    (defseries "The Mandalorian" :kevin :quality :high :archive #.*for-fam*
+    (defseries "The Mandalorian" :kevin :quality :high :archive #.*tv-archive*
     	   :subdir "The.Mandalorian")
     (defseries "Avenue 5" :kevin :subdir "Avenue.5")
     
@@ -1376,20 +1373,18 @@ Catch up series to a specific episode:
     (defseries "Dispatches from Elsewhere" :kevin :catch-up "S01E02")
     
     (defseries "The Last Dance" :kevin :catch-up "S01E02")
-    (defseries "Snowpiercer" :kevin :remove t)
-    (defseries "Betty" :kevin :subdir "Betty" :remove t)
     (defseries "Penny Dreadful City of Angels" :kevin
       :subdir "Penny.Dreadful.City.of.Angels")
     (defseries "I Know This Much is True" :kevin)
     
     (defseries "Resident Alien" :kevin)
-    (defseries "Mr Mayor" :kevin :remove t)
-    (defseries "WandaVision" :kevin :remove t)
     (defseries "Criminal UK" :kevin)
     
     (defseries "Loki" :kevin :catch-up "S01E01")
     
     (defseries "Kin" :kevin)
+    
+    (defseries "Squid Game" :kevin :catch-up "S01" :archive #.*tv-archive*)
 
 [1]: http://www.transmissionbt.com/   "Transmission"
 [2]: http://flexget.com/              "FlexGet"
