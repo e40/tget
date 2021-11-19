@@ -2878,6 +2878,21 @@ transmission-remote ~a:~a ~
       (when (null
 	     (multiple-value-setq (series series-name)
 	       (query-series-name-to-series series-name)))
+
+	;; It's possible the real series has a colon or other char
+	;; in it and the filename doesn't, so we need to use
+	;; fuzzy-compare-series-names to find it.
+	;; WIP: problem is that f-c-s-n merely returns the longest string
+	;;      :o ... it seems like it should return nil when there
+	;;      is no fuzzy match
+	#+ignore
+	(maphash
+	 (lambda (name ignore &aux found)
+	   (declare (ignore ignore))
+	   (when (setq found (fuzzy-compare-series-names name series-name))
+	     (setq series-name found)))
+	 *all-series-names*)
+
 	(with-verbosity 1
 	  (format t "Manual add: unknown series: ~a~%" series-name))
 	(return-from manual-add-file))
