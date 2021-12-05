@@ -357,7 +357,8 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 	   :aliases ("Penn and Teller Fool Us"))
 (defseries "Rick and Morty" :kevin :archive #.*tv-archive*)
 (defseries "Sherlock" :kevin)
-(defseries "Star Trek: Discovery" :kevin :archive #.*tv-archive*)
+(defseries "Star Trek: Discovery" :kevin :archive #.*tv-archive*
+	   :aliases ("Star Trek Discovery"))
 (defseries "Star Trek: Picard" :kevin :archive #.*tv-archive*)
 (defseries "Taskmaster" :kevin :catch-up "S03"
 	   :aliases ("Taskmaster UK" "Taskmaster (UK)")

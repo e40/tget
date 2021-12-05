@@ -654,7 +654,14 @@ The default is 72 hours, or 3 days."
 		     &aux aux-p rar)
   (flet ((df (p)
 	   (when (probe-file p)
-	     (if* move-to
+	     (if* (file-directory-p p)
+		then ;; an aux-file subdir (subs, likely), which
+		     ;; should be empty, so just try to rmdir it
+		     (when (and (not *debug*)
+				(not (ignore-errors (delete-directory p))))
+		       (funcall announce "NOTE: directory ~s not empty.~%"
+				p))
+	      elseif move-to
 		then (funcall announce "~@[Would do:~* ~]mv ~a ~a~%"
 			      *debug* p move-to)
 		     (when (not *debug*)
@@ -893,6 +900,9 @@ The default is 72 hours, or 3 days."
 			  (merge-pathnames "Subs/"
 					   (path-pathname p))))
 	(dolist (file (complex-match p (directory temp)))
+	  (when (file-directory-p file)
+	    (dolist (f (directory file))
+	      (pushnew f aux-files :test #'equalp)))
 	  (pushnew file aux-files :test #'equalp)))
       
       aux-files)))

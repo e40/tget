@@ -1,4 +1,4 @@
-# tget 5.7.0 - torrent get
+# tget 5.7.1 - torrent get
 
 _tget_ is a suite of programs: _tget_ and _plexfix_.
 
@@ -1348,7 +1348,8 @@ Catch up series to a specific episode:
     	   :aliases ("Penn and Teller Fool Us"))
     (defseries "Rick and Morty" :kevin :archive #.*tv-archive*)
     (defseries "Sherlock" :kevin)
-    (defseries "Star Trek: Discovery" :kevin :archive #.*tv-archive*)
+    (defseries "Star Trek: Discovery" :kevin :archive #.*tv-archive*
+    	   :aliases ("Star Trek Discovery"))
     (defseries "Star Trek: Picard" :kevin :archive #.*tv-archive*)
     (defseries "Taskmaster" :kevin :catch-up "S03"
     	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
