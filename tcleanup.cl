@@ -659,7 +659,7 @@ The default is 72 hours, or 3 days."
 		     ;; should be empty, so just try to rmdir it
 		     (when (and (not *debug*)
 				(not (ignore-errors (delete-directory p))))
-		       (funcall announce "NOTE: directory ~s not empty.~%"
+		       (funcall announce "NOTE: directory not empty: ~a~%"
 				p))
 	      elseif move-to
 		then (funcall announce "~@[Would do:~* ~]mv ~a ~a~%"
@@ -901,11 +901,11 @@ The default is 72 hours, or 3 days."
 					   (path-pathname p))))
 	(dolist (file (complex-match p (directory temp)))
 	  (when (file-directory-p file)
-	    (dolist (f (directory file))
+	    (dolist (f (directory (pathname-as-directory file)))
 	      (pushnew f aux-files :test #'equalp)))
 	  (pushnew file aux-files :test #'equalp)))
       
-      aux-files)))
+      (nreverse aux-files))))
 
 (defun seedingp (file &aux name)
   ;; Return non-nil if we are seeding FILE.  Need to be careful, though,
