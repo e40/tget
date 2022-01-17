@@ -358,14 +358,12 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 (defseries "Rick and Morty" :kevin :archive #.*tv-archive*)
 (defseries "Sherlock" :kevin)
 (defseries "Star Trek: Discovery" :kevin :archive #.*tv-archive*
+	   :subdir "Star.Trek.Discovery"
 	   :aliases ("Star Trek Discovery"))
 (defseries "Star Trek: Picard" :kevin :archive #.*tv-archive*)
 (defseries "Taskmaster" :kevin :catch-up "S03"
 	   :aliases ("Taskmaster UK" "Taskmaster (UK)")
 	   :subdir "Taskmaster")
-(defseries "The Graham Norton Show" :kevin)
-(defseries "The Righteous Gemstones" :kevin :subdir "The.Righteous.Gemstones"
-	   :private t)
 (defseries "The Terror" :kevin :catch-up "S01" :archive #.*tv-archive*)
 (defseries "Tosh.0" :kevin)
 
@@ -392,6 +390,6 @@ DEBUG: (tracker delay + quality delay) - hours avail = ~d hours for:
 
 (defseries "Loki" :kevin :catch-up "S01E01")
 
-(defseries "Kin" :kevin)
+(defseries "Kin" :kevin) ;; S01 ended in 2021... nowhere to be seen
 
-(defseries "Squid Game" :kevin :catch-up "S01" :archive #.*tv-archive*)
+(defseries "The Graham Norton Show" :kevin)

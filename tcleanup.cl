@@ -893,7 +893,7 @@ The default is 72 hours, or 3 days."
 			    (merge-pathnames (make-pathname :type type)
 					     p)))
 	  (pushnew temp aux-files :test #'equalp)))
-      (dolist (file '("RARBG.txt" "RARBG_DO_NOT_MIRROR.exe"))
+      (dolist (file '("RARBG.txt" "RARBG.com.txt" "RARBG_DO_NOT_MIRROR.exe"))
 	(when (probe-file (setq temp (merge-pathnames file p)))
 	  (pushnew temp aux-files :test #'equalp)))
       (when (probe-file (setq temp
